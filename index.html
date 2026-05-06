@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>M Event · Арга хэмжээний түрээс</title>
+<meta name="description" content="Хурим, төрсөн өдөр, корпорат арга хэмжээний тоног төхөөрөмжийн түрээс — сандал, ширээ, майхан, гэрэлтүүлэг." />
+<meta property="og:title" content="M Event · Арга хэмжээний түрээс" />
+<meta property="og:description" content="249 төрлийн арга хэмжээний бараа онлайнаар захиалах." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23111827'/%3E%3Ctext x='50' y='68' font-size='62' font-weight='800' text-anchor='middle' fill='%23c9a961' font-family='sans-serif'%3EM%3C/text%3E%3C/svg%3E" />
+<style>
+  :root {
+    --bg: #fafafa;
+    --panel: #ffffff;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text: #111827;
+    --muted: #6b7280;
+    --primary: #111827;       /* near-black, premium feel */
+    --accent: #c9a961;        /* warm gold */
+    --price: #1f2937;
+    --danger: #dc2626;
+    --success: #059669;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 1px 3px rgba(0,0,0,.06);
+    --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  img { max-width: 100%; display: block; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; }
+  input, select { font-family: inherit; font-size: inherit; }
+  a { color: inherit; }
+
+  /* HEADER */
+  .header {
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .header-row {
+    max-width: 1280px; margin: 0 auto;
+    padding: 14px 24px;
+    display: flex; align-items: center; gap: 24px;
+  }
+  .brand {
+    font-weight: 700; font-size: 18px; letter-spacing: -.5px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .brand .logo {
+    width: 30px; height: 30px; border-radius: 6px;
+    background: var(--primary); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800;
+  }
+  .search-box {
+    flex: 1; max-width: 420px; position: relative;
+  }
+  .search-box input {
+    width: 100%; padding: 9px 14px 9px 38px;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg);
+  }
+  .search-box::before {
+    content: "🔍"; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 13px; opacity: .5;
+  }
+  .header-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .icon-btn {
+    width: 38px; height: 38px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--muted); position: relative;
+  }
+  .icon-btn:hover { background: var(--bg); }
+  .cart-btn { background: var(--primary); color: #fff; padding: 0 16px; height: 38px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+  .cart-btn:hover { background: #1f2937; }
+  .cart-count {
+    background: var(--accent); color: #fff; font-size: 11px; font-weight: 700;
+    border-radius: 10px; padding: 1px 7px; min-width: 18px; text-align: center;
+  }
+
+  /* HERO */
+  .hero {
+    background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+    color: #fff; padding: 36px 24px; text-align: center;
+  }
+  .hero h1 { font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-bottom: 8px; }
+  .hero p { font-size: 15px; opacity: .8; margin-bottom: 18px; }
+  .hero .cta { display: inline-flex; gap: 12px; justify-content: center; flex-wrap: wrap; align-items: center; }
+  .hero .phone {
+    background: var(--accent); color: #111; padding: 10px 20px; border-radius: 8px;
+    font-weight: 700; font-size: 15px; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .hero .phone:hover { background: #d4b76e; }
+  .hero .stats { font-size: 12px; opacity: .65; margin-top: 14px; }
+  @media (max-width: 720px) { .hero { padding: 28px 16px; } .hero h1 { font-size: 24px; } }
+
+  /* DATE BAR */
+  .date-bar {
+    background: var(--panel); border-bottom: 1px solid var(--border);
+  }
+  .date-row {
+    max-width: 1280px; margin: 0 auto;
+    padding: 12px 24px;
+    display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  }
+  .date-row label { font-size: 12px; color: var(--muted); margin-right: 6px; text-transform: uppercase; letter-spacing: .5px; }
+  .date-row input[type=date], .date-row input[type=time] {
+    padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: #fff;
+  }
+  .duration {
+    color: var(--muted); font-size: 13px; padding-left: 12px; border-left: 1px solid var(--border);
+  }
+
+  /* LAYOUT */
+  .layout {
+    max-width: 1280px; margin: 0 auto;
+    padding: 24px;
+    display: grid; grid-template-columns: 220px 1fr;
+    gap: 28px;
+  }
+  /* SIDEBAR */
+  .sidebar { position: sticky; top: 130px; align-self: start; max-height: calc(100vh - 150px); overflow-y: auto; }
+  .cat-title {
+    font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .8px;
+    margin-bottom: 8px; padding: 0 10px;
+  }
+  .cat-list { list-style: none; }
+  .cat-item {
+    padding: 8px 12px; border-radius: 6px; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    color: var(--text);
+  }
+  .cat-item:hover { background: #f1f3f5; }
+  .cat-item.active { background: var(--primary); color: #fff; font-weight: 600; }
+  .cat-item .count { font-size: 11px; opacity: .65; }
+  .cat-item.active .count { opacity: 1; }
+
+  /* PRODUCTS GRID */
+  .grid-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 16px;
+  }
+  .grid-head h1 { font-size: 22px; font-weight: 700; letter-spacing: -.5px; }
+  .grid-head .meta { color: var(--muted); font-size: 13px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 18px;
+  }
+  .card {
+    background: #fff; border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; cursor: pointer; transition: all .15s ease;
+    display: flex; flex-direction: column;
+  }
+  .card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); border-color: var(--border-strong); }
+  .card-img {
+    aspect-ratio: 1 / 1; background: #f3f4f6; overflow: hidden; position: relative;
+  }
+  .card-img img { width: 100%; height: 100%; object-fit: cover; }
+  .card-img.placeholder::after {
+    content: "📷"; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; opacity: .25;
+  }
+  .card-body { padding: 12px 14px 14px; flex: 1; display: flex; flex-direction: column; }
+  .card-name {
+    font-size: 13.5px; font-weight: 600; line-height: 1.35;
+    margin-bottom: 6px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; min-height: 2.7em;
+  }
+  .card-cat { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .card-price-row {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    margin-top: auto;
+  }
+  .card-price { font-size: 15px; font-weight: 700; color: var(--price); }
+  .card-price small { font-weight: 400; font-size: 11px; color: var(--muted); display: block; }
+  .card-add {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 600;
+    transition: transform .1s;
+  }
+  .card-add:hover { transform: scale(1.1); }
+  .card.in-cart .card-add { background: var(--success); }
+
+  .empty {
+    grid-column: 1 / -1;
+    text-align: center; padding: 60px 20px; color: var(--muted);
+  }
+
+  /* MODAL (product detail) */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100;
+    display: none; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: #fff; border-radius: 14px; max-width: 720px; width: 100%; max-height: 90vh;
+    overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  }
+  .modal-grid { display: grid; grid-template-columns: 320px 1fr; gap: 0; }
+  .modal-img { background: #f3f4f6; aspect-ratio: 1 / 1; }
+  .modal-img img { width: 100%; height: 100%; object-fit: cover; }
+  .modal-content { padding: 24px; }
+  .modal-content h2 { font-size: 20px; margin-bottom: 6px; line-height: 1.3; }
+  .modal-cat { font-size: 12px; color: var(--muted); margin-bottom: 16px; text-transform: uppercase; letter-spacing: .5px; }
+  .modal-prices { display: flex; gap: 24px; margin-bottom: 18px; padding: 14px; background: var(--bg); border-radius: 8px; }
+  .modal-prices > div small { font-size: 11px; color: var(--muted); display: block; }
+  .modal-prices > div b { font-size: 17px; font-weight: 700; }
+  .modal-desc { font-size: 13px; color: var(--text); line-height: 1.6; margin-bottom: 22px; max-height: 200px; overflow-y: auto; }
+  .qty-row {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+  }
+  .qty-row label { font-size: 13px; color: var(--muted); }
+  .qty-ctrl { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .qty-ctrl button { width: 32px; height: 32px; font-size: 16px; background: #fff; }
+  .qty-ctrl button:hover { background: var(--bg); }
+  .qty-ctrl input { width: 56px; height: 32px; border: none; border-left: 1px solid var(--border); border-right: 1px solid var(--border); text-align: center; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .btn {
+    padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 14px;
+    border: 1px solid var(--border); background: #fff; color: var(--text);
+  }
+  .btn:hover { background: var(--bg); }
+  .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .btn-primary:hover { background: #1f2937; }
+  .btn-block { width: 100%; }
+
+  /* CART DRAWER */
+  .drawer-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 90;
+    display: none;
+  }
+  .drawer-bg.open { display: block; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 100%; max-width: 460px;
+    background: #fff; z-index: 95;
+    transform: translateX(100%); transition: transform .25s ease;
+    display: flex; flex-direction: column;
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-head {
+    padding: 18px 20px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .drawer-head h2 { font-size: 17px; }
+  .drawer-close { font-size: 24px; color: var(--muted); }
+  .drawer-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+  .cart-item {
+    display: grid; grid-template-columns: 60px 1fr auto; gap: 12px; align-items: center;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .cart-item:last-child { border-bottom: none; }
+  .cart-item img { width: 60px; height: 60px; border-radius: 6px; object-fit: cover; background: var(--bg); }
+  .cart-item-name { font-weight: 600; font-size: 13px; line-height: 1.3; margin-bottom: 4px; }
+  .cart-item-meta { font-size: 12px; color: var(--muted); }
+  .cart-item-qty { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; }
+  .cart-item-qty button { width: 22px; height: 22px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; background: #fff; }
+  .cart-item-qty input { width: 36px; height: 22px; text-align: center; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; }
+  .cart-item-price { font-weight: 700; font-size: 14px; text-align: right; }
+  .cart-item-price small { font-weight: 400; font-size: 11px; color: var(--muted); display: block; }
+  .cart-remove { color: var(--danger); font-size: 11px; cursor: pointer; margin-top: 4px; display: inline-block; }
+  .empty-cart { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-cart .icon { font-size: 36px; margin-bottom: 8px; }
+
+  .drawer-foot {
+    padding: 18px 20px; border-top: 1px solid var(--border); background: var(--panel);
+  }
+  .total-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; color: var(--muted); }
+  .total-row.grand { font-size: 16px; font-weight: 700; color: var(--text); margin: 10px 0 16px; padding-top: 10px; border-top: 1px solid var(--border); }
+
+  /* CHECKOUT */
+  .checkout-step { display: none; }
+  .checkout-step.active { display: block; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+  .form-group label .req { color: var(--danger); }
+  .form-group input, .form-group textarea {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 6px; background: #fff;
+  }
+  .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--primary); }
+  .form-group textarea { min-height: 70px; resize: vertical; font-family: inherit; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .checkout-summary {
+    background: var(--bg); padding: 14px; border-radius: 8px; margin-bottom: 18px;
+    font-size: 13px;
+  }
+  .checkout-summary .row { display: flex; justify-content: space-between; padding: 3px 0; }
+  .checkout-summary .row.bold { font-weight: 700; padding-top: 8px; margin-top: 6px; border-top: 1px solid var(--border-strong); }
+
+  .success-screen { text-align: center; padding: 40px 20px; }
+  .success-screen .check { width: 60px; height: 60px; border-radius: 50%; background: var(--success); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 30px; margin-bottom: 16px; }
+  .success-screen h2 { margin-bottom: 8px; }
+  .success-screen p { color: var(--muted); margin-bottom: 18px; }
+  .success-screen .order-num { background: var(--bg); padding: 10px 18px; border-radius: 8px; display: inline-block; font-weight: 700; font-size: 18px; }
+
+  /* MOBILE */
+  @media (max-width: 720px) {
+    .layout { grid-template-columns: 1fr; padding: 16px; }
+    .sidebar { display: none; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .card-name { font-size: 12.5px; }
+    .modal-grid { grid-template-columns: 1fr; }
+    .modal-img { aspect-ratio: 16 / 10; }
+    .header-row { padding: 12px 16px; gap: 12px; }
+    .search-box { display: none; }
+    .date-row { padding: 10px 16px; gap: 10px; font-size: 12px; }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-row">
+    <a href="#" class="brand"><span class="logo">M</span> M Event</a>
+    <div class="search-box"><input type="text" id="search" placeholder="Бараа хайх..." /></div>
+    <div class="header-actions">
+      <a href="tel:+97688000000" class="icon-btn" title="Утсаар захиалах">📞</a>
+      <button class="cart-btn" id="cart-btn">
+        🛒 <span>Сагс</span>
+        <span class="cart-count" id="cart-count">0</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <h1>M Event · Арга хэмжээний түрээс</h1>
+  <p>Хурим, төрсөн өдөр, корпорат арга хэмжээнд хэрэгтэй бүхэн нэг дороос</p>
+  <div class="cta">
+    <a href="tel:+97688000000" class="phone">📞 +976 8800-0000</a>
+  </div>
+  <div class="stats">249 төрлийн бараа · 2026 оны улирал</div>
+</section>
+
+<!-- DATE BAR -->
+<div class="date-bar">
+  <div class="date-row">
+    <div><label>📅 Гарах</label> <input type="date" id="d-start"> <input type="time" id="t-start" value="09:00"></div>
+    <div><label>📅 Буцах</label> <input type="date" id="d-end"> <input type="time" id="t-end" value="17:00"></div>
+    <div class="duration" id="duration">— хоног</div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+  <aside class="sidebar">
+    <div class="cat-title">Ангилал</div>
+    <ul class="cat-list" id="cat-list"></ul>
+  </aside>
+
+  <main>
+    <div class="grid-head">
+      <h1 id="grid-title">Бүх бараа</h1>
+      <div class="meta" id="grid-meta"></div>
+    </div>
+    <div class="grid" id="grid"></div>
+  </main>
+</div>
+
+<!-- FOOTER -->
+<footer style="background: #111827; color: #9ca3af; padding: 32px 24px; margin-top: 60px; text-align: center;">
+  <div style="max-width: 1280px; margin: 0 auto;">
+    <div style="font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 6px;">M Event · Чимун ХХК</div>
+    <div style="font-size: 13px; margin-bottom: 16px;">Арга хэмжээний тоног төхөөрөмжийн түрээс</div>
+    <div style="font-size: 13px; display: flex; justify-content: center; gap: 24px; flex-wrap: wrap;">
+      <span>📞 +976 8800-0000</span>
+      <span>✉ info@m-event.mn</span>
+      <span>📍 Улаанбаатар хот, БЗД</span>
+    </div>
+    <div style="font-size: 11px; opacity: .5; margin-top: 18px;">© 2026 Чимун ХХК. Бүх эрх хуулиар хамгаалагдсан.</div>
+  </div>
+</footer>
+
+<!-- PRODUCT MODAL -->
+<div class="modal-bg" id="product-modal">
+  <div class="modal">
+    <div class="modal-grid">
+      <div class="modal-img" id="m-img"></div>
+      <div class="modal-content">
+        <h2 id="m-name"></h2>
+        <div class="modal-cat" id="m-cat"></div>
+        <div class="modal-prices">
+          <div><small>Үнэ / хугацаа</small><b id="m-price"></b></div>
+          <div><small>Барьцаа</small><b id="m-deposit"></b></div>
+        </div>
+        <div class="modal-desc" id="m-desc"></div>
+        <div class="qty-row">
+          <label>Тоо ширхэг:</label>
+          <div class="qty-ctrl">
+            <button id="m-qty-down">−</button>
+            <input type="number" id="m-qty" value="1" min="1">
+            <button id="m-qty-up">+</button>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" id="m-cancel">Хаах</button>
+          <button class="btn btn-primary" id="m-add">Сагсанд нэмэх</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CART DRAWER -->
+<div class="drawer-bg" id="drawer-bg"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <h2 id="drawer-title">🛒 Миний сагс</h2>
+    <button class="drawer-close" id="drawer-close">×</button>
+  </div>
+  <div class="drawer-body" id="drawer-body">
+    <!-- Step 1: Cart items -->
+    <div class="checkout-step active" id="step-cart">
+      <div id="cart-items"></div>
+    </div>
+    <!-- Step 2: Customer info -->
+    <div class="checkout-step" id="step-info">
+      <div class="checkout-summary" id="step-info-summary"></div>
+      <div class="form-grid">
+        <div class="form-group"><label>Нэр <span class="req">*</span></label><input id="f-name" placeholder="Овог Нэр"></div>
+        <div class="form-group"><label>Утас <span class="req">*</span></label><input id="f-phone" placeholder="9911____"></div>
+      </div>
+      <div class="form-group"><label>Email</label><input id="f-email" type="email" placeholder="example@gmail.com"></div>
+      <div class="form-group"><label>Хүргэлтийн хаяг <span class="req">*</span></label><input id="f-address" placeholder="Дүүрэг, хороо, байр, давхар"></div>
+      <div class="form-grid">
+        <div class="form-group"><label>Байгууллага (НӨАТ-тэй бол)</label><input id="f-company" placeholder="ХХК-ийн нэр"></div>
+        <div class="form-group"><label>Регистр</label><input id="f-register" placeholder="1234567"></div>
+      </div>
+      <div class="form-group"><label>Нэмэлт тайлбар</label><textarea id="f-note" placeholder="Setup-ийн дэлгэрэнгүй, тусгай хүсэлт..."></textarea></div>
+    </div>
+    <!-- Step 3: Success -->
+    <div class="checkout-step" id="step-success">
+      <div class="success-screen">
+        <div class="check">✓</div>
+        <h2>Захиалга илгээгдлээ!</h2>
+        <p>Бид 1 цагийн дотор утсаар холбогдож баталгаажуулах болно.</p>
+        <div class="order-num">Захиалгын № <span id="success-num">—</span></div>
+        <p style="margin-top: 18px;">Та манайхаар захиалга өгсөнд баярлалаа 🙏</p>
+      </div>
+    </div>
+  </div>
+  <div class="drawer-foot" id="drawer-foot">
+    <div id="totals">
+      <div class="total-row"><span>Дэд дүн</span><span id="t-subtotal">0₮</span></div>
+      <div class="total-row"><span>Барьцаа</span><span id="t-deposit">0₮</span></div>
+      <div class="total-row grand"><span>Нийт төлөх</span><span id="t-grand">0₮</span></div>
+    </div>
+    <button class="btn btn-primary btn-block" id="checkout-btn">Захиалга үргэлжлүүлэх →</button>
+  </div>
+</aside>
+
+<script>
+/* ==================== CONFIG ==================== */
+const CONFIG = {
+  // Хоосон үлдээвэл локал products.json (туршилт). Жинхэнэ ажилд n8n webhook URL оруулна.
+  PRODUCTS_URL: '',         // e.g. 'https://n8n.example.com/webhook/products'
+  ORDER_URL: '',            // e.g. 'https://n8n.example.com/webhook/order'
+  PHONE: '+976 8800 0000',
+};
+
+/* ==================== STATE ==================== */
+const state = {
+  products: [],
+  cart: JSON.parse(localStorage.getItem('cart') || '[]'),
+  category: 'all',
+  search: '',
+  dates: {
+    start: localStorage.getItem('d-start') || '',
+    end: localStorage.getItem('d-end') || '',
+    timeStart: '09:00',
+    timeEnd: '17:00',
+  },
+  currentProduct: null,
+  step: 'cart',
+};
+
+/* ==================== UTILS ==================== */
+function fmt(n) { return new Intl.NumberFormat('mn-MN').format(Math.round(n)) + '₮'; }
+function escapeHtml(s) { return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function diffDays() {
+  if (!state.dates.start || !state.dates.end) return 1;
+  const a = new Date(state.dates.start);
+  const b = new Date(state.dates.end);
+  const d = Math.max(1, Math.ceil((b - a) / 86400000) || 1);
+  return d;
+}
+function saveCart() { localStorage.setItem('cart', JSON.stringify(state.cart)); }
+
+/* ==================== DATA LOAD ==================== */
+async function loadProducts() {
+  try {
+    const url = CONFIG.PRODUCTS_URL || 'products.json';
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    state.products = await r.json();
+  } catch(e) {
+    console.error('Failed to load products', e);
+    state.products = [];
+    document.getElementById('grid').innerHTML = '<div class="empty">Бараа татаж чадсангүй. Сүлжээгээ шалгана уу.</div>';
+  }
+}
+
+/* ==================== RENDER ==================== */
+function render() {
+  renderCategories();
+  renderGrid();
+  renderCart();
+  renderDuration();
+}
+function renderCategories() {
+  const counts = {};
+  state.products.forEach(p => { counts[p.category] = (counts[p.category]||0)+1; });
+  const cats = Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+
+  const list = document.getElementById('cat-list');
+  list.innerHTML = '';
+
+  const all = document.createElement('li');
+  all.className = 'cat-item' + (state.category==='all' ? ' active':'');
+  all.innerHTML = `<span>Бүх бараа</span><span class="count">${state.products.length}</span>`;
+  all.onclick = () => { state.category = 'all'; render(); };
+  list.appendChild(all);
+
+  cats.forEach(c => {
+    const li = document.createElement('li');
+    li.className = 'cat-item' + (state.category===c ? ' active':'');
+    li.innerHTML = `<span>${escapeHtml(c)}</span><span class="count">${counts[c]}</span>`;
+    li.onclick = () => { state.category = c; render(); };
+    list.appendChild(li);
+  });
+}
+function filteredProducts() {
+  let list = state.products;
+  if (state.category !== 'all') list = list.filter(p => p.category === state.category);
+  if (state.search) {
+    const q = state.search.toLowerCase();
+    list = list.filter(p => p.name.toLowerCase().includes(q) || (p.description||'').toLowerCase().includes(q));
+  }
+  return list;
+}
+function renderGrid() {
+  const list = filteredProducts();
+  document.getElementById('grid-title').textContent = state.category === 'all' ? 'Бүх бараа' : state.category;
+  document.getElementById('grid-meta').textContent = list.length + ' бараа';
+  const grid = document.getElementById('grid');
+  if (!list.length) { grid.innerHTML = '<div class="empty">Илэрц олдсонгүй</div>'; return; }
+  grid.innerHTML = list.map(p => cardHtml(p)).join('');
+  // bind
+  grid.querySelectorAll('.card').forEach((el, i) => {
+    el.onclick = (e) => {
+      if (e.target.closest('.card-add')) {
+        addToCart(list[i], 1, true);
+      } else {
+        openProduct(list[i]);
+      }
+    };
+  });
+}
+function cardHtml(p) {
+  const inCart = state.cart.find(x => x.id === p.id);
+  const photo = p.photo ? `<img src="${escapeHtml(p.photo)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.style.display='none'">` : '';
+  return `
+    <div class="card${inCart?' in-cart':''}">
+      <div class="card-img${photo?'':' placeholder'}">${photo}</div>
+      <div class="card-body">
+        <div class="card-cat">${escapeHtml(p.category)}</div>
+        <div class="card-name">${escapeHtml(p.name)}</div>
+        <div class="card-price-row">
+          <div class="card-price">${fmt(p.price)}<small>хугацаанд</small></div>
+          <button class="card-add" title="Сагсанд нэмэх">${inCart?'✓':'+'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+function renderDuration() {
+  const days = diffDays();
+  const txt = state.dates.start && state.dates.end ? days + ' хоног' : '— хоног';
+  document.getElementById('duration').textContent = txt;
+}
+
+/* ==================== PRODUCT MODAL ==================== */
+function openProduct(p) {
+  state.currentProduct = p;
+  document.getElementById('m-name').textContent = p.name;
+  document.getElementById('m-cat').textContent = p.category;
+  document.getElementById('m-price').textContent = fmt(p.price);
+  document.getElementById('m-deposit').textContent = p.deposit ? fmt(p.deposit) : 'Барьцаагүй';
+  document.getElementById('m-desc').textContent = p.description || 'Дэлгэрэнгүй мэдээлэл утсаар асуугаарай: ' + CONFIG.PHONE;
+  const img = document.getElementById('m-img');
+  img.innerHTML = p.photo ? `<img src="${escapeHtml(p.photo)}" alt="${escapeHtml(p.name)}">` : '';
+  const existing = state.cart.find(x => x.id === p.id);
+  document.getElementById('m-qty').value = existing ? existing.qty : 1;
+  document.getElementById('m-add').textContent = existing ? 'Шинэчлэх' : 'Сагсанд нэмэх';
+  document.getElementById('product-modal').classList.add('open');
+}
+function closeProduct() {
+  document.getElementById('product-modal').classList.remove('open');
+  state.currentProduct = null;
+}
+
+/* ==================== CART ==================== */
+function addToCart(p, qty, openDrawer) {
+  const ex = state.cart.find(x => x.id === p.id);
+  if (ex) ex.qty = (ex.qty || 1) + (qty || 1);
+  else state.cart.push({ id: p.id, name: p.name, photo: p.photo, price: p.price, deposit: p.deposit, qty: qty || 1 });
+  saveCart();
+  renderCart();
+  renderGrid();
+  if (openDrawer) showDrawer();
+}
+function setCartQty(id, qty) {
+  const ex = state.cart.find(x => x.id === id);
+  if (!ex) return;
+  ex.qty = Math.max(1, qty);
+  saveCart();
+  renderCart();
+  renderGrid();
+}
+function removeFromCart(id) {
+  state.cart = state.cart.filter(x => x.id !== id);
+  saveCart();
+  renderCart();
+  renderGrid();
+}
+function cartTotals() {
+  const days = diffDays();
+  let subtotal = 0, deposit = 0;
+  state.cart.forEach(x => { subtotal += x.price * x.qty * days; deposit += (x.deposit||0) * x.qty; });
+  return { subtotal, deposit, grand: subtotal + deposit, days };
+}
+function renderCart() {
+  document.getElementById('cart-count').textContent = state.cart.reduce((s,x)=>s+x.qty, 0);
+  const wrap = document.getElementById('cart-items');
+  if (!state.cart.length) {
+    wrap.innerHTML = '<div class="empty-cart"><div class="icon">🛒</div>Сагс хоосон байна</div>';
+  } else {
+    const days = diffDays();
+    wrap.innerHTML = state.cart.map(x => `
+      <div class="cart-item">
+        <img src="${escapeHtml(x.photo||'')}" onerror="this.style.background='#f3f4f6';this.src=''">
+        <div>
+          <div class="cart-item-name">${escapeHtml(x.name)}</div>
+          <div class="cart-item-meta">${fmt(x.price)} × ${days} хоног</div>
+          <div class="cart-item-qty">
+            <button onclick="setCartQty('${x.id}', ${x.qty-1})">−</button>
+            <input type="number" value="${x.qty}" min="1" onchange="setCartQty('${x.id}', parseInt(this.value)||1)">
+            <button onclick="setCartQty('${x.id}', ${x.qty+1})">+</button>
+          </div>
+          <a class="cart-remove" onclick="removeFromCart('${x.id}')">Устгах</a>
+        </div>
+        <div class="cart-item-price">
+          ${fmt(x.price * x.qty * days)}
+          ${x.deposit ? `<small>+ ${fmt(x.deposit*x.qty)} барьцаа</small>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+  const t = cartTotals();
+  document.getElementById('t-subtotal').textContent = fmt(t.subtotal);
+  document.getElementById('t-deposit').textContent = fmt(t.deposit);
+  document.getElementById('t-grand').textContent = fmt(t.grand);
+}
+
+/* ==================== DRAWER & CHECKOUT FLOW ==================== */
+function showDrawer() {
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawer-bg').classList.add('open');
+  goStep('cart');
+}
+function hideDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer-bg').classList.remove('open');
+  goStep('cart');
+}
+function goStep(s) {
+  state.step = s;
+  document.querySelectorAll('.checkout-step').forEach(el => el.classList.remove('active'));
+  document.getElementById('step-' + s).classList.add('active');
+  const btn = document.getElementById('checkout-btn');
+  const foot = document.getElementById('drawer-foot');
+  if (s === 'cart') {
+    btn.textContent = 'Захиалга үргэлжлүүлэх →';
+    btn.onclick = () => {
+      if (!state.cart.length) { alert('Сагс хоосон байна'); return; }
+      if (!state.dates.start || !state.dates.end) { alert('Гарах ба буцах огноог сонгоно уу.'); return; }
+      goStep('info');
+    };
+    foot.style.display = '';
+    document.getElementById('drawer-title').textContent = '🛒 Миний сагс';
+  } else if (s === 'info') {
+    btn.textContent = '📤 Захиалга илгээх';
+    btn.onclick = submitOrder;
+    foot.style.display = '';
+    document.getElementById('drawer-title').textContent = 'Холбоо барих мэдээлэл';
+    // Render summary
+    const t = cartTotals();
+    document.getElementById('step-info-summary').innerHTML = `
+      <div class="row"><span>${state.cart.length} төрөл, ${state.cart.reduce((s,x)=>s+x.qty,0)} ширхэг</span><span>${state.dates.start} → ${state.dates.end}</span></div>
+      <div class="row"><span>Хугацаа</span><span>${t.days} хоног</span></div>
+      <div class="row bold"><span>Нийт төлөх</span><span>${fmt(t.grand)}</span></div>
+    `;
+  } else if (s === 'success') {
+    foot.style.display = 'none';
+    document.getElementById('drawer-title').textContent = '✓ Амжилттай';
+  }
+}
+async function submitOrder() {
+  // Validate
+  const name = document.getElementById('f-name').value.trim();
+  const phone = document.getElementById('f-phone').value.trim();
+  const address = document.getElementById('f-address').value.trim();
+  if (!name) { alert('Нэрээ оруулна уу'); return; }
+  if (!phone || phone.length < 8) { alert('Утасны дугаар буруу'); return; }
+  if (!address) { alert('Хүргэлтийн хаяг шаардлагатай'); return; }
+
+  const order = {
+    customer: {
+      name, phone, address,
+      email: document.getElementById('f-email').value.trim(),
+      company: document.getElementById('f-company').value.trim(),
+      register: document.getElementById('f-register').value.trim(),
+    },
+    note: document.getElementById('f-note').value.trim(),
+    dates: { start: state.dates.start + ' ' + state.dates.timeStart, end: state.dates.end + ' ' + state.dates.timeEnd },
+    items: state.cart.map(x => ({ id: x.id, name: x.name, qty: x.qty, price: x.price, deposit: x.deposit })),
+    totals: cartTotals(),
+    submittedAt: new Date().toISOString(),
+    source: 'm-event-website',
+  };
+
+  // Submit
+  const btn = document.getElementById('checkout-btn');
+  btn.textContent = 'Илгээж байна...'; btn.disabled = true;
+  let orderNum = '—';
+  try {
+    if (CONFIG.ORDER_URL) {
+      const r = await fetch(CONFIG.ORDER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(order),
+      });
+      const data = await r.json().catch(() => ({}));
+      orderNum = data.orderNumber || data.order_number || '#' + Date.now().toString(36).toUpperCase();
+    } else {
+      // Локал demo
+      console.log('ORDER (demo, n8n холбогдоогүй):', order);
+      orderNum = 'DEMO-' + Date.now().toString(36).toUpperCase();
+    }
+    document.getElementById('success-num').textContent = orderNum;
+    state.cart = []; saveCart(); renderCart(); renderGrid();
+    goStep('success');
+  } catch(e) {
+    alert('Алдаа гарлаа: ' + e.message + '\n\nУтсаар захиалаарай: ' + CONFIG.PHONE);
+  } finally {
+    btn.textContent = '📤 Захиалга илгээх'; btn.disabled = false;
+  }
+}
+
+/* ==================== INIT ==================== */
+function initEvents() {
+  // search
+  document.getElementById('search').oninput = (e) => { state.search = e.target.value; renderGrid(); };
+  // dates
+  const ds = document.getElementById('d-start'), de = document.getElementById('d-end');
+  const ts = document.getElementById('t-start'), te = document.getElementById('t-end');
+  // default: today + tomorrow
+  const today = new Date().toISOString().slice(0,10);
+  const tmrw = new Date(Date.now()+86400000).toISOString().slice(0,10);
+  ds.value = state.dates.start || today;
+  de.value = state.dates.end || tmrw;
+  state.dates.start = ds.value; state.dates.end = de.value;
+  localStorage.setItem('d-start', ds.value); localStorage.setItem('d-end', de.value);
+  ds.onchange = () => { state.dates.start = ds.value; localStorage.setItem('d-start', ds.value); renderDuration(); renderCart(); };
+  de.onchange = () => { state.dates.end = de.value; localStorage.setItem('d-end', de.value); renderDuration(); renderCart(); };
+  ts.onchange = () => { state.dates.timeStart = ts.value; };
+  te.onchange = () => { state.dates.timeEnd = te.value; };
+
+  // cart
+  document.getElementById('cart-btn').onclick = showDrawer;
+  document.getElementById('drawer-close').onclick = hideDrawer;
+  document.getElementById('drawer-bg').onclick = hideDrawer;
+
+  // modal
+  document.getElementById('m-cancel').onclick = closeProduct;
+  document.getElementById('m-qty-up').onclick = () => { const i = document.getElementById('m-qty'); i.value = parseInt(i.value)+1; };
+  document.getElementById('m-qty-down').onclick = () => { const i = document.getElementById('m-qty'); i.value = Math.max(1, parseInt(i.value)-1); };
+  document.getElementById('m-add').onclick = () => {
+    if (!state.currentProduct) return;
+    const qty = Math.max(1, parseInt(document.getElementById('m-qty').value)||1);
+    // remove if exists then re-add with new qty
+    state.cart = state.cart.filter(x => x.id !== state.currentProduct.id);
+    addToCart(state.currentProduct, qty, true);
+    closeProduct();
+  };
+  document.getElementById('product-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'product-modal') closeProduct();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeProduct(); hideDrawer(); }
+  });
+}
+
+(async function start() {
+  initEvents();
+  await loadProducts();
+  render();
+})();
+</script>
+</body>
+</html>
