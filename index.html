@@ -478,7 +478,8 @@
 <script>
 /* ==================== CONFIG ==================== */
 const CONFIG = {
-  PRODUCTS_URL: '',
+  // Бараа — Sheet эх сурвалжаас (n8n) live уншина. Алдаа гарвал products.json (cache) руу унана.
+  PRODUCTS_URL: 'https://chimunllc.app.n8n.cloud/webhook/mevent-products?key=1YP4RCfL_DMiBhDfkCkX6AesQHd5p2lZ',
   ORDER_URL: 'https://chimunllc.app.n8n.cloud/webhook/m-event-site-order?key=1YP4RCfL_DMiBhDfkCkX6AesQHd5p2lZ',
   PHONE: '+976 8800-0000',
 };
@@ -513,16 +514,24 @@ function saveCart() { localStorage.setItem('cart', JSON.stringify(state.cart)); 
 
 /* ==================== DATA LOAD ==================== */
 async function loadProducts() {
-  try {
-    const url = CONFIG.PRODUCTS_URL || 'products.json';
-    const r = await fetch(url);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    state.products = await r.json();
-  } catch(e) {
-    console.error('Failed to load products', e);
-    state.products = [];
-    document.getElementById('grid').innerHTML = '<div class="empty">Бараа татаж чадсангүй. Сүлжээгээ шалгана уу.</div>';
+  // 1) Эх сурвалж: n8n Sheet (live, шинэ үнэ/нөөц). 2) Унавал products.json (cache).
+  const sources = [];
+  if (CONFIG.PRODUCTS_URL) sources.push(CONFIG.PRODUCTS_URL);
+  sources.push('products.json');
+  for (const url of sources) {
+    try {
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const data = await r.json();
+      const list = Array.isArray(data) ? data : (data.products || []);
+      if (list.length) { state.products = list; return; }
+      throw new Error('хоосон');
+    } catch(e) {
+      console.warn('Бараа эх сурвалж амжилтгүй:', url, e.message);
+    }
   }
+  state.products = [];
+  document.getElementById('grid').innerHTML = '<div class="empty">Бараа татаж чадсангүй. Сүлжээгээ шалгана уу.</div>';
 }
 
 /* ==================== RENDER ==================== */
