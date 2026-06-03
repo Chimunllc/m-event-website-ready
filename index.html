@@ -468,6 +468,7 @@
   <div class="drawer-foot" id="drawer-foot">
     <div id="totals">
       <div class="total-row"><span>Дэд дүн</span><span id="t-subtotal">0₮</span></div>
+      <div class="total-row" id="t-discount-row" style="display:none;color:var(--success);"><span>Олон хоногийн хямдрал (20%)</span><span id="t-discount">0₮</span></div>
       <div class="total-row"><span>Барьцаа</span><span id="t-deposit">0₮</span></div>
       <div class="total-row grand"><span>Нийт төлөх</span><span id="t-grand">0₮</span></div>
     </div>
@@ -701,7 +702,9 @@ function cartTotals() {
   const days = diffDays();
   let subtotal = 0, deposit = 0;
   state.cart.forEach(x => { subtotal += x.price * x.qty * days; deposit += (x.deposit||0) * x.qty; });
-  return { subtotal, deposit, grand: subtotal + deposit, days };
+  // 2+ хоног түрээслэвэл түрээсийн дүнгээс 20% хямдрал
+  const multiDayDiscount = days >= 2 ? Math.round(subtotal * 0.20) : 0;
+  return { subtotal, deposit, multiDayDiscount, grand: subtotal - multiDayDiscount + deposit, days };
 }
 function renderCart() {
   document.getElementById('cart-count').textContent = state.cart.reduce((s,x)=>s+x.qty, 0);
@@ -732,6 +735,9 @@ function renderCart() {
   }
   const t = cartTotals();
   document.getElementById('t-subtotal').textContent = fmt(t.subtotal);
+  const dr = document.getElementById('t-discount-row');
+  if (t.multiDayDiscount) { dr.style.display = ''; document.getElementById('t-discount').textContent = '−' + fmt(t.multiDayDiscount); }
+  else { dr.style.display = 'none'; }
   document.getElementById('t-deposit').textContent = fmt(t.deposit);
   document.getElementById('t-grand').textContent = fmt(t.grand);
 }
@@ -772,6 +778,7 @@ function goStep(s) {
     document.getElementById('step-info-summary').innerHTML = `
       <div class="row"><span>${state.cart.length} төрөл, ${state.cart.reduce((s,x)=>s+x.qty,0)} ширхэг</span><span>${state.dates.start} → ${state.dates.end}</span></div>
       <div class="row"><span>Хугацаа</span><span>${t.days} хоног</span></div>
+      ${t.multiDayDiscount ? `<div class="row" style="color:var(--success);"><span>Олон хоногийн хямдрал (20%)</span><span>−${fmt(t.multiDayDiscount)}</span></div>` : ''}
       <div class="row bold"><span>Нийт төлөх</span><span>${fmt(t.grand)}</span></div>
     `;
   } else if (s === 'success') {
@@ -795,7 +802,11 @@ async function submitOrder() {
       company: document.getElementById('f-company').value.trim(),
       register: document.getElementById('f-register').value.trim(),
     },
-    note: document.getElementById('f-note').value.trim(),
+    note: (() => {
+      const n = document.getElementById('f-note').value.trim();
+      const t = cartTotals();
+      return t.multiDayDiscount ? (n ? n + ' · ' : '') + `${t.days} хоногийн хямдрал (−20% = ${fmt(t.multiDayDiscount)})` : n;
+    })(),
     dates: { start: state.dates.start + ' ' + state.dates.timeStart, end: state.dates.end + ' ' + state.dates.timeEnd },
     items: state.cart.map(x => ({ id: x.id, name: x.name, qty: x.qty, price: x.price, deposit: x.deposit })),
     totals: cartTotals(),
