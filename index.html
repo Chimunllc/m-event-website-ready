@@ -505,11 +505,13 @@ const state = {
 function fmt(n) { return new Intl.NumberFormat('mn-MN').format(Math.round(n)) + '₮'; }
 function escapeHtml(s) { return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function diffDays() {
+  // Түрээс эхэлсэн цагаас хойш 24 цаг = 1 хоног. Огноо + цагийг нийлүүлж бодно.
   if (!state.dates.start || !state.dates.end) return 1;
-  const a = new Date(state.dates.start);
-  const b = new Date(state.dates.end);
-  const d = Math.max(1, Math.ceil((b - a) / 86400000) || 1);
-  return d;
+  const a = new Date(`${state.dates.start}T${state.dates.timeStart || '00:00'}:00`);
+  const b = new Date(`${state.dates.end}T${state.dates.timeEnd || '00:00'}:00`);
+  const diff = b - a;
+  if (!(diff > 0)) return 1;
+  return Math.max(1, Math.ceil(diff / 86400000 - 1e-9));   // 24ц=1, 35ц=2, 48ц=2
 }
 function saveCart() { localStorage.setItem('cart', JSON.stringify(state.cart)); }
 
@@ -858,8 +860,11 @@ function initEvents() {
   localStorage.setItem('d-start', ds.value); localStorage.setItem('d-end', de.value);
   ds.onchange = () => { state.dates.start = ds.value; localStorage.setItem('d-start', ds.value); renderDuration(); renderCart(); };
   de.onchange = () => { state.dates.end = de.value; localStorage.setItem('d-end', de.value); renderDuration(); renderCart(); };
-  ts.onchange = () => { state.dates.timeStart = ts.value; };
-  te.onchange = () => { state.dates.timeEnd = te.value; };
+  ts.onchange = () => { state.dates.timeStart = ts.value; renderDuration(); renderCart(); };
+  te.onchange = () => { state.dates.timeEnd = te.value; renderDuration(); renderCart(); };
+  // анхны утга state-д тусгах (input default value-аас)
+  state.dates.timeStart = ts.value || state.dates.timeStart;
+  state.dates.timeEnd = te.value || state.dates.timeEnd;
 
   // cart
   document.getElementById('cart-btn').onclick = showDrawer;
