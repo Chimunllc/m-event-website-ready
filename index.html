@@ -646,7 +646,12 @@ function openProduct(p) {
   document.getElementById('m-cat').innerHTML = escapeHtml(p.category) + ' &nbsp; ' + stockBadgeHtml(p);
   document.getElementById('m-price').textContent = fmt(p.price);
   document.getElementById('m-deposit').textContent = p.deposit ? fmt(p.deposit) : 'Барьцаагүй';
-  document.getElementById('m-desc').textContent = p.description || 'Дэлгэрэнгүй мэдээлэл утсаар асуугаарай: ' + CONFIG.PHONE;
+  let mDesc = p.description || 'Дэлгэрэнгүй мэдээлэл утсаар асуугаарай: ' + CONFIG.PHONE;
+  if (p.type === 'package' && Array.isArray(p.bundle_items) && p.bundle_items.length) {
+    const parts = p.bundle_items.map(c => { const cp = state.products.find(x => x.sku === c.sku); return cp ? `${c.qty || 1}× ${cp.name}` : null; }).filter(Boolean);
+    if (parts.length) mDesc = '📦 Багтсан: ' + parts.join(', ') + (p.description ? '\n\n' + p.description : '');
+  }
+  document.getElementById('m-desc').textContent = mDesc;
   const img = document.getElementById('m-img');
   const imgs = (Array.isArray(p.photos) && p.photos.length) ? p.photos.filter(Boolean) : (p.photo ? [p.photo] : []);
   if (imgs.length) {
