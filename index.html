@@ -471,7 +471,7 @@
   <div class="drawer-foot" id="drawer-foot">
     <div id="totals">
       <div class="total-row"><span>Дэд дүн</span><span id="t-subtotal">0₮</span></div>
-      <div class="total-row" id="t-discount-row" style="display:none;color:var(--success);"><span>Олон хоногийн хямдрал (20%)</span><span id="t-discount">0₮</span></div>
+      <div class="total-row" id="t-discount-row" style="display:none;color:var(--success);"><span id="t-discount-label">Олон хоногийн хямдрал</span><span id="t-discount">0₮</span></div>
       <div class="total-row"><span>Барьцаа</span><span id="t-deposit">0₮</span></div>
       <div class="total-row grand"><span>Нийт төлөх</span><span id="t-grand">0₮</span></div>
     </div>
@@ -725,13 +725,24 @@ function removeFromCart(id) {
   renderCart();
   renderGrid();
 }
+// Түрээсийн хугацааны хямдралын шат — урт түрээслэх тусам хямд (апп-тай ижил байлгана).
+const RENTAL_TIERS = [
+  { min: 30, pct: 0.55, label: 'Сарын хямдрал' },
+  { min: 7,  pct: 0.40, label: '7+ хоногийн хямдрал' },
+  { min: 2,  pct: 0.20, label: 'Олон хоногийн хямдрал' },
+];
+function rentalDiscount(days) {
+  days = Math.max(1, Number(days) || 1);
+  for (const t of RENTAL_TIERS) if (days >= t.min) return t;
+  return { min: 1, pct: 0, label: '' };
+}
 function cartTotals() {
   const days = diffDays();
   let subtotal = 0, deposit = 0;
   state.cart.forEach(x => { subtotal += x.price * x.qty * days; deposit += (x.deposit||0) * x.qty; });
-  // 2+ хоног түрээслэвэл түрээсийн дүнгээс 20% хямдрал
-  const multiDayDiscount = days >= 2 ? Math.round(subtotal * 0.20) : 0;
-  return { subtotal, deposit, multiDayDiscount, grand: subtotal - multiDayDiscount + deposit, days };
+  const tier = rentalDiscount(days);
+  const multiDayDiscount = Math.round(subtotal * tier.pct);
+  return { subtotal, deposit, multiDayDiscount, multiDayPct: tier.pct, multiDayLabel: tier.label, grand: subtotal - multiDayDiscount + deposit, days };
 }
 function renderCart() {
   document.getElementById('cart-count').textContent = state.cart.reduce((s,x)=>s+x.qty, 0);
@@ -763,8 +774,11 @@ function renderCart() {
   const t = cartTotals();
   document.getElementById('t-subtotal').textContent = fmt(t.subtotal);
   const dr = document.getElementById('t-discount-row');
-  if (t.multiDayDiscount) { dr.style.display = ''; document.getElementById('t-discount').textContent = '−' + fmt(t.multiDayDiscount); }
-  else { dr.style.display = 'none'; }
+  if (t.multiDayDiscount) {
+    dr.style.display = '';
+    document.getElementById('t-discount-label').textContent = `${t.multiDayLabel} (${Math.round(t.multiDayPct * 100)}%)`;
+    document.getElementById('t-discount').textContent = '−' + fmt(t.multiDayDiscount);
+  } else { dr.style.display = 'none'; }
   document.getElementById('t-deposit').textContent = fmt(t.deposit);
   document.getElementById('t-grand').textContent = fmt(t.grand);
 }
