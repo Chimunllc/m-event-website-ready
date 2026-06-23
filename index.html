@@ -479,7 +479,9 @@
 <script>
 /* ==================== CONFIG ==================== */
 const CONFIG = {
-  // Бараа — Sheet эх сурвалжаас (n8n) live уншина. Алдаа гарвал products.json (cache) руу унана.
+  // Бараа — ҮНДСЭН: Supabase Postgres (нэг эх сурвалж). Унавал n8n Sheet, дараа нь products.json.
+  SUPABASE_PRODUCTS_URL: 'https://pydgnbzntldpzzjhtaal.supabase.co/rest/v1/products?select=*&archived=eq.false&order=name.asc',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB5ZGduYnpudGxkcHp6amh0YWFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MzQ2OTUsImV4cCI6MjA5NzMxMDY5NX0.9fKMMB3HHJtiQl2cc0a_SDxxI-Wlp9-1aFmrbWXND0c',
   PRODUCTS_URL: 'https://n8n.nomaadcamp.com/webhook/mevent-products?key=1YP4RCfL_DMiBhDfkCkX6AesQHd5p2lZ',
   ORDER_URL: 'https://n8n.nomaadcamp.com/webhook/m-event-site-order?key=1YP4RCfL_DMiBhDfkCkX6AesQHd5p2lZ',
   PHONE: '+976 8800-0000',
@@ -517,13 +519,14 @@ function saveCart() { localStorage.setItem('cart', JSON.stringify(state.cart)); 
 
 /* ==================== DATA LOAD ==================== */
 async function loadProducts() {
-  // 1) Эх сурвалж: n8n Sheet (live, шинэ үнэ/нөөц). 2) Унавал products.json (cache).
+  // Эх сурвалж дараалал: 1) Supabase Postgres (үндсэн). 2) n8n Sheet. 3) products.json (cache).
   const sources = [];
-  if (CONFIG.PRODUCTS_URL) sources.push(CONFIG.PRODUCTS_URL);
-  sources.push('products.json');
-  for (const url of sources) {
+  if (CONFIG.SUPABASE_PRODUCTS_URL) sources.push({ url: CONFIG.SUPABASE_PRODUCTS_URL, headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + CONFIG.SUPABASE_ANON_KEY } });
+  if (CONFIG.PRODUCTS_URL) sources.push({ url: CONFIG.PRODUCTS_URL });
+  sources.push({ url: 'products.json' });
+  for (const src of sources) {
     try {
-      const r = await fetch(url, { cache: 'no-store' });
+      const r = await fetch(src.url, { cache: 'no-store', headers: src.headers || {} });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const data = await r.json();
       const list = Array.isArray(data) ? data : (data.products || []);
@@ -535,7 +538,7 @@ async function loadProducts() {
       }
       throw new Error('хоосон');
     } catch(e) {
-      console.warn('Бараа эх сурвалж амжилтгүй:', url, e.message);
+      console.warn('Бараа эх сурвалж амжилтгүй:', src.url, e.message);
     }
   }
   state.products = [];
