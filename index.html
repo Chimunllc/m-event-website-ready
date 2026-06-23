@@ -536,7 +536,11 @@ async function loadProducts() {
       if (list.length) {
         // Зөвхөн "Түрээслэх боломжтой" барааг харуулна (type !== 'asset').
         // Чимун ХХК-ийн дотоод хөрөнгө (asset) сайтад харагдахгүй.
-        state.products = list.filter(p => String(p.type || 'rental') !== 'asset');
+        // Нөөц = бүтэн (нийт − эвдэрсэн − засварт), багц нь хадгалсан утгаараа.
+        state.products = list.filter(p => String(p.type || 'rental') !== 'asset').map(p => {
+          if (p.type !== 'package') p.stock = Math.max(0, (Number(p.stock) || 0) - (Number(p.broken) || 0) - (Number(p.maintenance) || 0));
+          return p;
+        });
         return;
       }
       throw new Error('хоосон');
