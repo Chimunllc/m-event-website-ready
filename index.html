@@ -221,8 +221,11 @@
     overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.25);
   }
   .modal-grid { display: grid; grid-template-columns: 320px 1fr; gap: 0; }
-  .modal-img { background: #f3f4f6; aspect-ratio: 1 / 1; }
-  .modal-img img { width: 100%; height: 100%; object-fit: cover; }
+  .modal-img { background: #f3f4f6; aspect-ratio: 1 / 1; position: relative; }
+  .modal-img > img { width: 100%; height: 100%; object-fit: cover; }
+  .m-thumbs { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 5px; padding: 8px; overflow-x: auto; background: linear-gradient(transparent, rgba(0,0,0,.45)); }
+  .m-thumb { width: 46px; height: 46px; flex: 0 0 auto; object-fit: cover; border-radius: 6px; border: 2px solid transparent; cursor: pointer; opacity: .75; }
+  .m-thumb.on { border-color: #fff; opacity: 1; }
   .modal-content { padding: 24px; }
   .modal-content h2 { font-size: 20px; margin-bottom: 6px; line-height: 1.3; }
   .modal-cat { font-size: 12px; color: var(--muted); margin-bottom: 16px; text-transform: uppercase; letter-spacing: .5px; }
@@ -645,7 +648,16 @@ function openProduct(p) {
   document.getElementById('m-deposit').textContent = p.deposit ? fmt(p.deposit) : 'Барьцаагүй';
   document.getElementById('m-desc').textContent = p.description || 'Дэлгэрэнгүй мэдээлэл утсаар асуугаарай: ' + CONFIG.PHONE;
   const img = document.getElementById('m-img');
-  img.innerHTML = p.photo ? `<img src="${escapeHtml(p.photo)}" alt="${escapeHtml(p.name)}">` : '';
+  const imgs = (Array.isArray(p.photos) && p.photos.length) ? p.photos.filter(Boolean) : (p.photo ? [p.photo] : []);
+  if (imgs.length) {
+    img.innerHTML = `<img id="m-img-main" src="${escapeHtml(imgs[0])}" alt="${escapeHtml(p.name)}">`
+      + (imgs.length > 1 ? `<div class="m-thumbs">${imgs.map((u, i) => `<img class="m-thumb${i === 0 ? ' on' : ''}" data-src="${escapeHtml(u)}" src="${escapeHtml(u)}" alt="">`).join('')}</div>` : '');
+    img.querySelectorAll('.m-thumb').forEach(t => t.onclick = () => {
+      const main = document.getElementById('m-img-main'); if (main) main.src = t.dataset.src;
+      img.querySelectorAll('.m-thumb').forEach(x => x.classList.remove('on'));
+      t.classList.add('on');
+    });
+  } else { img.innerHTML = ''; }
   const existing = state.cart.find(x => x.id === p.id);
   const qInput = document.getElementById('m-qty');
   qInput.value = existing ? existing.qty : 1;
