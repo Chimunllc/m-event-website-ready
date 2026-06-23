@@ -527,7 +527,12 @@ async function loadProducts() {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const data = await r.json();
       const list = Array.isArray(data) ? data : (data.products || []);
-      if (list.length) { state.products = list; return; }
+      if (list.length) {
+        // Зөвхөн "Түрээслэх боломжтой" барааг харуулна (type !== 'asset').
+        // Чимун ХХК-ийн дотоод хөрөнгө (asset) сайтад харагдахгүй.
+        state.products = list.filter(p => String(p.type || 'rental') !== 'asset');
+        return;
+      }
       throw new Error('хоосон');
     } catch(e) {
       console.warn('Бараа эх сурвалж амжилтгүй:', url, e.message);
