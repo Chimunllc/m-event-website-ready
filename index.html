@@ -482,9 +482,10 @@
 <script>
 /* ==================== CONFIG ==================== */
 const CONFIG = {
-  // Бараа — ҮНДСЭН: Supabase Postgres (нэг эх сурвалж). Унавал n8n Sheet, дараа нь products.json.
-  SUPABASE_PRODUCTS_URL: 'https://pydgnbzntldpzzjhtaal.supabase.co/rest/v1/products?select=*&archived=eq.false&order=name.asc',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB5ZGduYnpudGxkcHp6amh0YWFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MzQ2OTUsImV4cCI6MjA5NzMxMDY5NX0.9fKMMB3HHJtiQl2cc0a_SDxxI-Wlp9-1aFmrbWXND0c',
+  // Бараа — ҮНДСЭН: өөрийн VPS Postgres (PostgREST, n8n.nomaadcamp.com/db). Supabase cloud-аас
+  // гарсан (2026-06-28). Унавал n8n webhook, дараа нь products.json.
+  SUPABASE_PRODUCTS_URL: 'https://n8n.nomaadcamp.com/db/rest/v1/products?select=*&archived=eq.false&order=name.asc',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.Brx7AjnPrzfv--KLb-J-FK-7DmdRusxUF2jaFgKzd1s',
   PRODUCTS_URL: 'https://n8n.nomaadcamp.com/webhook/mevent-products?key=1YP4RCfL_DMiBhDfkCkX6AesQHd5p2lZ',
   ORDER_URL: 'https://n8n.nomaadcamp.com/webhook/m-event-site-order?key=1YP4RCfL_DMiBhDfkCkX6AesQHd5p2lZ',
   PHONE: '+976 8800-0000',
