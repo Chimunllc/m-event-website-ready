@@ -609,15 +609,35 @@ function filteredProducts() {
   }
   return list;
 }
-// Хувилбар (variant_group) бүхий барааг НЭГ карт болгож нэгтгэнэ. Хувилбаргүй нь хэвээр.
+// Хувилбар бүхий барааг НЭГ карт болгож нэгтгэнэ:
+//  (1) гараар тавьсан variant_group, эсвэл
+//  (2) АВТОМАТ — "суурь нэр - хувилбар" хэлбэртэй + ИЖИЛ ҮНЭТЭЙ бараанууд (ж: "Сандалын углаа - Цагаан" + "- Цэнхэр").
 function withVariants(list) {
-  const groups = {}; const out = [];
+  const groups = {}; const out = []; const manualByName = {}; const rest = [];
   list.forEach(p => {
     const g = p.variant_group;
     if (g) {
-      if (!groups[g]) { groups[g] = { _variantGroup: g, name: g, variants: [] }; out.push(groups[g]); }
+      if (!groups[g]) { groups[g] = { _variantGroup: g, name: g, variants: [] }; out.push(groups[g]); manualByName[String(g).toLowerCase().trim()] = groups[g]; }
       groups[g].variants.push(p);
-    } else out.push(p);
+    } else rest.push(p);
+  });
+  // Автомат бүлэглэл: нэрийг " - " (эсвэл " – ")-ээр салгаж [суурь, хувилбар]. Суурь+үнэ ижил бол нэгтгэнэ.
+  const autoBuckets = {};
+  rest.forEach(p => {
+    const m = String(p.name || '').match(/^(.+?)\s*[-–]\s*(.+)$/);
+    const base = m ? m[1].trim() : '';
+    const label = m ? m[2].trim() : '';
+    if (!base || !label) { out.push(p); return; }
+    const withLabel = { ...p, variant_label: p.variant_label || label };
+    const mg = manualByName[base.toLowerCase()];      // ижил нэртэй гар бүлэг байвал түүнд нэмнэ
+    if (mg) { mg.variants.push(withLabel); return; }
+    const key = 'auto:' + base.toLowerCase() + '|' + (Number(p.price) || 0);   // суурь + ҮНЭ
+    (autoBuckets[key] = autoBuckets[key] || { base, items: [] }).items.push(withLabel);
+  });
+  Object.keys(autoBuckets).forEach(key => {
+    const b = autoBuckets[key];
+    if (b.items.length >= 2) out.push({ _variantGroup: key, name: b.base, variants: b.items });
+    else out.push(b.items[0]);   // ганц бол дангаараа
   });
   out.forEach(it => {
     if (it._variantGroup) {
