@@ -535,13 +535,24 @@ async function loadProducts() {
       const data = await r.json();
       const list = Array.isArray(data) ? data : (data.products || []);
       if (list.length) {
-        // Зөвхөн "Түрээслэх боломжтой" барааг харуулна (type !== 'asset').
-        // Чимун ХХК-ийн дотоод хөрөнгө (asset) сайтад харагдахгүй.
-        // Нөөц = бүтэн (нийт − эвдэрсэн − засварт), багц нь хадгалсан утгаараа.
-        state.products = list.filter(p => String(p.type || 'rental') !== 'asset').map(p => {
-          if (p.type !== 'package') p.stock = Math.max(0, (Number(p.stock) || 0) - (Number(p.broken) || 0) - (Number(p.maintenance) || 0));
-          return p;
-        });
+        // M-Event сайт → ЗӨВХӨН M-EVENT салбарын бараа/нөөц (qty_mevent).
+        //  - Чимун ХХК-ийн дотоод хөрөнгө (asset) харагдахгүй.
+        //  - M-Event нөөцгүй (qty_mevent=0, бүгд NOMAAD/Чимунд байгаа) бараа харагдахгүй.
+        //  - Нөөц = M-Event салбарын тоо − эвдэрсэн − засварт. Үйлчилгээ/багц үргэлж.
+        state.products = list
+          .filter(p => {
+            if (String(p.type || 'rental') === 'asset') return false;
+            if (p.type === 'service' || p.type === 'package') return true;
+            if (p.qty_mevent == null) return true;                 // хуучин дата (json fallback) — үлдээнэ
+            return Number(p.qty_mevent) > 0;                       // зөвхөн M-Event нөөцтэй бараа
+          })
+          .map(p => {
+            if (p.type !== 'package') {
+              const mev = (p.qty_mevent != null) ? (Number(p.qty_mevent) || 0) : (Number(p.stock) || 0);
+              p.stock = Math.max(0, mev - (Number(p.broken) || 0) - (Number(p.maintenance) || 0));
+            }
+            return p;
+          });
         return;
       }
       throw new Error('хоосон');
