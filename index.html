@@ -541,10 +541,9 @@ async function loadProducts() {
         //  - Нөөц = M-Event салбарын тоо − эвдэрсэн − засварт. Үйлчилгээ/багц үргэлж.
         state.products = list
           .filter(p => {
-            if (String(p.type || 'rental') === 'asset') return false;
             if (p.type === 'service' || p.type === 'package') return true;
-            if (p.qty_mevent == null) return true;                 // хуучин дата (json fallback) — үлдээнэ
-            return Number(p.qty_mevent) > 0;                       // зөвхөн M-Event нөөцтэй бараа
+            if (p.qty_mevent == null) return String(p.type || 'rental') !== 'asset';  // хуучин дата (json fallback) — type-аар
+            return Number(p.qty_mevent) > 0;                       // M-Event салбарт нөөцтэй бол харагдана (type хамаарахгүй)
           })
           .map(p => {
             if (p.type !== 'package') {
