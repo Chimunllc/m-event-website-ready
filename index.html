@@ -186,6 +186,11 @@
   }
   .stock-badge.low { background: #fef3c7; color: #92400e; }
   .stock-badge.out { background: #fee2e2; color: #991b1b; }
+  .variant-hint { display: inline-block; margin-left: 6px; font-size: 11px; color: #7c3aed; font-weight: 600; }
+  .modal-variants { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+  .variant-chip { padding: 5px 12px; border: 1.5px solid var(--border); border-radius: 20px; background: #fff; font-size: 13px; cursor: pointer; transition: all .15s; }
+  .variant-chip.on { border-color: #7c3aed; background: #7c3aed; color: #fff; }
+  .variant-chip.out { opacity: .5; text-decoration: line-through; }
   .card.out-of-stock { opacity: 0.55; }
   .card.out-of-stock .card-add { background: #9ca3af; cursor: not-allowed; pointer-events: none; }
   .card-price-row {
@@ -408,6 +413,7 @@
       <div class="modal-content">
         <h2 id="m-name"></h2>
         <div class="modal-cat" id="m-cat"></div>
+        <div class="modal-variants" id="m-variants" style="display:none;"></div>
         <div class="modal-prices">
           <div><small>Үнэ / хугацаа</small><b id="m-price"></b></div>
           <div><small>Барьцаа</small><b id="m-deposit"></b></div>
@@ -603,8 +609,30 @@ function filteredProducts() {
   }
   return list;
 }
+// Хувилбар (variant_group) бүхий барааг НЭГ карт болгож нэгтгэнэ. Хувилбаргүй нь хэвээр.
+function withVariants(list) {
+  const groups = {}; const out = [];
+  list.forEach(p => {
+    const g = p.variant_group;
+    if (g) {
+      if (!groups[g]) { groups[g] = { _variantGroup: g, name: g, variants: [] }; out.push(groups[g]); }
+      groups[g].variants.push(p);
+    } else out.push(p);
+  });
+  out.forEach(it => {
+    if (it._variantGroup) {
+      const vs = it.variants;
+      const rep = vs.find(v => Number(v.stock || 0) > 0) || vs[0];   // эхний сул хувилбар төлөөлнө
+      it.category = rep.category; it.photo = rep.photo; it.price = rep.price;
+      it.deposit = rep.deposit; it.type = rep.type;
+      it.stock = vs.reduce((s, v) => s + Number(v.stock || 0), 0);   // нийт сул (бүх өнгө)
+      it.id = 'grp:' + it._variantGroup;
+    }
+  });
+  return out;
+}
 function renderGrid() {
-  const list = filteredProducts();
+  const list = withVariants(filteredProducts());
   document.getElementById('grid-title').textContent = state.category === 'all' ? 'Бүх бараа' : state.category;
   document.getElementById('grid-meta').textContent = list.length + ' бараа';
   const grid = document.getElementById('grid');
@@ -613,11 +641,10 @@ function renderGrid() {
   // bind
   grid.querySelectorAll('.card').forEach((el, i) => {
     el.onclick = (e) => {
-      if (e.target.closest('.card-add')) {
-        addToCart(list[i], 1, true);
-      } else {
-        openProduct(list[i]);
-      }
+      const it = list[i];
+      if (it._variantGroup) { openProduct(it); return; }        // бүлэг → өнгө сонгуулна
+      if (e.target.closest('.card-add')) addToCart(it, 1, true);
+      else openProduct(it);
     };
   });
 }
@@ -629,9 +656,12 @@ function stockBadgeHtml(p) {
   return `<span class="stock-badge">✓ ${s}ш сул</span>`;
 }
 function cardHtml(p) {
-  const inCart = state.cart.find(x => x.id === p.id);
+  const isGroup = !!p._variantGroup;
+  const inCart = !isGroup && state.cart.find(x => x.id === p.id);
   const photo = p.photo ? `<img src="${escapeHtml(p.photo)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.style.display='none'">` : '';
   const outOfStock = p.type !== 'service' && Number(p.stock || 0) === 0;
+  const variantHint = isGroup ? `<span class="variant-hint">🎨 ${p.variants.length} хувилбар</span>` : '';
+  const addBtn = isGroup ? '→' : (outOfStock ? '×' : (inCart ? '✓' : '+'));
   return `
     <div class="card${inCart?' in-cart':''}${outOfStock?' out-of-stock':''}">
       <div class="card-img${photo?'':' placeholder'}">${photo}</div>
@@ -640,10 +670,10 @@ function cardHtml(p) {
           <span>${escapeHtml(p.category)}</span>
           ${stockBadgeHtml(p)}
         </div>
-        <div class="card-name">${escapeHtml(p.name)}</div>
+        <div class="card-name">${escapeHtml(p.name)}${variantHint}</div>
         <div class="card-price-row">
-          <div class="card-price">${fmt(p.price)}<small>хугацаанд</small></div>
-          <button class="card-add" title="${outOfStock?'Нөөц дууссан':'Сагсанд нэмэх'}">${outOfStock?'×':(inCart?'✓':'+')}</button>
+          <div class="card-price">${fmt(p.price)}<small>${isGroup?'-с эхлэн':'хугацаанд'}</small></div>
+          <button class="card-add" title="${isGroup?'Өнгө сонгох':(outOfStock?'Нөөц дууссан':'Сагсанд нэмэх')}">${addBtn}</button>
         </div>
       </div>
     </div>
@@ -657,8 +687,35 @@ function renderDuration() {
 
 /* ==================== PRODUCT MODAL ==================== */
 function openProduct(p) {
+  const isGroup = !!p._variantGroup;
+  const vEl = document.getElementById('m-variants');
+  if (isGroup) {
+    document.getElementById('m-name').textContent = p._variantGroup;
+    const cur = p.variants.find(v => Number(v.stock || 0) > 0) || p.variants[0];   // эхний сул хувилбар
+    vEl.style.display = '';
+    vEl.innerHTML = p.variants.map(v => {
+      const out = Number(v.stock || 0) === 0;
+      return `<button class="variant-chip${v.id === cur.id ? ' on' : ''}${out ? ' out' : ''}" data-vid="${escapeHtml(String(v.id))}">${escapeHtml(v.variant_label || v.name)}</button>`;
+    }).join('');
+    vEl.querySelectorAll('.variant-chip').forEach(ch => ch.onclick = () => {
+      const v = p.variants.find(x => String(x.id) === ch.dataset.vid);
+      if (!v) return;
+      vEl.querySelectorAll('.variant-chip').forEach(x => x.classList.remove('on'));
+      ch.classList.add('on');
+      fillModal(v, false);
+    });
+    fillModal(cur, false);
+  } else {
+    vEl.style.display = 'none'; vEl.innerHTML = '';
+    document.getElementById('m-name').textContent = p.name;
+    fillModal(p, true);
+  }
+  document.getElementById('product-modal').classList.add('open');
+}
+// Modal-ийн үнэ/зураг/нөөц/тоо/товчийг сонгосон бараа(хувилбар)-аар дүүргэнэ
+function fillModal(p, setName) {
   state.currentProduct = p;
-  document.getElementById('m-name').textContent = p.name;
+  if (setName) document.getElementById('m-name').textContent = p.name;
   // Modal cat-н хажууд stock badge нэмэх
   document.getElementById('m-cat').innerHTML = escapeHtml(p.category) + ' &nbsp; ' + stockBadgeHtml(p);
   document.getElementById('m-price').textContent = fmt(p.price);
@@ -698,7 +755,6 @@ function openProduct(p) {
     addBtn.style.opacity = '1';
     addBtn.style.cursor = 'pointer';
   }
-  document.getElementById('product-modal').classList.add('open');
 }
 function closeProduct() {
   document.getElementById('product-modal').classList.remove('open');
