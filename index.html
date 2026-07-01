@@ -543,7 +543,9 @@ async function loadProducts() {
           .filter(p => {
             if (p.type === 'service' || p.type === 'package') return true;
             if (p.qty_mevent == null) return String(p.type || 'rental') !== 'asset';  // хуучин дата (json fallback) — type-аар
-            return Number(p.qty_mevent) > 0;                       // M-Event салбарт нөөцтэй бол харагдана (type хамаарахгүй)
+            // M-Event ЭСВЭЛ NOMAAD-д байвал харагдана (Чимун дотоод хөрөнгө л үгүй).
+            // NOMAAD-only бол доорх map-д нөөц = 0 болно (каталогт харагдах ч боломжгүй).
+            return Number(p.qty_mevent) > 0 || Number(p.qty_nomaad) > 0;
           })
           .map(p => {
             if (p.type !== 'package') {
