@@ -491,6 +491,8 @@ const CONFIG = {
   // Бараа — ҮНДСЭН: өөрийн VPS Postgres (PostgREST, n8n.nomaadcamp.com/db). Supabase cloud-аас
   // гарсан (2026-06-28). Унавал n8n webhook, дараа нь products.json.
   SUPABASE_PRODUCTS_URL: 'https://n8n.nomaadcamp.com/db/rest/v1/products?select=*&archived=eq.false&order=name.asc',
+  // Идэвхтэй түрээс (нөөц эзэлж буй) — availability бодоход. Буцаж ирсэн (stopped/archived)/ноорог/цуцлах орохгүй.
+  SUPABASE_ORDERS_URL: 'https://n8n.nomaadcamp.com/db/rest/v1/app_orders?select=number,status,starts_at,stops_at,items&status=in.(reserved,preparation,cleaning,started)',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.Brx7AjnPrzfv--KLb-J-FK-7DmdRusxUF2jaFgKzd1s',
   PRODUCTS_URL: 'https://n8n.nomaadcamp.com/webhook/mevent-products?key=1YP4RCfL_DMiBhDfkCkX6AesQHd5p2lZ',
   ORDER_URL: 'https://n8n.nomaadcamp.com/webhook/m-event-site-order?key=1YP4RCfL_DMiBhDfkCkX6AesQHd5p2lZ',
@@ -500,6 +502,7 @@ const CONFIG = {
 /* ==================== STATE ==================== */
 const state = {
   products: [],
+  orders: [],   // идэвхтэй түрээс (availability бодоход)
   cart: JSON.parse(localStorage.getItem('cart') || '[]'),
   category: 'all',
   search: '',
@@ -569,6 +572,35 @@ async function loadProducts() {
   }
   state.products = [];
   document.getElementById('grid').innerHTML = '<div class="empty">Бараа татаж чадсангүй. Сүлжээгээ шалгана уу.</div>';
+}
+
+// Идэвхтэй түрээсийг татна (нөөц эзэлж буй захиалга). Унавал availability-гүй (бүтэн нөөц).
+async function loadActiveOrders() {
+  if (!CONFIG.SUPABASE_ORDERS_URL) return;
+  try {
+    const r = await fetch(CONFIG.SUPABASE_ORDERS_URL, { cache: 'no-store', headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + CONFIG.SUPABASE_ANON_KEY } });
+    if (r.ok) state.orders = await r.json();
+  } catch (e) { console.warn('Идэвхтэй захиалга татаж чадсангүй:', e.message); }
+}
+const _normName = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+// Сонгосон огнооны хүрээнд тухайн бараа хэдэн ширхэг захиалагдсан (идэвхтэй түрээст)
+function bookedFor(name) {
+  const n = _normName(name);
+  const s = String(state.dates.start || '').slice(0, 10), e = String(state.dates.end || '').slice(0, 10);
+  if (!n || !s || !e) return 0;   // огноо сонгоогүй бол хасахгүй
+  let total = 0;
+  for (const o of (state.orders || [])) {
+    const os = String(o.starts_at || '').slice(0, 10), oe = String(o.stops_at || '').slice(0, 10);
+    if (!os || !oe || !(s <= oe && os <= e)) continue;   // огнооны давхцалгүй бол алгасна
+    for (const it of (o.items || [])) if (_normName(it.name) === n) total += Number(it.qty) || 0;
+  }
+  return total;
+}
+// Сонгосон огнооны СУЛ нөөц = M-Event нөөц − идэвхтэй түрээст захиалагдсан
+function availStock(p) {
+  if (p._variantGroup && Array.isArray(p.variants)) return p.variants.reduce((s, v) => s + availStock(v), 0);
+  if (p.type === 'service' || p.type === 'package') return Number(p.stock || 0);
+  return Math.max(0, (Number(p.stock) || 0) - bookedFor(p.name));
 }
 
 /* ==================== RENDER ==================== */
@@ -670,7 +702,7 @@ function renderGrid() {
 }
 function stockBadgeHtml(p) {
   if (p.type === 'service') return '';                       // үйлчилгээнд stock хэрэггүй
-  const s = Number(p.stock || 0);
+  const s = availStock(p);   // сонгосон огнооны СУЛ нөөц (идэвхтэй түрээс хассан)
   if (s === 0) return '<span class="stock-badge out">Дууссан</span>';
   if (s <= 5)  return `<span class="stock-badge low">Зөвхөн ${s}ш</span>`;
   return `<span class="stock-badge">✓ ${s}ш сул</span>`;
@@ -679,7 +711,7 @@ function cardHtml(p) {
   const isGroup = !!p._variantGroup;
   const inCart = !isGroup && state.cart.find(x => x.id === p.id);
   const photo = p.photo ? `<img src="${escapeHtml(p.photo)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.style.display='none'">` : '';
-  const outOfStock = p.type !== 'service' && Number(p.stock || 0) === 0;
+  const outOfStock = p.type !== 'service' && availStock(p) === 0;
   const variantHint = isGroup ? `<span class="variant-hint">🎨 ${p.variants.length} хувилбар</span>` : '';
   const addBtn = isGroup ? '→' : (outOfStock ? '×' : (inCart ? '✓' : '+'));
   return `
@@ -761,10 +793,10 @@ function fillModal(p, setName) {
   const qInput = document.getElementById('m-qty');
   qInput.value = existing ? existing.qty : 1;
   // Stock limit
-  const maxQty = (p.type === 'service' || !p.stock) ? 999 : p.stock;
+  const maxQty = (p.type === 'service' || !availStock(p)) ? 999 : availStock(p);
   qInput.max = maxQty;
   const addBtn = document.getElementById('m-add');
-  if (p.type !== 'service' && Number(p.stock || 0) === 0) {
+  if (p.type !== 'service' && availStock(p) === 0) {
     addBtn.textContent = 'Нөөц дууссан';
     addBtn.disabled = true;
     addBtn.style.opacity = '0.5';
@@ -784,19 +816,19 @@ function closeProduct() {
 /* ==================== CART ==================== */
 function addToCart(p, qty, openDrawer) {
   // Stock хязгаарлалт
-  if (p.type !== 'service' && Number(p.stock || 0) === 0) {
+  if (p.type !== 'service' && availStock(p) === 0) {
     alert('Энэ бараа дууссан байна.');
     return;
   }
   const ex = state.cart.find(x => x.id === p.id);
   const newQty = (ex ? ex.qty : 0) + (qty || 1);
-  const max = (p.type === 'service' || !p.stock) ? 999 : p.stock;
+  const max = (p.type === 'service' || !availStock(p)) ? 999 : availStock(p);
   if (newQty > max) {
     alert(`Зөвхөн ${max}ш сул байна. Илүү тоог нэмэх боломжгүй.`);
     return;
   }
   if (ex) ex.qty = newQty;
-  else state.cart.push({ id: p.id, name: p.name, photo: p.photo, price: p.price, deposit: p.deposit, stock: p.stock, qty: qty || 1 });
+  else state.cart.push({ id: p.id, name: p.name, photo: p.photo, price: p.price, deposit: p.deposit, stock: availStock(p), qty: qty || 1 });
   saveCart();
   renderCart();
   renderGrid();
@@ -990,8 +1022,8 @@ function initEvents() {
   de.value = state.dates.end || tmrw;
   state.dates.start = ds.value; state.dates.end = de.value;
   localStorage.setItem('d-start', ds.value); localStorage.setItem('d-end', de.value);
-  ds.onchange = () => { state.dates.start = ds.value; localStorage.setItem('d-start', ds.value); renderDuration(); renderCart(); };
-  de.onchange = () => { state.dates.end = de.value; localStorage.setItem('d-end', de.value); renderDuration(); renderCart(); };
+  ds.onchange = () => { state.dates.start = ds.value; localStorage.setItem('d-start', ds.value); renderDuration(); renderGrid(); renderCart(); };
+  de.onchange = () => { state.dates.end = de.value; localStorage.setItem('d-end', de.value); renderDuration(); renderGrid(); renderCart(); };
   ts.onchange = () => { state.dates.timeStart = ts.value; renderDuration(); renderCart(); };
   te.onchange = () => { state.dates.timeEnd = te.value; renderDuration(); renderCart(); };
   // анхны утга state-д тусгах (input default value-аас)
@@ -1032,7 +1064,7 @@ function initEvents() {
 
 (async function start() {
   initEvents();
-  await loadProducts();
+  await Promise.all([loadProducts(), loadActiveOrders()]);   // бараа + идэвхтэй түрээс (availability)
   render();
 })();
 </script>
