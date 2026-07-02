@@ -456,7 +456,15 @@
         <div class="form-group"><label>Утас <span class="req">*</span></label><input id="f-phone" placeholder="9911____"></div>
       </div>
       <div class="form-group"><label>Email</label><input id="f-email" type="email" placeholder="example@gmail.com"></div>
-      <div class="form-group"><label>Хүргэлтийн хаяг <span class="req">*</span></label><input id="f-address" placeholder="Дүүрэг, хороо, байр, давхар"></div>
+      <div class="form-group"><label>Хүргэлт <span class="req">*</span></label>
+        <select id="f-delivzone">
+          <option value="pickup">🏬 Очиж авах (хүргэлтгүй)</option>
+          <option value="city">🚚 Хот дотор — 150,000₮</option>
+          <option value="out">🚚 Хотоос гадна (км-ээр)</option>
+        </select>
+      </div>
+      <div class="form-group" id="f-delivkm-wrap" style="display:none;"><label>Хотоос гадна — нэг талын зай (км)</label><input id="f-delivkm" type="number" min="0" placeholder="Жишээ: 100"><small style="color:var(--muted);">Очих+буцах = км × 2 × 5,000₮</small></div>
+      <div class="form-group" id="f-address-wrap" style="display:none;"><label>Хүргэлтийн хаяг <span class="req">*</span></label><input id="f-address" placeholder="Дүүрэг, хороо, байр, давхар"></div>
       <div class="form-grid">
         <div class="form-group"><label>Байгууллага (НӨАТ-тэй бол)</label><input id="f-company" placeholder="ХХК-ийн нэр"></div>
         <div class="form-group"><label>Регистр</label><input id="f-register" placeholder="1234567"></div>
@@ -479,6 +487,7 @@
       <div class="total-row"><span>Дэд дүн</span><span id="t-subtotal">0₮</span></div>
       <div class="total-row" id="t-discount-row" style="display:none;color:var(--success);"><span id="t-discount-label">Олон хоногийн хямдрал</span><span id="t-discount">0₮</span></div>
       <div class="total-row"><span>Барьцаа</span><span id="t-deposit">0₮</span></div>
+      <div class="total-row" id="t-deliv-row" style="display:none;"><span>🚚 Хүргэлт</span><span id="t-deliv">0₮</span></div>
       <div class="total-row grand"><span>Нийт төлөх</span><span id="t-grand">0₮</span></div>
     </div>
     <button class="btn btn-primary btn-block" id="checkout-btn">Захиалга үргэлжлүүлэх →</button>
@@ -514,7 +523,25 @@ const state = {
   },
   currentProduct: null,
   step: 'cart',
+  delivery: { zone: 'pickup', km: 0, fee: 0 },   // хүргэлт (default очиж авах)
 };
+
+/* ==================== ХҮРГЭЛТ (аппын томьёотой ИЖИЛ) ==================== */
+const DELIVERY_CITY_FEE = 150000;   // ₮ хот дотор (очих+буцах багтсан)
+const DELIVERY_PER_KM = 5000;       // ₮ нэг талын км тутам
+function calcDeliveryFee(zone, km) {
+  if (zone === 'city') return DELIVERY_CITY_FEE;
+  if (zone === 'out') return Math.max(0, (Math.round(Number(km) || 0)) * 2 * DELIVERY_PER_KM);
+  return 0;   // pickup
+}
+function syncDelivery() {
+  const zoneEl = document.getElementById('f-delivzone');
+  if (!zoneEl) return state.delivery;
+  const zone = zoneEl.value;
+  const km = zone === 'out' ? (Number(document.getElementById('f-delivkm').value) || 0) : 0;
+  state.delivery = { zone, km, fee: calcDeliveryFee(zone, km) };
+  return state.delivery;
+}
 
 /* ==================== UTILS ==================== */
 function fmt(n) { return new Intl.NumberFormat('mn-MN').format(Math.round(n)) + '₮'; }
@@ -867,7 +894,8 @@ function cartTotals() {
   state.cart.forEach(x => { subtotal += x.price * x.qty * days; deposit += (x.deposit||0) * x.qty; });
   const tier = rentalDiscount(days);
   const multiDayDiscount = Math.round(subtotal * tier.pct);
-  return { subtotal, deposit, multiDayDiscount, multiDayPct: tier.pct, multiDayLabel: tier.label, grand: subtotal - multiDayDiscount + deposit, days };
+  const delivery = state.delivery.fee || 0;   // хүргэлт (хоногоор үржихгүй)
+  return { subtotal, deposit, delivery, multiDayDiscount, multiDayPct: tier.pct, multiDayLabel: tier.label, grand: subtotal - multiDayDiscount + deposit + delivery, days };
 }
 function renderCart() {
   document.getElementById('cart-count').textContent = state.cart.reduce((s,x)=>s+x.qty, 0);
@@ -905,7 +933,21 @@ function renderCart() {
     document.getElementById('t-discount').textContent = '−' + fmt(t.multiDayDiscount);
   } else { dr.style.display = 'none'; }
   document.getElementById('t-deposit').textContent = fmt(t.deposit);
+  const delivRow = document.getElementById('t-deliv-row');
+  if (t.delivery > 0) { delivRow.style.display = ''; document.getElementById('t-deliv').textContent = fmt(t.delivery); }
+  else { delivRow.style.display = 'none'; }
   document.getElementById('t-grand').textContent = fmt(t.grand);
+}
+function renderInfoSummary() {
+  const el = document.getElementById('step-info-summary'); if (!el) return;
+  const t = cartTotals();
+  el.innerHTML = `
+    <div class="row"><span>${state.cart.length} төрөл, ${state.cart.reduce((s,x)=>s+x.qty,0)} ширхэг</span><span>${state.dates.start} → ${state.dates.end}</span></div>
+    <div class="row"><span>Хугацаа</span><span>${t.days} хоног</span></div>
+    ${t.multiDayDiscount ? `<div class="row" style="color:var(--success);"><span>Олон хоногийн хямдрал (20%)</span><span>−${fmt(t.multiDayDiscount)}</span></div>` : ''}
+    ${t.delivery > 0 ? `<div class="row"><span>🚚 Хүргэлт${state.delivery.zone === 'out' ? ` (${state.delivery.km}км × 2)` : ''}</span><span>${fmt(t.delivery)}</span></div>` : ''}
+    <div class="row bold"><span>Нийт төлөх</span><span>${fmt(t.grand)}</span></div>
+  `;
 }
 
 /* ==================== DRAWER & CHECKOUT FLOW ==================== */
@@ -939,14 +981,17 @@ function goStep(s) {
     btn.onclick = submitOrder;
     foot.style.display = '';
     document.getElementById('drawer-title').textContent = 'Холбоо барих мэдээлэл';
-    // Render summary
-    const t = cartTotals();
-    document.getElementById('step-info-summary').innerHTML = `
-      <div class="row"><span>${state.cart.length} төрөл, ${state.cart.reduce((s,x)=>s+x.qty,0)} ширхэг</span><span>${state.dates.start} → ${state.dates.end}</span></div>
-      <div class="row"><span>Хугацаа</span><span>${t.days} хоног</span></div>
-      ${t.multiDayDiscount ? `<div class="row" style="color:var(--success);"><span>Олон хоногийн хямдрал (20%)</span><span>−${fmt(t.multiDayDiscount)}</span></div>` : ''}
-      <div class="row bold"><span>Нийт төлөх</span><span>${fmt(t.grand)}</span></div>
-    `;
+    // Хүргэлтийн сонголт — бүс солиход км/хаяг харуулах + дүн шинэчлэх
+    const zoneEl = document.getElementById('f-delivzone');
+    const applyDeliv = () => {
+      const z = zoneEl.value;
+      document.getElementById('f-delivkm-wrap').style.display = z === 'out' ? '' : 'none';
+      document.getElementById('f-address-wrap').style.display = z === 'pickup' ? 'none' : '';
+      syncDelivery(); renderCart(); renderInfoSummary();
+    };
+    zoneEl.onchange = applyDeliv;
+    document.getElementById('f-delivkm').oninput = () => { syncDelivery(); renderCart(); renderInfoSummary(); };
+    applyDeliv();
   } else if (s === 'success') {
     foot.style.display = 'none';
     document.getElementById('drawer-title').textContent = '✓ Амжилттай';
@@ -956,14 +1001,17 @@ async function submitOrder() {
   // Validate
   const name = document.getElementById('f-name').value.trim();
   const phone = document.getElementById('f-phone').value.trim();
+  const dlv = syncDelivery();
+  const isDeliv = dlv.zone === 'city' || dlv.zone === 'out';
   const address = document.getElementById('f-address').value.trim();
   if (!name) { alert('Нэрээ оруулна уу'); return; }
   if (!phone || phone.length < 8) { alert('Утасны дугаар буруу'); return; }
-  if (!address) { alert('Хүргэлтийн хаяг шаардлагатай'); return; }
+  if (isDeliv && !address) { alert('Хүргэлтийн хаяг шаардлагатай'); return; }
+  if (dlv.zone === 'out' && !dlv.km) { alert('Хотоос гадна: зайг км-ээр оруулна уу'); return; }
 
   const order = {
     customer: {
-      name, phone, address,
+      name, phone, address: isDeliv ? address : '',
       email: document.getElementById('f-email').value.trim(),
       company: document.getElementById('f-company').value.trim(),
       register: document.getElementById('f-register').value.trim(),
@@ -971,8 +1019,13 @@ async function submitOrder() {
     note: (() => {
       const n = document.getElementById('f-note').value.trim();
       const t = cartTotals();
-      return t.multiDayDiscount ? (n ? n + ' · ' : '') + `${t.days} хоногийн хямдрал (−20% = ${fmt(t.multiDayDiscount)})` : n;
+      let s = n;
+      if (t.multiDayDiscount) s = (s ? s + ' · ' : '') + `${t.days} хоногийн хямдрал (−20% = ${fmt(t.multiDayDiscount)})`;
+      // Хүргэлтийг ⟦DLV|zone|km|fee⟧ token-оор — апп үүнийг уншиж төлбөр/бүсийг харуулна
+      s = (s ? s + ' ' : '') + `⟦DLV|${dlv.zone}|${Math.round(dlv.km) || 0}|${Math.round(dlv.fee) || 0}⟧`;
+      return s;
     })(),
+    delivery: dlv,
     dates: { start: state.dates.start + ' ' + state.dates.timeStart, end: state.dates.end + ' ' + state.dates.timeEnd },
     items: state.cart.map(x => ({ id: x.id, name: x.name, qty: x.qty, price: x.price, deposit: x.deposit })),
     totals: cartTotals(),
