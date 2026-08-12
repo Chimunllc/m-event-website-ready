@@ -780,6 +780,20 @@ function diffDays() {
 }
 function saveCart() { localStorage.setItem('cart', JSON.stringify(state.cart)); }
 
+/* ==================== ЗАХИАЛГАТ АСАР (хэмжээ сонгож үнэ бодох) ==================== */
+const TENT = { id: '__tent18', width: 18, rate: 20000, lengths: [10, 20, 30, 40, 50, 60, 70] };
+function tentPrice(L) { return TENT.rate * TENT.width * L; }                    // суурь үнэ (сагсанд × хоног)
+function injectTentConfig() {
+  if (state.products.some(p => p._tent)) return;
+  const from = state.products.find(p => /асар/i.test(p.category || '') && p.photo) || state.products.find(p => p.photo);
+  state.products.unshift({
+    id: TENT.id, _tent: true, type: 'service', category: 'Асар',
+    name: 'Захиалгат асар — ' + TENT.width + 'м өргөн',
+    deposit: 0, photo: from ? from.photo : '',
+    price: tentPrice(TENT.lengths[0]),                                          // хамгийн бага (18×10) → картад "-с эхлэн"
+  });
+}
+
 /* ==================== DATA LOAD ==================== */
 async function loadProducts() {
   // Эх сурвалж дараалал: 1) Supabase Postgres (үндсэн). 2) n8n Sheet. 3) products.json (cache).
@@ -813,6 +827,7 @@ async function loadProducts() {
             }
             return p;
           });
+        injectTentConfig();
         return;
       }
       throw new Error('хоосон');
@@ -944,7 +959,7 @@ function renderGrid() {
   grid.querySelectorAll('.card').forEach((el, i) => {
     el.onclick = (e) => {
       const it = list[i];
-      if (it._variantGroup) { openProduct(it); return; }        // бүлэг → өнгө сонгуулна
+      if (it._variantGroup || it._tent) { openProduct(it); return; }   // бүлэг/захиалгат асар → модал нээж сонгуулна
       if (e.target.closest('.card-add')) addToCart(it, 1, true);
       else openProduct(it);
     };
@@ -959,11 +974,13 @@ function stockBadgeHtml(p) {
 }
 function cardHtml(p) {
   const isGroup = !!p._variantGroup;
-  const inCart = !isGroup && state.cart.find(x => x.id === p.id);
+  const isConfig = !!p._tent;
+  const inCart = !isGroup && !isConfig && state.cart.find(x => x.id === p.id);
   const photo = p.photo ? `<img src="${escapeHtml(p.photo)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.style.display='none'">` : '';
   const outOfStock = p.type !== 'service' && availStock(p) === 0;
-  const variantHint = isGroup ? `<span class="variant-hint">🎨 ${p.variants.length} хувилбар</span>` : '';
-  const addBtn = isGroup ? '→' : (outOfStock ? '×' : (inCart ? '✓' : '+'));
+  const variantHint = isGroup ? `<span class="variant-hint">🎨 ${p.variants.length} хувилбар</span>`
+    : isConfig ? `<span class="variant-hint">📐 Хэмжээ сонгох</span>` : '';
+  const addBtn = (isGroup || isConfig) ? '→' : (outOfStock ? '×' : (inCart ? '✓' : '+'));
   return `
     <div class="card${inCart?' in-cart':''}${outOfStock?' out-of-stock':''}">
       <div class="card-img${photo?'':' placeholder'}">${photo}</div>
@@ -974,8 +991,8 @@ function cardHtml(p) {
         </div>
         <div class="card-name">${escapeHtml(p.name)}${variantHint}</div>
         <div class="card-price-row">
-          <div class="card-price">${fmt(p.price)}<small>${isGroup?'-с эхлэн':'хугацаанд'}</small></div>
-          <button class="card-add" title="${isGroup?'Өнгө сонгох':(outOfStock?'Нөөц дууссан':'Сагсанд нэмэх')}">${addBtn}</button>
+          <div class="card-price">${fmt(p.price)}<small>${(isGroup||isConfig)?'-с эхлэн':'хугацаанд'}</small></div>
+          <button class="card-add" title="${isConfig?'Хэмжээ сонгох':isGroup?'Өнгө сонгох':(outOfStock?'Нөөц дууссан':'Сагсанд нэмэх')}">${addBtn}</button>
         </div>
       </div>
     </div>
@@ -1016,6 +1033,7 @@ function updateAvailWarn() {
 
 /* ==================== PRODUCT MODAL ==================== */
 function openProduct(p) {
+  if (p._tent) { openTentConfig(p); return; }
   const isGroup = !!p._variantGroup;
   const vEl = document.getElementById('m-variants');
   if (isGroup) {
@@ -1088,6 +1106,44 @@ function fillModal(p, setName) {
 function closeProduct() {
   document.getElementById('product-modal').classList.remove('open');
   state.currentProduct = null;
+}
+// Захиалгат асар — өргөн тогтмол, урт сонгож үнэ бодно
+function openTentConfig(p) {
+  state.currentProduct = p;
+  if (!state.tentLen) state.tentLen = 30;
+  document.getElementById('m-name').textContent = p.name;
+  document.getElementById('m-cat').innerHTML = 'Асар · өргөн ' + TENT.width + 'м тогтмол · ' + fmt(TENT.rate) + '/м²';
+  const vEl = document.getElementById('m-variants');
+  vEl.style.display = '';
+  vEl.innerHTML = TENT.lengths.map(L => `<button class="variant-chip${L === state.tentLen ? ' on' : ''}" data-len="${L}">${TENT.width}×${L}м</button>`).join('');
+  vEl.querySelectorAll('.variant-chip').forEach(ch => ch.onclick = () => {
+    state.tentLen = +ch.dataset.len;
+    vEl.querySelectorAll('.variant-chip').forEach(x => x.classList.remove('on'));
+    ch.classList.add('on');
+    fillTentModal(p);
+  });
+  const img = document.getElementById('m-img');
+  img.innerHTML = p.photo ? `<img src="${escapeHtml(p.photo)}" alt="${escapeHtml(p.name)}">` : '';
+  document.getElementById('m-deposit').textContent = 'Барьцаагүй';
+  const q = document.getElementById('m-qty'); q.value = 1; q.max = 20;
+  const addBtn = document.getElementById('m-add');
+  addBtn.disabled = false; addBtn.style.opacity = '1'; addBtn.style.cursor = 'pointer'; addBtn.textContent = 'Сагсанд нэмэх';
+  fillTentModal(p);
+  document.getElementById('product-modal').classList.add('open');
+}
+function fillTentModal(p) {
+  const L = state.tentLen, area = TENT.width * L, price = tentPrice(L);
+  document.getElementById('m-price').textContent = fmt(price);
+  document.getElementById('m-desc').textContent =
+    `Өргөн ${TENT.width}м × Урт ${L}м = ${area}м². Үнэ = ${area}м² × ${fmt(TENT.rate)} = ${fmt(price)} (түрээсийн хоногоор үржинэ). Босгох/буулгах, тээвэр утсаар тохирно: ${CONFIG.PHONE}`;
+}
+function addTentToCart() {
+  const L = state.tentLen, qty = Math.max(1, parseInt(document.getElementById('m-qty').value) || 1);
+  const id = 'tent-' + TENT.width + 'x' + L;
+  const item = { id, name: `Асар ${TENT.width}×${L}м (${TENT.width * L}м²)`, photo: state.currentProduct.photo, price: tentPrice(L), deposit: 0, stock: 20, qty };
+  const ex = state.cart.find(x => x.id === id);
+  if (ex) ex.qty = qty; else state.cart.push(item);
+  saveCart(); renderCart(); showDrawer();
 }
 
 /* ==================== CART ==================== */
@@ -1463,6 +1519,7 @@ function initEvents() {
   document.getElementById('m-qty-down').onclick = () => { const i = document.getElementById('m-qty'); i.value = Math.max(1, parseInt(i.value)-1); };
   document.getElementById('m-add').onclick = () => {
     if (!state.currentProduct) return;
+    if (state.currentProduct._tent) { addTentToCart(); closeProduct(); return; }   // захиалгат асар
     const qty = Math.max(1, parseInt(document.getElementById('m-qty').value)||1);
     // remove if exists then re-add with new qty
     state.cart = state.cart.filter(x => x.id !== state.currentProduct.id);
