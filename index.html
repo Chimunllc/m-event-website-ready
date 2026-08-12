@@ -392,8 +392,52 @@
   .success-screen p { color: var(--muted); margin-bottom: 18px; }
   .success-screen .order-num { background: var(--bg); padding: 10px 18px; border-radius: 8px; display: inline-block; font-weight: 700; font-size: 18px; }
 
+  /* SCROLL REVEAL (JS идэвхтэй үед л нуудаг — JS унтарвал бүх контент харагдана) */
+  .reveal-on .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s cubic-bezier(.2,.7,.3,1), transform .6s cubic-bezier(.2,.7,.3,1); }
+  .reveal-on .reveal.in { opacity: 1; transform: none; }
+  /* Картын load-анимаци — CSS дангаар (observer-гүй), fill-mode both төгсгөлд заавал харагдана */
+  @keyframes cardUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  .card.enter { animation: cardUp .5s cubic-bezier(.2,.7,.3,1) both; }
+  .card.shown { animation: none !important; opacity: 1 !important; transform: none !important; }
+  @media (prefers-reduced-motion: reduce) { .reveal-on .reveal { opacity: 1 !important; transform: none !important; transition: none !important; } .card.enter { animation: none !important; } }
+
+  /* БРЭНД ХЭСЭГ — «Яаж захиалах» */
+  .band { max-width: var(--maxw); margin: 0 auto; padding: 68px 28px 20px; }
+  .band-inner { text-align: center; }
+  .band-eyebrow { font-family: var(--font-display); font-size: 12px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; color: var(--brand); display: inline-flex; align-items: center; gap: 9px; margin-bottom: 16px; }
+  .band-eyebrow::before, .band-eyebrow::after { content: ""; width: 26px; height: 1px; background: var(--border-strong); }
+  .band-title { font-family: var(--font-display); font-size: clamp(24px, 4vw, 36px); font-weight: 800; letter-spacing: -.02em; margin-bottom: 46px; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; text-align: left; }
+  .step { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 30px 26px; transition: box-shadow .2s, border-color .2s, transform .2s; }
+  .step:hover { box-shadow: var(--shadow-md); border-color: var(--border-strong); transform: translateY(-3px); }
+  .step-num { font-family: var(--font-display); font-size: 12px; font-weight: 800; letter-spacing: .14em; color: var(--brand); margin-bottom: 20px; }
+  .step-ic { width: 48px; height: 48px; border-radius: 13px; background: var(--brand-soft); color: var(--brand); display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+  .step-ic svg { width: 23px; height: 23px; }
+  .step h3 { font-family: var(--font-display); font-size: 17px; font-weight: 700; margin-bottom: 8px; letter-spacing: -.01em; }
+  .step p { font-size: 13.5px; color: var(--muted); line-height: 1.6; }
+
+  /* ИТГЭЛИЙН ЗУРВАС */
+  .trust { max-width: var(--maxw); margin: 0 auto; padding: 30px 28px 30px; }
+  .trust-inner { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; border-top: 1px solid var(--border); padding-top: 40px; }
+  .trust-item { text-align: center; padding: 0 8px; }
+  .trust-item .tv { font-family: var(--font-display); font-size: 22px; font-weight: 800; letter-spacing: -.01em; margin-bottom: 5px; color: var(--text); }
+  .trust-item .tl { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+
+  /* ЭЦСИЙН ДУУДЛАГА */
+  .cta-band { max-width: var(--maxw); margin: 20px auto 60px; padding: 0 28px; }
+  .cta-inner { background: var(--primary); color: #fff; border-radius: 20px; padding: 48px 40px; text-align: center; }
+  .cta-inner h2 { font-family: var(--font-display); font-size: clamp(22px, 3.5vw, 30px); font-weight: 800; letter-spacing: -.02em; margin-bottom: 10px; color: #fff; }
+  .cta-inner p { color: rgba(255,255,255,.66); font-size: 15px; margin-bottom: 26px; }
+  .cta-inner .phone-light { font-family: var(--font-display); background: #fff; color: var(--primary); padding: 16px 32px; border-radius: 11px; font-weight: 700; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 11px; transition: letter-spacing .2s, background .2s; }
+  .cta-inner .phone-light svg { width: 16px; height: 16px; }
+  .cta-inner .phone-light:hover { letter-spacing: .15em; background: var(--bg); }
+
   /* MOBILE */
   @media (max-width: 720px) {
+    .steps { grid-template-columns: 1fr; }
+    .trust-inner { grid-template-columns: 1fr 1fr; gap: 26px 16px; }
+    .band { padding: 48px 18px 12px; }
+    .cta-inner { padding: 36px 22px; }
     .layout { grid-template-columns: 1fr; padding: 24px 16px 44px; gap: 24px; }
     .sidebar { display: none; }
     .grid { grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 20px 14px; }
@@ -473,6 +517,56 @@
     <div class="grid" id="grid"></div>
   </main>
 </div>
+
+<!-- ЯАЖ ЗАХИАЛАХ -->
+<section class="band">
+  <div class="band-inner">
+    <div class="band-eyebrow reveal">Энгийн 3 алхам</div>
+    <h2 class="band-title reveal">Захиалга ингэж хийнэ</h2>
+    <div class="steps">
+      <div class="step reveal">
+        <div class="step-num">01</div>
+        <div class="step-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg></div>
+        <h3>Огноо &amp; бараагаа сонго</h3>
+        <p>Гарах, буцах хугацаагаа тохируулаад хэрэгтэй тоног төхөөрөмжөө сагслана. Сул нөөц шууд харагдана.</p>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">02</div>
+        <div class="step-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2.2l2.3 12.4a1.6 1.6 0 0 0 1.6 1.3h8.8a1.6 1.6 0 0 0 1.6-1.3L21 7H5.3"/></svg></div>
+        <h3>Захиалгаа илгээ</h3>
+        <p>Нэр, утас, хүргэлтийн мэдээллээ бөглөж илгээнэ. Байгууллага бол НӨАТ-ын мэдээллээ нэмнэ.</p>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">03</div>
+        <div class="step-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 11.5a16 16 0 0 0 6 6l1-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2Z"/></svg></div>
+        <h3>Баталгаажуулалт</h3>
+        <p>Бид 1 цагийн дотор утсаар холбогдож захиалгыг баталгаажуулна. Товлосон өдөр бэлэн болгож хүргэнэ.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ИТГЭЛИЙН ЗУРВАС -->
+<section class="trust">
+  <div class="trust-inner">
+    <div class="trust-item reveal"><div class="tv">249+</div><div class="tl">төрлийн бараа нэг дороос</div></div>
+    <div class="trust-item reveal"><div class="tv">Хот дотор</div><div class="tl">хүргэлт 150,000₮-с</div></div>
+    <div class="trust-item reveal"><div class="tv">−20%</div><div class="tl">2+ хоног түрээслэвэл</div></div>
+    <div class="trust-item reveal"><div class="tv">1 цаг</div><div class="tl">дотор баталгаажуулна</div></div>
+  </div>
+</section>
+
+<!-- ЭЦСИЙН ДУУДЛАГА -->
+<section class="cta-band">
+  <div class="cta-inner reveal">
+    <h2>Асуулт байна уу?</h2>
+    <p>Бидэнтэй утсаар холбогдоод арга хэмжээгээ төлөвлөөрэй.</p>
+    <a href="tel:+97688000000" class="phone-light">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 11.5a16 16 0 0 0 6 6l1-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2Z"/></svg>
+      +976 8800-0000
+    </a>
+  </div>
+</section>
 
 <!-- FOOTER -->
 <footer style="background: #17171B; color: #A6A6AE; padding: 56px 28px; margin-top: 40px; text-align: center;">
@@ -1199,10 +1293,43 @@ function initEvents() {
   });
 }
 
+/* ==================== SCROLL REVEAL ====================
+   Брэнд хэсгүүд (steps/trust/cta) скролл дээр гарч ирнэ. Найдвартай байлгах гол
+   зарчим: контент ХЭЗЭЭ Ч opacity:0-д гацахгүй. (1) observer байхгүй бол шууд харуулна,
+   (2) 2.2сек fail-safe таймер үлдсэнийг албадан харуулна. Картууд observer-гүй — цэвэр
+   CSS load-анимаци (fill-mode both төгсгөлд заавал харагдана). */
+var _revealObs = ('IntersectionObserver' in window)
+  ? new IntersectionObserver((entries) => {
+      entries.forEach(en => { if (en.isIntersecting) { en.target.classList.add('in'); _revealObs.unobserve(en.target); } });
+    }, { threshold: 0.06, rootMargin: '0px 0px -30px 0px' })
+  : null;
+function observeReveals(root) {
+  var els = (root || document).querySelectorAll('.reveal:not(.in)');
+  if (!_revealObs) { els.forEach(el => el.classList.add('in')); return; }   // observer байхгүй → шууд харуул
+  els.forEach(el => _revealObs.observe(el));
+}
+function revealAllRemaining() {
+  document.querySelectorAll('.reveal:not(.in)').forEach(el => el.classList.add('in'));
+  document.querySelectorAll('#grid .card.enter').forEach(el => el.classList.add('shown'));   // анимаци гацсан ч харагдана
+}
+var _gridEntered = false;
+function enterCards() {
+  if (_gridEntered) return;                                // зөвхөн анхны ачаалалд (шүүлт болгонд дахин анимаци хийхгүй)
+  _gridEntered = true;
+  document.querySelectorAll('#grid .card').forEach((el, i) => {
+    el.classList.add('enter');
+    if (i < 14) el.style.animationDelay = (i * 0.035) + 's';
+  });
+}
+
 (async function start() {
+  document.documentElement.classList.add('reveal-on');
   initEvents();
+  observeReveals();                                        // статик брэнд хэсгүүд
   await Promise.all([loadProducts(), loadActiveOrders()]);   // бараа + идэвхтэй түрээс (availability)
   render();
+  enterCards();
+  setTimeout(revealAllRemaining, 2200);                    // fail-safe: юу ч нуугдаж үлдэхгүй
 })();
 </script>
 </body>
