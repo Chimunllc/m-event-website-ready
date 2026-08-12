@@ -765,13 +765,12 @@ function syncDelivery() {
 function fmt(n) { return new Intl.NumberFormat('mn-MN').format(Math.round(n)) + '₮'; }
 function escapeHtml(s) { return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function diffDays() {
-  // Түрээс эхэлсэн цагаас хойш 24 цаг = 1 хоног. Огноо + цагийг нийлүүлж бодно.
+  // Хоногийг КАЛЕНДАРИЙН ӨДРӨӨР тоолно (цаг нөлөөлөхгүй). 13→14 = 1 хоног, 13→15 = 2 хоног.
+  // Ингэснээр 30 мин хэтрэхэд гэнэт нэг хоног нэмэгдэхгүй.
   if (!state.dates.start || !state.dates.end) return 1;
-  const a = new Date(`${state.dates.start}T${state.dates.timeStart || '00:00'}:00`);
-  const b = new Date(`${state.dates.end}T${state.dates.timeEnd || '00:00'}:00`);
-  const diff = b - a;
-  if (!(diff > 0)) return 1;
-  return Math.max(1, Math.ceil(diff / 86400000 - 1e-9));   // 24ц=1, 35ц=2, 48ц=2
+  const a = parseYmd(state.dates.start), b = parseYmd(state.dates.end);
+  const days = Math.round((b - a) / 86400000);
+  return Math.max(1, days);
 }
 function saveCart() { localStorage.setItem('cart', JSON.stringify(state.cart)); }
 
@@ -1262,14 +1261,16 @@ function renderTimes() {
   var opts = '';
   for (var h = 6; h <= 23; h++) {
     var hh = String(h).padStart(2, '0');
-    opts += `<option value="${hh}:00">${hh}:00</option><option value="${hh}:30">${hh}:30</option>`;
+    opts += `<option value="${hh}:00">${hh}:00</option>`;
   }
   host.innerHTML =
     `<div class="dp-time"><label>Авах цаг</label><select id="ts-sel">${opts}</select></div>
      <div class="dp-time"><label>Буцаах цаг</label><select id="te-sel">${opts}</select></div>`;
   var tsSel = host.querySelector('#ts-sel'), teSel = host.querySelector('#te-sel');
-  tsSel.value = state.dates.timeStart || '09:00';
-  teSel.value = state.dates.timeEnd || '17:00';
+  state.dates.timeStart = (state.dates.timeStart || '09:00').replace(/:30$/, ':00');   // :30 → :00 (зөвхөн бүтэн цаг)
+  state.dates.timeEnd = (state.dates.timeEnd || '17:00').replace(/:30$/, ':00');
+  tsSel.value = state.dates.timeStart;
+  teSel.value = state.dates.timeEnd;
   tsSel.onchange = () => { state.dates.timeStart = tsSel.value; renderDateSummary(); renderDuration(); renderCart(); };
   teSel.onchange = () => { state.dates.timeEnd = teSel.value; renderDateSummary(); renderDuration(); renderCart(); };
 }
