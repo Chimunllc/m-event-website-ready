@@ -177,7 +177,7 @@
     gap: 44px;
   }
   /* SIDEBAR */
-  .sidebar { position: sticky; top: 148px; align-self: start; max-height: calc(100vh - 170px); overflow-y: auto; }
+  .sidebar { position: sticky; top: 96px; align-self: start; max-height: calc(100vh - 120px); overflow-y: auto; }
   .cat-title {
     font-family: var(--font-display);
     font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; font-weight: 600;
@@ -343,6 +343,19 @@
   }
   .drawer-head h2 { font-family: var(--font-display); font-size: 18px; font-weight: 700; }
   .drawer-close { font-size: 24px; color: var(--muted); }
+  .drawer-back { color: var(--text); display: inline-flex; align-items: center; margin-right: 4px; margin-left: -4px; padding: 4px; border-radius: 8px; }
+  .drawer-back:hover { background: var(--bg); }
+
+  /* Огнооны алхам */
+  .dates-lead { font-family: var(--font-display); font-size: 16px; font-weight: 700; margin-bottom: 18px; }
+  .date-field { margin-bottom: 14px; }
+  .date-field > label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; margin-bottom: 6px; }
+  .date-inputs { display: flex; gap: 10px; }
+  .date-inputs input[type=date] { flex: 1; }
+  .date-inputs input[type=date], .date-inputs input[type=time] { padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; background: #fff; color: var(--text); }
+  .date-inputs input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+  .date-hint { margin-top: 8px; padding: 12px 14px; background: var(--brand-soft); border-radius: 10px; font-size: 13px; color: var(--brand); font-weight: 500; }
+  .avail-warn { margin-top: 12px; padding: 12px 14px; background: #FBF0DC; border: 1px solid #E6C878; border-radius: 10px; font-size: 13px; color: #7A560F; line-height: 1.5; }
   .drawer-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
   .cart-item {
     display: grid; grid-template-columns: 60px 1fr auto; gap: 12px; align-items: center;
@@ -493,15 +506,6 @@
   </div>
 </section>
 
-<!-- DATE BAR -->
-<div class="date-bar">
-  <div class="date-row">
-    <div class="df"><label>Гарах</label> <input type="date" id="d-start"> <input type="time" id="t-start" value="09:00"></div>
-    <div class="df"><label>Буцах</label> <input type="date" id="d-end"> <input type="time" id="t-end" value="17:00"></div>
-    <div class="duration" id="duration">— хоног</div>
-  </div>
-</div>
-
 <!-- LAYOUT -->
 <div class="layout">
   <aside class="sidebar">
@@ -618,6 +622,7 @@
 <div class="drawer-bg" id="drawer-bg"></div>
 <aside class="drawer" id="drawer">
   <div class="drawer-head">
+    <button class="drawer-back" id="step-back" style="display:none;" aria-label="Буцах"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
     <h2 id="drawer-title">🛒 Миний сагс</h2>
     <button class="drawer-close" id="drawer-close">×</button>
   </div>
@@ -626,7 +631,21 @@
     <div class="checkout-step active" id="step-cart">
       <div id="cart-items"></div>
     </div>
-    <!-- Step 2: Customer info -->
+    <!-- Step 2: Dates -->
+    <div class="checkout-step" id="step-dates">
+      <div class="dates-lead">Тоног төхөөрөмжийг хэзээ хэрэглэх вэ?</div>
+      <div class="date-field">
+        <label>Гарах</label>
+        <div class="date-inputs"><input type="date" id="d-start"><input type="time" id="t-start" value="09:00"></div>
+      </div>
+      <div class="date-field">
+        <label>Буцах</label>
+        <div class="date-inputs"><input type="date" id="d-end"><input type="time" id="t-end" value="17:00"></div>
+      </div>
+      <div class="date-hint" id="date-hint"></div>
+      <div class="avail-warn" id="avail-warn" style="display:none;"></div>
+    </div>
+    <!-- Step 3: Customer info -->
     <div class="checkout-step" id="step-info">
       <div class="checkout-summary" id="step-info-summary"></div>
       <div class="form-grid">
@@ -937,9 +956,36 @@ function cardHtml(p) {
   `;
 }
 function renderDuration() {
+  const el = document.getElementById('date-hint');
+  if (!el) return;
+  if (!state.dates.start || !state.dates.end) { el.innerHTML = 'Огноогоо сонгоно уу.'; return; }
   const days = diffDays();
-  const txt = state.dates.start && state.dates.end ? days + ' хоног' : '— хоног';
-  document.getElementById('duration').textContent = txt;
+  let h = `<b style="font-weight:700;">${days} хоног</b> түрээслэнэ`;
+  h += days >= 2
+    ? ` · <span style="font-weight:700;">−20% олон хоногийн хямдрал орно</span>`
+    : ` · 2+ хоног түрээслэвэл 20% хямдрал`;
+  el.innerHTML = h;
+}
+// Сонгосон огноонд сагсны бараа хүрэлцэх эсэх (зөөлөн анхааруулга)
+function cartShortages() {
+  const out = [];
+  state.cart.forEach(x => {
+    const p = state.products.find(pp => pp.id === x.id);
+    if (!p || p.type === 'service') return;
+    const avail = availStock(p);
+    if (x.qty > avail) out.push({ name: x.name, need: x.qty, avail });
+  });
+  return out;
+}
+function updateAvailWarn() {
+  const box = document.getElementById('avail-warn');
+  if (!box) return;
+  const sh = cartShortages();
+  if (!sh.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+  box.innerHTML = `<b style="font-weight:700;">⚠ Сонгосон өдрүүдэд зарим бараа хүрэлцэхгүй байж магадгүй:</b>
+    <ul style="margin:6px 0 0;padding-left:18px;">${sh.map(s => `<li>${escapeHtml(s.name)} — ${s.avail}ш сул (та ${s.need}ш авах гэж байна)</li>`).join('')}</ul>
+    <div style="margin-top:6px;font-size:12px;">Захиалга илгээх боломжтой — бид баталгаажуулахдаа хамт зохицуулна. Эсвэл тоо/огноогоо тохируулна уу.</div>`;
 }
 
 /* ==================== PRODUCT MODAL ==================== */
@@ -1145,15 +1191,31 @@ function goStep(s) {
   document.getElementById('step-' + s).classList.add('active');
   const btn = document.getElementById('checkout-btn');
   const foot = document.getElementById('drawer-foot');
+  // Back товч — cart/success дээр нуух, dates→cart, info→dates
+  const back = document.getElementById('step-back');
+  if (back) {
+    const backTo = s === 'dates' ? 'cart' : s === 'info' ? 'dates' : null;
+    back.style.display = backTo ? '' : 'none';
+    back.onclick = backTo ? () => goStep(backTo) : null;
+  }
   if (s === 'cart') {
-    btn.textContent = 'Захиалга үргэлжлүүлэх →';
+    btn.textContent = 'Үргэлжлүүлэх →';
     btn.onclick = () => {
       if (!state.cart.length) { alert('Сагс хоосон байна'); return; }
+      goStep('dates');
+    };
+    foot.style.display = '';
+    document.getElementById('drawer-title').textContent = '🛒 Миний сагс';
+  } else if (s === 'dates') {
+    btn.textContent = 'Үргэлжлүүлэх →';
+    btn.onclick = () => {
       if (!state.dates.start || !state.dates.end) { alert('Гарах ба буцах огноог сонгоно уу.'); return; }
       goStep('info');
     };
     foot.style.display = '';
-    document.getElementById('drawer-title').textContent = '🛒 Миний сагс';
+    document.getElementById('drawer-title').textContent = 'Түрээсийн хугацаа';
+    renderDuration();
+    updateAvailWarn();
   } else if (s === 'info') {
     btn.textContent = '📤 Захиалга илгээх';
     btn.onclick = submitOrder;
@@ -1253,10 +1315,11 @@ function initEvents() {
   de.value = state.dates.end || tmrw;
   state.dates.start = ds.value; state.dates.end = de.value;
   localStorage.setItem('d-start', ds.value); localStorage.setItem('d-end', de.value);
-  ds.onchange = () => { state.dates.start = ds.value; localStorage.setItem('d-start', ds.value); renderDuration(); renderGrid(); renderCart(); };
-  de.onchange = () => { state.dates.end = de.value; localStorage.setItem('d-end', de.value); renderDuration(); renderGrid(); renderCart(); };
-  ts.onchange = () => { state.dates.timeStart = ts.value; renderDuration(); renderCart(); };
-  te.onchange = () => { state.dates.timeEnd = te.value; renderDuration(); renderCart(); };
+  const onDates = () => { renderDuration(); updateAvailWarn(); renderGrid(); renderCart(); };
+  ds.onchange = () => { state.dates.start = ds.value; localStorage.setItem('d-start', ds.value); onDates(); };
+  de.onchange = () => { state.dates.end = de.value; localStorage.setItem('d-end', de.value); onDates(); };
+  ts.onchange = () => { state.dates.timeStart = ts.value; onDates(); };
+  te.onchange = () => { state.dates.timeEnd = te.value; onDates(); };
   // анхны утга state-д тусгах (input default value-аас)
   state.dates.timeStart = ts.value || state.dates.timeStart;
   state.dates.timeEnd = te.value || state.dates.timeEnd;
