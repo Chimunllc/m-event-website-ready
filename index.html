@@ -346,15 +346,41 @@
   .drawer-back { color: var(--text); display: inline-flex; align-items: center; margin-right: 4px; margin-left: -4px; padding: 4px; border-radius: 8px; }
   .drawer-back:hover { background: var(--bg); }
 
-  /* Огнооны алхам */
-  .dates-lead { font-family: var(--font-display); font-size: 16px; font-weight: 700; margin-bottom: 18px; }
-  .date-field { margin-bottom: 14px; }
-  .date-field > label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; margin-bottom: 6px; }
-  .date-inputs { display: flex; gap: 10px; }
-  .date-inputs input[type=date] { flex: 1; }
-  .date-inputs input[type=date], .date-inputs input[type=time] { padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; background: #fff; color: var(--text); }
-  .date-inputs input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
-  .date-hint { margin-top: 8px; padding: 12px 14px; background: var(--brand-soft); border-radius: 10px; font-size: 13px; color: var(--brand); font-weight: 500; }
+  /* Огнооны алхам — захиалгат календарь */
+  .dates-lead { font-family: var(--font-display); font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+  .dp-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .dp-sum-item { border: 1.5px solid var(--border); border-radius: 12px; padding: 11px 14px; transition: border-color .15s, background .15s; }
+  .dp-sum-item.active { border-color: var(--brand); background: var(--brand-soft); }
+  .dp-sum-item span { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin-bottom: 3px; }
+  .dp-sum-item b { font-family: var(--font-display); font-size: 14px; font-weight: 700; }
+  .dp-sum-item b .tt { color: var(--muted); font-weight: 500; margin-left: 4px; }
+
+  .date-picker { border: 1px solid var(--border); border-radius: 14px; padding: 12px 12px 8px; background: #fff; }
+  .dp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 2px 4px; }
+  .dp-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; }
+  .dp-nav { width: 34px; height: 34px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-size: 20px; color: var(--text); border: 1px solid var(--border); background: #fff; transition: background .15s, border-color .15s; }
+  .dp-nav:hover { background: var(--bg); border-color: var(--border-strong); }
+  .dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+  .dp-wd { margin-bottom: 4px; }
+  .dp-wdc { text-align: center; font-size: 11px; font-weight: 600; color: var(--muted); padding: 4px 0; }
+  .dp-days { gap: 2px 0; }
+  .dp-empty { aspect-ratio: 1; }
+  .dp-day { aspect-ratio: 1; border: none; background: none; font-size: 13.5px; font-weight: 500; color: var(--text); border-radius: 9px; cursor: pointer; position: relative; transition: background .12s, color .12s; font-variant-numeric: tabular-nums; }
+  .dp-day:hover:not(.dp-past):not(.dp-start):not(.dp-end) { background: var(--bg); }
+  .dp-past { color: #C9C7C0; cursor: not-allowed; }
+  .dp-today::after { content: ""; position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--brand); }
+  .dp-inrange { background: var(--brand-soft); border-radius: 0; }
+  .dp-start, .dp-end { background: var(--brand); color: #fff; font-weight: 700; z-index: 1; }
+  .dp-start.dp-today::after, .dp-end.dp-today::after { background: #fff; }
+  .dp-start { border-radius: 9px 0 0 9px; }
+  .dp-end { border-radius: 0 9px 9px 0; }
+  .dp-start.dp-single, .dp-end.dp-single { border-radius: 9px; }
+
+  .dp-times { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+  .dp-time label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin-bottom: 6px; }
+  .dp-time select { width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; background: #fff; color: var(--text); font-weight: 600; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%2378787F' stroke-width='2'%3E%3Cpath d='M3 5l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+  .dp-time select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+  .date-hint { margin-top: 14px; padding: 12px 14px; background: var(--brand-soft); border-radius: 10px; font-size: 13px; color: var(--brand); font-weight: 500; text-align: center; }
   .avail-warn { margin-top: 12px; padding: 12px 14px; background: #FBF0DC; border: 1px solid #E6C878; border-radius: 10px; font-size: 13px; color: #7A560F; line-height: 1.5; }
   .drawer-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
   .cart-item {
@@ -634,14 +660,9 @@
     <!-- Step 2: Dates -->
     <div class="checkout-step" id="step-dates">
       <div class="dates-lead">Тоног төхөөрөмжийг хэзээ хэрэглэх вэ?</div>
-      <div class="date-field">
-        <label>Гарах</label>
-        <div class="date-inputs"><input type="date" id="d-start"><input type="time" id="t-start" value="09:00"></div>
-      </div>
-      <div class="date-field">
-        <label>Буцах</label>
-        <div class="date-inputs"><input type="date" id="d-end"><input type="time" id="t-end" value="17:00"></div>
-      </div>
+      <div class="dp-summary" id="dp-summary"></div>
+      <div class="date-picker" id="date-picker"></div>
+      <div class="dp-times" id="dp-times"></div>
       <div class="date-hint" id="date-hint"></div>
       <div class="avail-warn" id="avail-warn" style="display:none;"></div>
     </div>
@@ -1174,6 +1195,86 @@ function renderInfoSummary() {
   `;
 }
 
+/* ==================== ОГНООНЫ КАЛЕНДАРЬ (Монгол, товшиж сонгох) ==================== */
+var MN_WD = ['Да', 'Мя', 'Лх', 'Пү', 'Ба', 'Бя', 'Ня'];              // Даваагаар эхэлнэ
+var MN_WD_FULL = ['Ням', 'Даваа', 'Мягмар', 'Лхагва', 'Пүрэв', 'Баасан', 'Бямба'];
+function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function parseYmd(s) { var p = String(s).slice(0, 10).split('-'); return new Date(+p[0], (+p[1]) - 1, +p[2]); }
+function formatMnDate(iso) {
+  if (!iso) return '—';
+  var d = parseYmd(iso);
+  return (d.getMonth() + 1) + '-р сарын ' + d.getDate() + ', ' + MN_WD_FULL[d.getDay()];
+}
+function renderDatePicker() {
+  var host = document.getElementById('date-picker'); if (!host) return;
+  var base = state.pickerMonth ? parseYmd(state.pickerMonth) : parseYmd(state.dates.start || ymd(new Date()));
+  var y = base.getFullYear(), m = base.getMonth();
+  var startWd = (new Date(y, m, 1).getDay() + 6) % 7;                 // Даваа = 0
+  var daysInMonth = new Date(y, m + 1, 0).getDate();
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var s = state.dates.start ? parseYmd(state.dates.start) : null;
+  var e = state.dates.end ? parseYmd(state.dates.end) : null;
+  var single = s && e && s.getTime() === e.getTime();
+  var cells = '';
+  for (var i = 0; i < startWd; i++) cells += '<div class="dp-empty"></div>';
+  for (var d = 1; d <= daysInMonth; d++) {
+    var cur = new Date(y, m, d), iso = ymd(cur);
+    var cls = 'dp-day';
+    if (cur < today) cls += ' dp-past';
+    if (cur.getTime() === today.getTime()) cls += ' dp-today';
+    if (s && cur.getTime() === s.getTime()) cls += ' dp-start';
+    if (e && cur.getTime() === e.getTime()) cls += ' dp-end';
+    if (s && e && cur > s && cur < e) cls += ' dp-inrange';
+    if (single && cur.getTime() === s.getTime()) cls += ' dp-single';
+    cells += `<button class="${cls}" ${cur < today ? 'disabled' : ''} data-day="${iso}">${d}</button>`;
+  }
+  var atMin = (y < today.getFullYear()) || (y === today.getFullYear() && m <= today.getMonth());
+  host.innerHTML =
+    `<div class="dp-head">
+       <button class="dp-nav" data-dp-prev aria-label="Өмнөх сар" ${atMin ? 'disabled style="opacity:.3;cursor:default;"' : ''}>‹</button>
+       <div class="dp-title">${y} оны ${m + 1}-р сар</div>
+       <button class="dp-nav" data-dp-next aria-label="Дараах сар">›</button>
+     </div>
+     <div class="dp-grid dp-wd">${MN_WD.map(w => `<div class="dp-wdc">${w}</div>`).join('')}</div>
+     <div class="dp-grid dp-days">${cells}</div>`;
+  if (!atMin) host.querySelector('[data-dp-prev]').onclick = () => { state.pickerMonth = ymd(new Date(y, m - 1, 1)); renderDatePicker(); };
+  host.querySelector('[data-dp-next]').onclick = () => { state.pickerMonth = ymd(new Date(y, m + 1, 1)); renderDatePicker(); };
+  host.querySelectorAll('.dp-day:not(.dp-past)').forEach(b => b.onclick = () => pickDay(b.dataset.day));
+}
+function pickDay(iso) {
+  var s = state.dates.start, e = state.dates.end;
+  if (!s || e) { state.dates.start = iso; state.dates.end = ''; }     // шинэ сонголт эхэлнэ
+  else if (parseYmd(iso) < parseYmd(s)) { state.dates.start = iso; }  // эрт өдөр → шинэ гарах
+  else { state.dates.end = iso; }                                     // хожуу/ижил → буцах
+  localStorage.setItem('d-start', state.dates.start || '');
+  localStorage.setItem('d-end', state.dates.end || '');
+  renderDatePicker(); renderDateSummary(); renderDuration(); updateAvailWarn(); renderGrid(); renderCart();
+}
+function renderDateSummary() {
+  var host = document.getElementById('dp-summary'); if (!host) return;
+  var s = state.dates.start, e = state.dates.end;
+  host.innerHTML =
+    `<div class="dp-sum-item ${s && !e ? 'active' : ''}"><span>Авах өдөр</span><b>${s ? formatMnDate(s) : 'Сонгоно уу'}${s ? `<span class="tt">${state.dates.timeStart}</span>` : ''}</b></div>
+     <div class="dp-sum-item"><span>Буцаах өдөр</span><b>${e ? formatMnDate(e) : (s ? 'Сонгоно уу' : '—')}${e ? `<span class="tt">${state.dates.timeEnd}</span>` : ''}</b></div>`;
+}
+function renderTimes() {
+  var host = document.getElementById('dp-times'); if (!host) return;
+  var opts = '';
+  for (var h = 6; h <= 23; h++) {
+    var hh = String(h).padStart(2, '0');
+    opts += `<option value="${hh}:00">${hh}:00</option><option value="${hh}:30">${hh}:30</option>`;
+  }
+  host.innerHTML =
+    `<div class="dp-time"><label>Авах цаг</label><select id="ts-sel">${opts}</select></div>
+     <div class="dp-time"><label>Буцаах цаг</label><select id="te-sel">${opts}</select></div>`;
+  var tsSel = host.querySelector('#ts-sel'), teSel = host.querySelector('#te-sel');
+  tsSel.value = state.dates.timeStart || '09:00';
+  teSel.value = state.dates.timeEnd || '17:00';
+  tsSel.onchange = () => { state.dates.timeStart = tsSel.value; renderDateSummary(); renderDuration(); renderCart(); };
+  teSel.onchange = () => { state.dates.timeEnd = teSel.value; renderDateSummary(); renderDuration(); renderCart(); };
+}
+function renderDatesStep() { renderDatePicker(); renderTimes(); renderDateSummary(); renderDuration(); updateAvailWarn(); }
+
 /* ==================== DRAWER & CHECKOUT FLOW ==================== */
 function showDrawer() {
   document.getElementById('drawer').classList.add('open');
@@ -1214,8 +1315,7 @@ function goStep(s) {
     };
     foot.style.display = '';
     document.getElementById('drawer-title').textContent = 'Түрээсийн хугацаа';
-    renderDuration();
-    updateAvailWarn();
+    renderDatesStep();
   } else if (s === 'info') {
     btn.textContent = '📤 Захиалга илгээх';
     btn.onclick = submitOrder;
@@ -1305,24 +1405,15 @@ async function submitOrder() {
 function initEvents() {
   // search
   document.getElementById('search').oninput = (e) => { state.search = e.target.value; renderGrid(); };
-  // dates
-  const ds = document.getElementById('d-start'), de = document.getElementById('d-end');
-  const ts = document.getElementById('t-start'), te = document.getElementById('t-end');
-  // default: today + tomorrow
-  const today = new Date().toISOString().slice(0,10);
-  const tmrw = new Date(Date.now()+86400000).toISOString().slice(0,10);
-  ds.value = state.dates.start || today;
-  de.value = state.dates.end || tmrw;
-  state.dates.start = ds.value; state.dates.end = de.value;
-  localStorage.setItem('d-start', ds.value); localStorage.setItem('d-end', de.value);
-  const onDates = () => { renderDuration(); updateAvailWarn(); renderGrid(); renderCart(); };
-  ds.onchange = () => { state.dates.start = ds.value; localStorage.setItem('d-start', ds.value); onDates(); };
-  de.onchange = () => { state.dates.end = de.value; localStorage.setItem('d-end', de.value); onDates(); };
-  ts.onchange = () => { state.dates.timeStart = ts.value; onDates(); };
-  te.onchange = () => { state.dates.timeEnd = te.value; onDates(); };
-  // анхны утга state-д тусгах (input default value-аас)
-  state.dates.timeStart = ts.value || state.dates.timeStart;
-  state.dates.timeEnd = te.value || state.dates.timeEnd;
+  // dates — захиалгат календарь (native input-гүй). Анхдагч: өнөөдөр → маргааш
+  const _today = new Date(); _today.setHours(0, 0, 0, 0);
+  const _tmrw = new Date(_today.getTime() + 86400000);
+  if (!state.dates.start) state.dates.start = ymd(_today);
+  if (!state.dates.end) state.dates.end = ymd(_tmrw);
+  if (!state.dates.timeStart) state.dates.timeStart = '09:00';
+  if (!state.dates.timeEnd) state.dates.timeEnd = '17:00';
+  state.pickerMonth = ymd(new Date(parseYmd(state.dates.start).getFullYear(), parseYmd(state.dates.start).getMonth(), 1));
+  localStorage.setItem('d-start', state.dates.start); localStorage.setItem('d-end', state.dates.end);
 
   // cart
   document.getElementById('cart-btn').onclick = showDrawer;
