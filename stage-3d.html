@@ -341,8 +341,8 @@ function placeTruss(group, len, axis, cx, cy, cz){
 let stageGroup = null;
 const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false, walls:false, gable:true,
   tables:false, tablePos:null, tableType:'round', chairs:true, stageInTent:false, build:false, cells:null };
-// ₮ — ТҮР жишээ үнэ (хэрэглэгчийн бодит үнээр солино)
-const PRICE = { module:25000, truss:350000, led:800000 };
+// ₮ — тайзны 1×1м хавтангийн түрээсийн үнэ (нэг арга хэмжээнд). Трасс/LED тусдаа тооцно.
+const PRICE = { module:25000 };
 function cellsRect(W,D){ const s=new Set(); const i0=-Math.floor(W/2), j0=-Math.floor(D/2);
   for(let i=0;i<W;i++) for(let j=0;j<D;j++) s.add((i0+i)+','+(j0+j)); return s; }
 function moneyFmt(n){ return (Math.round(n)||0).toLocaleString('en-US')+'₮'; }
@@ -525,10 +525,7 @@ function buildStageModular(){
 }
 function stagePrice(){
   const n = state.cells ? state.cells.size : 0;
-  let p = n*PRICE.module;
-  if(state.truss) p += PRICE.truss;
-  if(state.led) p += PRICE.led;
-  return { modules:n, total:p };
+  return { modules:n, total:n*PRICE.module };   // зөвхөн тайзны хавтан (трасс/LED тусдаа)
 }
 // Асар дотор жижиг тайз (ард талд) — дэк + хөл + намхан гэрэлтүүлгийн трасс
 function addStageInTent(g, W, D){
@@ -646,7 +643,7 @@ function updateReadout(){
   } else if(state.build){
     const pr=stagePrice();
     r.innerHTML = `<b>${pr.modules} хавтан</b> <span>· ${pr.modules} м² · h ${state.h}м · 1×1м</span>`;
-    const pe=document.getElementById('price'); if(pe){ pe.style.display=''; pe.innerHTML=`💰 <b>${moneyFmt(pr.total)}</b> <span style="font-size:10px;color:var(--dim)">жишээ үнэ</span>`; }
+    const pe=document.getElementById('price'); if(pe){ pe.style.display=''; pe.innerHTML=`💰 <b>${moneyFmt(pr.total)}</b> <span style="font-size:10px;color:var(--dim)">тайзны хавтан</span>`; }
   } else {
     feats = [state.truss?'трасс':null, state.led?'LED':null, state.roof?'дээвэр':null].filter(Boolean).join(' · ');
     r.innerHTML = `<b>${state.w} × ${state.d} м</b> <span>· ${(state.w*state.d)} м² · h ${state.h}м${feats?' · '+feats:''}</span>`;
