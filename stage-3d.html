@@ -88,20 +88,31 @@
 
 <div class="dock">
   <div class="row">
+    <span class="lbl">Төрөл</span>
+    <div class="sizes" id="modeSeg">
+      <button class="chip" data-mode="stage" aria-pressed="true">🎤 Тайз</button>
+      <button class="chip" data-mode="tent" aria-pressed="false">⛺ Асар</button>
+    </div>
+    <div class="spacer"></div>
+    <label class="tgl"><input type="checkbox" id="tgl-spin"><span class="sw"></span>Эргэлт</label>
+    <button class="ghost" id="reset">↺ Байрлал</button>
+  </div>
+  <div class="row">
     <span class="lbl">Хэмжээ</span>
     <div class="sizes" id="sizes"></div>
   </div>
   <div class="row">
-    <span class="lbl">Өндөр</span>
+    <span class="lbl" id="hlbl">Өндөр</span>
     <div class="sizes" id="heights"></div>
-    <div class="spacer"></div>
-    <button class="ghost" id="reset">↺ Байрлал</button>
   </div>
-  <div class="row">
+  <div class="row" id="stageToggles">
     <label class="tgl"><input type="checkbox" id="tgl-truss" checked><span class="sw"></span>Гэрэлтүүлгийн трасс</label>
     <label class="tgl"><input type="checkbox" id="tgl-led"><span class="sw"></span>LED дэлгэц (ар тал)</label>
     <label class="tgl"><input type="checkbox" id="tgl-roof"><span class="sw"></span>Дээвэр</label>
-    <label class="tgl"><input type="checkbox" id="tgl-spin"><span class="sw"></span>Эргэлт</label>
+  </div>
+  <div class="row" id="tentToggles" style="display:none">
+    <label class="tgl"><input type="checkbox" id="tgl-gable" checked><span class="sw"></span>Дүнзэн үзүүр</label>
+    <label class="tgl"><input type="checkbox" id="tgl-walls"><span class="sw"></span>Хажуу хана</label>
   </div>
 </div>
 
@@ -147,7 +158,11 @@ controls.minDistance = 6; controls.maxDistance = 44;
 controls.maxPolarAngle = Math.PI*0.5 - 0.03;
 controls.target.set(0, 1.8, 0);
 
-function targetY(){ return state.truss ? Math.max(2.4, state.h+1.6) : (state.h*0.6 + 0.6); }
+function tentRise(){ return Math.min(2.6, state.w*0.20); }
+function targetY(){
+  if(state.mode==='tent') return state.h + tentRise()*0.5 + 0.3;
+  return state.truss ? Math.max(2.4, state.h+1.6) : (state.h*0.6 + 0.6);
+}
 function frameCamera(){
   const span = Math.max(state.w, state.d, 5);
   const ty = targetY();
@@ -184,6 +199,9 @@ const matLED  = new THREE.MeshStandardMaterial({ color:0x0a0c12, metalness:0.2, 
   emissive:0x101826, emissiveIntensity:1.0 });
 const matLamp = new THREE.MeshStandardMaterial({ color:0x1a1a1a, metalness:0.6, roughness:0.5 });
 const matLens = new THREE.MeshStandardMaterial({ color:0xffb14d, emissive:0xff9a3c, emissiveIntensity:2.2 });
+const matFabric = new THREE.MeshStandardMaterial({ color:0xf3f1ea, roughness:0.92, metalness:0.0,
+  side:THREE.DoubleSide, transparent:true, opacity:0.97, emissive:0x15130f, emissiveIntensity:0.45 });
+const matValance = new THREE.MeshStandardMaterial({ color:0xece9e0, roughness:0.95, side:THREE.DoubleSide });
 
 // ---------- truss builder (30×30, 1м-ийн зангилаатай) ----------
 const _up = new THREE.Vector3(0,1,0);
@@ -251,7 +269,7 @@ function placeTruss(group, len, axis, cx, cy, cz){
 
 // ---------- stage assembly ----------
 let stageGroup = null;
-const state = { w:8, d:4, h:1.0, truss:true, led:false, roof:false };
+const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false, walls:false, gable:true };
 const lampLights = [];
 
 function disposeGroup(g){
@@ -351,39 +369,143 @@ function buildStage(){
   updateReadout();
 }
 
+// ---------- АСАР (marquee tent) ----------
+function buildTent(){
+  if(stageGroup){ scene.remove(stageGroup); }
+  lampLights.forEach(l=>scene.remove(l)); lampLights.length = 0;
+  const g = new THREE.Group();
+  const W = state.w, D = state.d, eaveH = state.h;
+  const rise = tentRise(), peakH = eaveH + rise;
+  const angle = Math.atan2(rise, W/2), slope = Math.hypot(W/2, rise);
+  const V = (x,y,z)=>new THREE.Vector3(x,y,z);
+  const poleR = 0.05, barR = 0.035;
+  const bays = Math.max(2, Math.round(D/3.2));
+  const zAt = i => -D/2 + i*(D/bays);
+
+  // --- каркас (хөл + дам нуруу + оройн нуруу + рафтер) ---
+  const fg = [];
+  for(let i=0;i<=bays;i++){
+    const z = zAt(i);
+    fg.push(tube(V(W/2,0,z),  V(W/2,eaveH,z),  poleR));
+    fg.push(tube(V(-W/2,0,z), V(-W/2,eaveH,z), poleR));
+    fg.push(tube(V(W/2,eaveH,z),  V(0,peakH,z), barR));
+    fg.push(tube(V(-W/2,eaveH,z), V(0,peakH,z), barR));
+  }
+  fg.push(tube(V(W/2,eaveH,-D/2),  V(W/2,eaveH,D/2),  barR));
+  fg.push(tube(V(-W/2,eaveH,-D/2), V(-W/2,eaveH,D/2), barR));
+  fg.push(tube(V(0,peakH,-D/2),    V(0,peakH,D/2),    barR));
+  const frame = new THREE.Mesh(mergeGeometries(fg.filter(Boolean), false), matAlu);
+  frame.castShadow = true; g.add(frame);
+
+  // --- дээврийн бүрээс (2 налуу хавтгай) ---
+  function roofPlane(sign){
+    const geo = new THREE.PlaneGeometry(slope, D);
+    geo.rotateX(-Math.PI/2); geo.rotateZ(-sign*angle);
+    const m = new THREE.Mesh(geo, matFabric);
+    m.position.set(sign*W/4, (peakH+eaveH)/2, 0);
+    m.castShadow = true; m.receiveShadow = true; return m;
+  }
+  g.add(roofPlane(1)); g.add(roofPlane(-1));
+
+  // --- фестон (eave valance) ---
+  function valance(len, axis, x, z){
+    const geo = new THREE.PlaneGeometry(len, 0.4);
+    const m = new THREE.Mesh(geo, matValance);
+    if(axis==='z') m.rotation.y = Math.PI/2;
+    m.position.set(x, eaveH-0.2, z); return m;
+  }
+  g.add(valance(W, 'x', 0, D/2)); g.add(valance(W, 'x', 0, -D/2));
+  g.add(valance(D, 'z', W/2, 0)); g.add(valance(D, 'z', -W/2, 0));
+
+  // --- дүнзэн үзүүр (gable) ---
+  if(state.gable){
+    [D/2, -D/2].forEach(function(z){
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-W/2,eaveH,z, W/2,eaveH,z, 0,peakH,z]),3));
+      geo.setIndex([0,1,2]); geo.computeVertexNormals();
+      const m = new THREE.Mesh(geo, matFabric); m.castShadow=true; g.add(m);
+    });
+  }
+  // --- хажуу хана (walls) — урд тал нээлттэй ---
+  if(state.walls){
+    [[W/2],[ -W/2]].forEach(function(a){
+      const geo = new THREE.PlaneGeometry(D, eaveH); const m = new THREE.Mesh(geo, matFabric);
+      m.rotation.y = Math.PI/2; m.position.set(a[0], eaveH/2, 0); m.castShadow=true; m.receiveShadow=true; g.add(m);
+    });
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(W, eaveH), matFabric);
+    back.position.set(0, eaveH/2, -D/2); back.castShadow=true; g.add(back);
+  }
+
+  stageGroup = g; scene.add(g);
+  controls.target.y = targetY();
+  updateReadout();
+}
+function build(){ if(state.mode==='tent') buildTent(); else buildStage(); }
+
 function updateReadout(){
   const r = document.getElementById('readout');
-  const feats = [state.truss?'трасс':null, state.led?'LED':null, state.roof?'дээвэр':null].filter(Boolean).join(' · ');
-  r.innerHTML = `<b>${state.w} × ${state.d} м</b> <span>· ${(state.w*state.d)} м² · h ${state.h}м${feats?' · '+feats:''}</span>`;
+  let feats;
+  if(state.mode==='tent'){
+    feats = [state.gable?'үзүүртэй':null, state.walls?'ханатай':null].filter(Boolean).join(' · ');
+    r.innerHTML = `<b>${state.w} × ${state.d} м</b> <span>· ${(state.w*state.d)} м² · асар${feats?' · '+feats:''}</span>`;
+  } else {
+    feats = [state.truss?'трасс':null, state.led?'LED':null, state.roof?'дээвэр':null].filter(Boolean).join(' · ');
+    r.innerHTML = `<b>${state.w} × ${state.d} м</b> <span>· ${(state.w*state.d)} м² · h ${state.h}м${feats?' · '+feats:''}</span>`;
+  }
 }
 
 // ---------- UI ----------
-const SIZES = [{w:6,d:4},{w:8,d:4},{w:10,d:6},{w:12,d:8}];
+const PRESETS = {
+  stage: { sizes:[{w:6,d:4},{w:8,d:4},{w:10,d:6},{w:12,d:8}], heights:[0.6,1.0,1.4], hlbl:'Өндөр' },
+  tent:  { sizes:[{w:6,d:9},{w:10,d:15},{w:12,d:20},{w:15,d:30}], heights:[2.2,2.6,3.0], hlbl:'Хажуугийн өндөр' }
+};
 const sizesEl = document.getElementById('sizes');
-SIZES.forEach(s=>{
-  const b=document.createElement('button'); b.className='chip';
-  b.setAttribute('aria-pressed', (s.w===state.w&&s.d===state.d)?'true':'false');
-  b.innerHTML = `${s.w}×${s.d}<span class="u"> м</span>`;
-  b.onclick=()=>{ state.w=s.w; state.d=s.d;
-    [...sizesEl.children].forEach(c=>c.setAttribute('aria-pressed','false')); b.setAttribute('aria-pressed','true');
-    buildStage(); frameCamera(); };
-  sizesEl.appendChild(b);
-});
-const HEIGHTS=[0.6,1.0,1.4];
-const heightsEl=document.getElementById('heights');
-HEIGHTS.forEach(h=>{
-  const b=document.createElement('button'); b.className='chip';
-  b.setAttribute('aria-pressed', h===state.h?'true':'false');
-  b.innerHTML = `${h}<span class="u"> м</span>`;
-  b.onclick=()=>{ state.h=h; [...heightsEl.children].forEach(c=>c.setAttribute('aria-pressed','false')); b.setAttribute('aria-pressed','true'); buildStage(); };
-  heightsEl.appendChild(b);
-});
-document.getElementById('tgl-truss').onchange=e=>{ state.truss=e.target.checked; buildStage(); };
-document.getElementById('tgl-led').onchange=e=>{ state.led=e.target.checked; buildStage(); };
-document.getElementById('tgl-roof').onchange=e=>{ state.roof=e.target.checked; buildStage(); };
+const heightsEl = document.getElementById('heights');
+function renderSizes(){
+  const arr = PRESETS[state.mode].sizes;
+  sizesEl.innerHTML='';
+  arr.forEach(s=>{
+    const b=document.createElement('button'); b.className='chip';
+    b.setAttribute('aria-pressed', (s.w===state.w&&s.d===state.d)?'true':'false');
+    b.innerHTML = `${s.w}×${s.d}<span class="u"> м</span>`;
+    b.onclick=()=>{ state.w=s.w; state.d=s.d;
+      [...sizesEl.children].forEach(c=>c.setAttribute('aria-pressed','false')); b.setAttribute('aria-pressed','true');
+      build(); frameCamera(); };
+    sizesEl.appendChild(b);
+  });
+}
+function renderHeights(){
+  const arr = PRESETS[state.mode].heights;
+  document.getElementById('hlbl').textContent = PRESETS[state.mode].hlbl;
+  heightsEl.innerHTML='';
+  arr.forEach(h=>{
+    const b=document.createElement('button'); b.className='chip';
+    b.setAttribute('aria-pressed', h===state.h?'true':'false');
+    b.innerHTML = `${h}<span class="u"> м</span>`;
+    b.onclick=()=>{ state.h=h; [...heightsEl.children].forEach(c=>c.setAttribute('aria-pressed','false')); b.setAttribute('aria-pressed','true'); build(); };
+    heightsEl.appendChild(b);
+  });
+}
+function applyMode(mode){
+  state.mode = mode;
+  const def = PRESETS[mode];
+  state.w = def.sizes[1].w; state.d = def.sizes[1].d; state.h = def.heights[1];
+  document.querySelectorAll('#modeSeg .chip').forEach(c=>c.setAttribute('aria-pressed', c.dataset.mode===mode?'true':'false'));
+  document.getElementById('stageToggles').style.display = mode==='stage' ? '' : 'none';
+  document.getElementById('tentToggles').style.display  = mode==='tent'  ? '' : 'none';
+  renderSizes(); renderHeights(); build(); frameCamera();
+}
+document.querySelectorAll('#modeSeg .chip').forEach(c=> c.onclick=()=>applyMode(c.dataset.mode));
+
+document.getElementById('tgl-truss').onchange=e=>{ state.truss=e.target.checked; build(); };
+document.getElementById('tgl-led').onchange=e=>{ state.led=e.target.checked; build(); };
+document.getElementById('tgl-roof').onchange=e=>{ state.roof=e.target.checked; build(); };
+document.getElementById('tgl-gable').onchange=e=>{ state.gable=e.target.checked; build(); };
+document.getElementById('tgl-walls').onchange=e=>{ state.walls=e.target.checked; build(); };
 let spin=false;
 document.getElementById('tgl-spin').onchange=e=>{ spin=e.target.checked; };
 document.getElementById('reset').onclick=()=> frameCamera();
+renderSizes(); renderHeights();
 
 // ---------- loop ----------
 addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
@@ -399,8 +521,9 @@ function animate(){
   controls.update();
   renderer.render(scene,camera);
 }
-buildStage();
-frameCamera();
-animate();
-requestAnimationFrame(()=>document.getElementById('load').classList.add('hide'));
+try { build(); frameCamera(); animate(); }
+catch(err){ console.error('STAGE3D INIT ERROR:', err); }
+function hideLoader(){ const l=document.getElementById('load'); if(l) l.classList.add('hide'); }
+requestAnimationFrame(hideLoader);
+setTimeout(hideLoader, 1200);   // найдвартай нуулт
 </script>
