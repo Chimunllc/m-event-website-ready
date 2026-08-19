@@ -84,6 +84,7 @@
   <div class="tag">30×30 трасс · Pro</div>
 </div>
 <div class="readout" id="readout"></div>
+<div class="readout" id="price" style="top:102px;display:none;font-size:14px;"></div>
 <div class="hint">Чирж эргүүлнэ · 2 хуруу / дугуйгаар зумна</div>
 
 <div class="dock">
@@ -107,9 +108,12 @@
     <div class="sizes" id="heights"></div>
   </div>
   <div class="row" id="stageToggles">
+    <label class="tgl"><input type="checkbox" id="tgl-build"><span class="sw"></span>🧩 Угсрах (1×1м)</label>
     <label class="tgl"><input type="checkbox" id="tgl-truss" checked><span class="sw"></span>Гэрэлтүүлгийн трасс</label>
-    <label class="tgl"><input type="checkbox" id="tgl-led"><span class="sw"></span>LED дэлгэц (ар тал)</label>
+    <label class="tgl"><input type="checkbox" id="tgl-led"><span class="sw"></span>LED дэлгэц</label>
     <label class="tgl"><input type="checkbox" id="tgl-roof"><span class="sw"></span>Дээвэр</label>
+    <button class="ghost" id="clear-cells" style="display:none;">✕ Цэвэрлэх</button>
+    <span id="buildTip" style="font-size:11px;color:var(--dim);display:none;">Шалан дээр товшиж хавтан нэм/хас</span>
   </div>
   <div class="row" id="tentToggles" style="display:none">
     <label class="tgl"><input type="checkbox" id="tgl-gable" checked><span class="sw"></span>Дүнзэн үзүүр</label>
@@ -336,7 +340,12 @@ function placeTruss(group, len, axis, cx, cy, cz){
 // ---------- stage assembly ----------
 let stageGroup = null;
 const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false, walls:false, gable:true,
-  tables:false, tablePos:null, tableType:'round', chairs:true, stageInTent:false };
+  tables:false, tablePos:null, tableType:'round', chairs:true, stageInTent:false, build:false, cells:null };
+// ₮ — ТҮР жишээ үнэ (хэрэглэгчийн бодит үнээр солино)
+const PRICE = { module:25000, truss:350000, led:800000 };
+function cellsRect(W,D){ const s=new Set(); const i0=-Math.floor(W/2), j0=-Math.floor(D/2);
+  for(let i=0;i<W;i++) for(let j=0;j<D;j++) s.add((i0+i)+','+(j0+j)); return s; }
+function moneyFmt(n){ return (Math.round(n)||0).toLocaleString('en-US')+'₮'; }
 let _tableCount = 0;
 const draggableTables = [];   // ширээ+сандлын Group-ууд (userData.ti)
 // Нэг ширээний нэгж (ширээ + тойрон/хажуугийн сандал) — Group буцаана
@@ -478,6 +487,49 @@ function buildStage(){
   updateReadout();
 }
 
+// ---------- МОДУЛЬ ТАЙЗ (1×1м хавтангаар өөрсдөө угсрах) ----------
+function buildStageModular(){
+  if(stageGroup) scene.remove(stageGroup);
+  lampLights.forEach(l=>scene.remove(l)); lampLights.length=0;
+  if(!state.cells) state.cells = cellsRect(state.w, state.d);
+  const g = new THREE.Group();
+  const H = state.h, thk = 0.14;
+  const cells = [...state.cells].map(k=>k.split(',').map(Number));
+  let minI=1e9,maxI=-1e9,minJ=1e9,maxJ=-1e9;
+  cells.forEach(([i,j])=>{ minI=Math.min(minI,i);maxI=Math.max(maxI,i+1);minJ=Math.min(minJ,j);maxJ=Math.max(maxJ,j+1); });
+  // дэк (модуль бүр 1×1м) — merged
+  const deckG=[]; cells.forEach(([i,j])=>{ const b=new THREE.BoxGeometry(0.98,thk,0.98); b.translate(i+0.5,H-thk/2,j+0.5); deckG.push(b); });
+  if(deckG.length){ const deck=new THREE.Mesh(mergeGeometries(deckG,false), matDeckTop); deck.castShadow=true; deck.receiveShadow=true; g.add(deck); }
+  // хөл — булан бүрд (давхардлыг арилгаад)
+  const corners=new Set(); cells.forEach(([i,j])=>{ corners.add(i+','+j);corners.add((i+1)+','+j);corners.add(i+','+(j+1));corners.add((i+1)+','+(j+1)); });
+  const legG=[]; corners.forEach(c=>{ const [x,z]=c.split(',').map(Number); const b=new THREE.BoxGeometry(0.09,H-thk,0.09); b.translate(x,(H-thk)/2,z); legG.push(b); });
+  if(legG.length){ const legs=new THREE.Mesh(mergeGeometries(legG,false), matAlu); legs.castShadow=true; g.add(legs); }
+  // гэрэлтүүлгийн трасс (bounding box дээгүүр)
+  if(state.truss && cells.length){
+    const towerH=Math.max(4.2, H+3.2), tx0=minI+0.35, tx1=maxI-0.35, tz0=minJ+0.35, tz1=maxJ-0.35;
+    [[tx0,tz0],[tx1,tz0],[tx0,tz1],[tx1,tz1]].forEach(([x,z])=> placeTruss(g,towerH,'y',x,towerH/2,z));
+    placeTruss(g, (tx1-tx0), 'x', (tx0+tx1)/2, towerH, tz0);
+    placeTruss(g, (tx1-tx0), 'x', (tx0+tx1)/2, towerH, tz1);
+    placeTruss(g, (tz1-tz0), 'z', tx0, towerH, (tz0+tz1)/2);
+    placeTruss(g, (tz1-tz0), 'z', tx1, towerH, (tz0+tz1)/2);
+    const nL=Math.max(3, Math.round(maxI-minI));
+    for(let k=0;k<nL;k++){ const x=tx0+ (k+0.5)*((tx1-tx0)/nL);
+      const head=new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.13,0.24,12), matLamp); head.position.set(x,towerH-0.45,tz0); head.rotation.x=0.5; g.add(head);
+      const lens=new THREE.Mesh(new THREE.CircleGeometry(0.1,14), matLens); lens.position.set(x,towerH-0.55,tz0+0.09); lens.rotation.x=-0.5-Math.PI; g.add(lens);
+    }
+    const pl=new THREE.PointLight(0xffa64d,5,16,2); pl.position.set((tx0+tx1)/2,towerH-0.6,tz0-0.5); scene.add(pl); lampLights.push(pl);
+  }
+  stageGroup=g; scene.add(g);
+  controls.target.y = targetY();
+  updateReadout();
+}
+function stagePrice(){
+  const n = state.cells ? state.cells.size : 0;
+  let p = n*PRICE.module;
+  if(state.truss) p += PRICE.truss;
+  if(state.led) p += PRICE.led;
+  return { modules:n, total:p };
+}
 // Асар дотор жижиг тайз (ард талд) — дэк + хөл + намхан гэрэлтүүлгийн трасс
 function addStageInTent(g, W, D){
   const sw=Math.min(W*0.75, 8), sd=Math.min(3.2, D*0.28), deckH=0.6, thk=0.12;
@@ -577,7 +629,12 @@ function buildTent(){
   controls.target.y = targetY();
   updateReadout();
 }
-function build(){ setEnv(); if(state.mode==='tent') buildTent(); else buildStage(); if(typeof scheduleAR==='function') scheduleAR(); }
+function build(){ setEnv();
+  if(state.mode==='tent') buildTent();
+  else if(state.build) buildStageModular();
+  else buildStage();
+  if(typeof scheduleAR==='function') scheduleAR();
+}
 
 function updateReadout(){
   const r = document.getElementById('readout');
@@ -586,10 +643,16 @@ function updateReadout(){
     feats = [state.gable?'үзүүртэй':null, state.walls?'ханатай':null, (state.tables&&_tableCount)?`${_tableCount} ширээ`:null].filter(Boolean).join(' · ');
     r.innerHTML = `<b>${state.w} × ${state.d} м</b> <span>· ${(state.w*state.d)} м² · асар${feats?' · '+feats:''}</span>`;
     const tip=document.getElementById('tableTip'); if(tip) tip.style.display = state.tables ? '' : 'none';
+  } else if(state.build){
+    const pr=stagePrice();
+    r.innerHTML = `<b>${pr.modules} хавтан</b> <span>· ${pr.modules} м² · h ${state.h}м · 1×1м</span>`;
+    const pe=document.getElementById('price'); if(pe){ pe.style.display=''; pe.innerHTML=`💰 <b>${moneyFmt(pr.total)}</b> <span style="font-size:10px;color:var(--dim)">жишээ үнэ</span>`; }
   } else {
     feats = [state.truss?'трасс':null, state.led?'LED':null, state.roof?'дээвэр':null].filter(Boolean).join(' · ');
     r.innerHTML = `<b>${state.w} × ${state.d} м</b> <span>· ${(state.w*state.d)} м² · h ${state.h}м${feats?' · '+feats:''}</span>`;
+    const pe=document.getElementById('price'); if(pe) pe.style.display='none';
   }
+  if(state.mode==='tent'){ const pe=document.getElementById('price'); if(pe) pe.style.display='none'; }
 }
 
 // ---------- UI ----------
@@ -607,6 +670,7 @@ function renderSizes(){
     b.setAttribute('aria-pressed', (s.w===state.w&&s.d===state.d)?'true':'false');
     b.innerHTML = `${s.w}×${s.d}<span class="u"> м</span>`;
     b.onclick=()=>{ state.w=s.w; state.d=s.d; state.tablePos=null;   // хэмжээ солиход тор шинээр тохирно
+      if(state.mode==='stage' && state.build) state.cells=cellsRect(s.w,s.d);
       [...sizesEl.children].forEach(c=>c.setAttribute('aria-pressed','false')); b.setAttribute('aria-pressed','true');
       build(); frameCamera(); };
     sizesEl.appendChild(b);
@@ -639,6 +703,14 @@ document.querySelectorAll('#modeSeg .chip').forEach(c=> c.onclick=()=>applyMode(
 document.getElementById('tgl-truss').onchange=e=>{ state.truss=e.target.checked; build(); };
 document.getElementById('tgl-led').onchange=e=>{ state.led=e.target.checked; build(); };
 document.getElementById('tgl-roof').onchange=e=>{ state.roof=e.target.checked; build(); };
+document.getElementById('tgl-build').onchange=e=>{
+  state.build=e.target.checked;
+  if(state.build && !state.cells) state.cells=cellsRect(state.w,state.d);
+  document.getElementById('clear-cells').style.display=state.build?'':'none';
+  document.getElementById('buildTip').style.display=state.build?'':'none';
+  build(); frameCamera();
+};
+document.getElementById('clear-cells').onclick=()=>{ state.cells=new Set(); build(); };
 document.getElementById('tgl-gable').onchange=e=>{ state.gable=e.target.checked; build(); };
 document.getElementById('tgl-walls').onchange=e=>{ state.walls=e.target.checked; build(); };
 document.getElementById('tgl-tables').onchange=e=>{ state.tables=e.target.checked; build(); };
@@ -691,6 +763,24 @@ renderer.domElement.addEventListener('dblclick', e=>{
   if(state.mode!=='tent' || !state.tables) return;
   const t=tableAt(e);
   if(t){ const i=t.userData.ti; state.tablePos.splice(i,1); build(); }
+});
+// ---------- модуль тайз: шалан дээр товшиж 1×1м хавтан нэм/хас ----------
+let _tapX=0,_tapY=0;
+renderer.domElement.addEventListener('pointerdown', e=>{ _tapX=e.clientX; _tapY=e.clientY; });
+renderer.domElement.addEventListener('pointerup', e=>{
+  if(state.mode!=='stage' || !state.build) return;
+  if(Math.abs(e.clientX-_tapX)>6 || Math.abs(e.clientY-_tapY)>6) return;   // чирсэн = эргэлт
+  setNDC(e); ray.setFromCamera(ndc,camera);
+  const tapPlane=new THREE.Plane(new THREE.Vector3(0,1,0), -state.h);
+  const p=new THREE.Vector3();
+  if(ray.ray.intersectPlane(tapPlane,p)){
+    const i=Math.floor(p.x), j=Math.floor(p.z);
+    if(Math.abs(i)>25||Math.abs(j)>25) return;
+    const k=i+','+j;
+    if(!state.cells) state.cells=new Set();
+    if(state.cells.has(k)) state.cells.delete(k); else state.cells.add(k);
+    build();
+  }
 });
 let spin=false;
 document.getElementById('tgl-spin').onchange=e=>{ spin=e.target.checked; };
