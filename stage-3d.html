@@ -113,6 +113,7 @@
   <div class="row" id="tentToggles" style="display:none">
     <label class="tgl"><input type="checkbox" id="tgl-gable" checked><span class="sw"></span>Дүнзэн үзүүр</label>
     <label class="tgl"><input type="checkbox" id="tgl-walls"><span class="sw"></span>Хажуу хана</label>
+    <label class="tgl"><input type="checkbox" id="tgl-tables"><span class="sw"></span>🍽 Ширээ 160⌀</label>
   </div>
 </div>
 
@@ -202,6 +203,17 @@ const matLens = new THREE.MeshStandardMaterial({ color:0xffb14d, emissive:0xff9a
 const matFabric = new THREE.MeshStandardMaterial({ color:0xf3f1ea, roughness:0.92, metalness:0.0,
   side:THREE.DoubleSide, transparent:true, opacity:0.97, emissive:0x15130f, emissiveIntensity:0.45 });
 const matValance = new THREE.MeshStandardMaterial({ color:0xece9e0, roughness:0.95, side:THREE.DoubleSide });
+const matCloth = new THREE.MeshStandardMaterial({ color:0xfaf8f2, roughness:0.88, metalness:0.0 });
+// 160см диаметртэй банкетын дугуй ширээ (даавуу бүрээстэй) — нэг л удаа үүсгэж instance-лнэ
+let _tableGeo = null;
+function tableGeo(){
+  if(_tableGeo) return _tableGeo;
+  const R = 0.80, topH = 0.75;
+  const cloth = new THREE.CylinderGeometry(R, R*1.07, topH, 28, 1, false); cloth.translate(0, topH/2, 0);
+  const top = new THREE.CylinderGeometry(R*1.02, R*1.02, 0.05, 28); top.translate(0, topH, 0);
+  _tableGeo = mergeGeometries([cloth, top], false);
+  return _tableGeo;
+}
 
 // ---------- truss builder (30×30, 1м-ийн зангилаатай) ----------
 const _up = new THREE.Vector3(0,1,0);
@@ -269,7 +281,8 @@ function placeTruss(group, len, axis, cx, cy, cz){
 
 // ---------- stage assembly ----------
 let stageGroup = null;
-const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false, walls:false, gable:true };
+const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false, walls:false, gable:true, tables:false };
+let _tableCount = 0;
 const lampLights = [];
 
 function disposeGroup(g){
@@ -379,7 +392,7 @@ function buildTent(){
   const angle = Math.atan2(rise, W/2), slope = Math.hypot(W/2, rise);
   const V = (x,y,z)=>new THREE.Vector3(x,y,z);
   const poleR = 0.05, barR = 0.035;
-  const bays = Math.max(2, Math.round(D/3.2));
+  const bays = Math.max(1, Math.round(D/5));   // хөл хоорондын зай ≈ 5м
   const zAt = i => -D/2 + i*(D/bays);
 
   // --- каркас (хөл + дам нуруу + оройн нуруу + рафтер) ---
@@ -436,6 +449,29 @@ function buildTent(){
     back.position.set(0, eaveH/2, -D/2); back.castShadow=true; g.add(back);
   }
 
+  // --- 160⌀ дугуй ширээ (банкет) — торлон байрлуулна ---
+  _tableCount = 0;
+  if(state.tables){
+    const margin = 1.6, spacing = 2.8;   // ханаас зай + ширээ хоорондын төвийн зай
+    const innerW = W - 2*margin, innerD = D - 2*margin;
+    if(innerW >= 0 && innerD >= 0){
+      const cols = Math.floor(innerW/spacing) + 1;
+      const rows = Math.floor(innerD/spacing) + 1;
+      const spanX = (cols-1)*spacing, spanZ = (rows-1)*spacing;
+      const n = cols*rows;
+      const inst = new THREE.InstancedMesh(tableGeo(), matCloth, n);
+      inst.castShadow = true; inst.receiveShadow = true;
+      const m4 = new THREE.Matrix4();
+      let k = 0;
+      for(let i=0;i<cols;i++) for(let j=0;j<rows;j++){
+        const x = -spanX/2 + i*spacing, z = -spanZ/2 + j*spacing;
+        m4.makeTranslation(x, 0, z); inst.setMatrixAt(k++, m4);
+      }
+      inst.instanceMatrix.needsUpdate = true;
+      g.add(inst); _tableCount = n;
+    }
+  }
+
   stageGroup = g; scene.add(g);
   controls.target.y = targetY();
   updateReadout();
@@ -446,7 +482,7 @@ function updateReadout(){
   const r = document.getElementById('readout');
   let feats;
   if(state.mode==='tent'){
-    feats = [state.gable?'үзүүртэй':null, state.walls?'ханатай':null].filter(Boolean).join(' · ');
+    feats = [state.gable?'үзүүртэй':null, state.walls?'ханатай':null, (state.tables&&_tableCount)?`${_tableCount} ширээ`:null].filter(Boolean).join(' · ');
     r.innerHTML = `<b>${state.w} × ${state.d} м</b> <span>· ${(state.w*state.d)} м² · асар${feats?' · '+feats:''}</span>`;
   } else {
     feats = [state.truss?'трасс':null, state.led?'LED':null, state.roof?'дээвэр':null].filter(Boolean).join(' · ');
@@ -502,6 +538,7 @@ document.getElementById('tgl-led').onchange=e=>{ state.led=e.target.checked; bui
 document.getElementById('tgl-roof').onchange=e=>{ state.roof=e.target.checked; build(); };
 document.getElementById('tgl-gable').onchange=e=>{ state.gable=e.target.checked; build(); };
 document.getElementById('tgl-walls').onchange=e=>{ state.walls=e.target.checked; build(); };
+document.getElementById('tgl-tables').onchange=e=>{ state.tables=e.target.checked; build(); };
 let spin=false;
 document.getElementById('tgl-spin').onchange=e=>{ spin=e.target.checked; };
 document.getElementById('reset').onclick=()=> frameCamera();
