@@ -1,0 +1,406 @@
+<title>M-Event · Тайзны бүтэц 3D (Pro)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>
+  :root{
+    --bg-0:#0a0c11; --bg-1:#12151e; --panel:rgba(20,24,33,.86); --line:#262c3a;
+    --txt:#eceef4; --mut:#98a0b2; --dim:#6a7284;
+    --accent:#ffb14d; --accent-2:#ff8f2e; --accent-soft:rgba(255,177,77,.15);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden}
+  body{background:var(--bg-0);color:var(--txt);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  #app{position:fixed;inset:0}
+  canvas{display:block;touch-action:none}
+
+  /* Loading */
+  #load{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg-0);z-index:20;
+    transition:opacity .5s ease;gap:0}
+  #load.hide{opacity:0;pointer-events:none}
+  .spin{width:38px;height:38px;border-radius:50%;border:3px solid #2a3040;border-top-color:var(--accent);
+    animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* Header */
+  .top{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;justify-content:space-between;
+    gap:12px;padding:16px 18px;pointer-events:none;
+    background:linear-gradient(180deg, rgba(8,10,14,.72), rgba(8,10,14,0))}
+  .brand{display:flex;align-items:center;gap:11px;pointer-events:auto}
+  .brand-mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(150deg,var(--accent),var(--accent-2));
+    display:grid;place-items:center;color:#20140a;font-weight:800;font-size:17px;box-shadow:0 6px 20px -6px var(--accent-2)}
+  .brand h1{font-size:14px;font-weight:700;letter-spacing:.01em}
+  .brand small{display:block;font-size:10.5px;color:var(--mut);letter-spacing:.16em;text-transform:uppercase;margin-top:1px}
+  .tag{pointer-events:auto;font-size:11px;color:var(--accent);border:1px solid var(--accent-soft);
+    background:var(--accent-soft);padding:4px 10px;border-radius:20px;font-weight:600;letter-spacing:.05em}
+
+  /* Readout */
+  .readout{position:fixed;left:18px;top:64px;z-index:10;font-size:12.5px;
+    background:rgba(10,12,17,.6);border:1px solid var(--line);border-radius:10px;padding:7px 12px;
+    font-variant-numeric:tabular-nums;backdrop-filter:blur(8px)}
+  .readout b{color:var(--accent);font-weight:700}
+  .readout span{color:var(--mut)}
+
+  /* Dock */
+  .dock{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:10;
+    width:min(680px,calc(100vw - 24px));background:var(--panel);border:1px solid var(--line);
+    border-radius:16px;padding:12px 14px;backdrop-filter:blur(14px);
+    box-shadow:0 20px 50px -24px #000;display:flex;flex-direction:column;gap:11px}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .lbl{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.14em;font-weight:600;min-width:54px}
+  .sizes{display:flex;gap:7px;flex-wrap:wrap}
+  .chip{appearance:none;border:1px solid var(--line);background:#1b2029;color:var(--txt);
+    font:inherit;font-size:13px;font-weight:600;padding:7px 13px;border-radius:9px;cursor:pointer;
+    transition:border-color .15s,background .15s,transform .05s;font-variant-numeric:tabular-nums}
+  .chip:hover{border-color:#3a4256}
+  .chip:active{transform:translateY(1px)}
+  .chip[aria-pressed="true"]{background:linear-gradient(150deg,var(--accent),var(--accent-2));
+    color:#20140a;border-color:transparent}
+  .chip .u{font-size:11px;opacity:.7;margin-left:1px}
+  .tgl{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--txt);cursor:pointer;
+    border:1px solid var(--line);background:#181d27;border-radius:9px;padding:6px 11px;font-weight:500}
+  .tgl input{position:absolute;opacity:0;width:0;height:0}
+  .sw{width:32px;height:18px;border-radius:20px;background:#2a3040;position:relative;transition:background .18s;flex-shrink:0}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#8791a3;transition:transform .18s,background .18s}
+  .tgl input:checked + .sw{background:var(--accent-soft)}
+  .tgl input:checked + .sw::after{transform:translateX(14px);background:var(--accent)}
+  .tgl input:focus-visible + .sw{outline:2px solid var(--accent);outline-offset:2px}
+  .spacer{flex:1}
+  .ghost{appearance:none;border:1px solid var(--line);background:transparent;color:var(--mut);
+    font:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:9px;cursor:pointer}
+  .ghost:hover{color:var(--txt);border-color:#3a4256}
+  .chip:focus-visible,.ghost:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .hint{position:fixed;left:50%;bottom:calc(16px + 96px);transform:translateX(-50%);z-index:9;
+    font-size:11px;color:var(--dim);letter-spacing:.04em;pointer-events:none;opacity:.85}
+  @media (max-width:560px){ .lbl{min-width:100%} .hint{display:none} }
+</style>
+
+<div id="app"></div>
+<div id="load"><div class="spin"></div></div>
+
+<div class="top">
+  <div class="brand"><div class="brand-mark">M</div>
+    <div><h1>M-Event · Тайзны бүтэц</h1><small>Чимун ХХК · 3D тохируулагч</small></div></div>
+  <div class="tag">30×30 трасс · Pro</div>
+</div>
+<div class="readout" id="readout"></div>
+<div class="hint">Чирж эргүүлнэ · 2 хуруу / дугуйгаар зумна</div>
+
+<div class="dock">
+  <div class="row">
+    <span class="lbl">Хэмжээ</span>
+    <div class="sizes" id="sizes"></div>
+  </div>
+  <div class="row">
+    <span class="lbl">Өндөр</span>
+    <div class="sizes" id="heights"></div>
+    <div class="spacer"></div>
+    <button class="ghost" id="reset">↺ Байрлал</button>
+  </div>
+  <div class="row">
+    <label class="tgl"><input type="checkbox" id="tgl-truss" checked><span class="sw"></span>Гэрэлтүүлгийн трасс</label>
+    <label class="tgl"><input type="checkbox" id="tgl-led"><span class="sw"></span>LED дэлгэц (ар тал)</label>
+    <label class="tgl"><input type="checkbox" id="tgl-roof"><span class="sw"></span>Дээвэр</label>
+    <label class="tgl"><input type="checkbox" id="tgl-spin"><span class="sw"></span>Эргэлт</label>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const CROSS = 0.30;           // трассын огтлол 30см
+const app = document.getElementById('app');
+
+// ---------- renderer / scene / camera ----------
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.02;
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0c11);
+scene.fog = new THREE.Fog(0x0a0c11, 22, 46);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 0.1, 200);
+camera.position.set(9, 6.4, 12);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.07;
+controls.minDistance = 6; controls.maxDistance = 44;
+controls.maxPolarAngle = Math.PI*0.5 - 0.03;
+controls.target.set(0, 1.8, 0);
+
+function targetY(){ return state.truss ? Math.max(2.4, state.h+1.6) : (state.h*0.6 + 0.6); }
+function frameCamera(){
+  const span = Math.max(state.w, state.d, 5);
+  const ty = targetY();
+  controls.target.set(0, ty, 0);
+  const dist = span*1.5 + 6;
+  camera.position.set(dist*0.6, ty + span*0.48 + 2.2, dist*0.86);
+  controls.update();
+}
+
+// ---------- lights ----------
+scene.add(new THREE.HemisphereLight(0x9fb4d8, 0x191c24, 0.55));
+const key = new THREE.DirectionalLight(0xffffff, 2.3);
+key.position.set(7, 12, 6); key.castShadow = true;
+key.shadow.mapSize.set(2048,2048);
+const sc = key.shadow.camera; sc.near=1; sc.far=42; sc.left=-14; sc.right=14; sc.top=14; sc.bottom=-14;
+key.shadow.bias = -0.0004;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x6f8cff, 0.5); rim.position.set(-8,5,-7); scene.add(rim);
+
+// ---------- ground ----------
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(20, 64),
+  new THREE.MeshStandardMaterial({ color:0x14171f, roughness:0.95, metalness:0.0 })
+);
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+const grid = new THREE.GridHelper(30, 30, 0x2a3142, 0x1c2029);
+grid.material.transparent = true; grid.material.opacity = 0.5; grid.position.y = 0.002; scene.add(grid);
+
+// ---------- materials ----------
+const matAlu  = new THREE.MeshStandardMaterial({ color:0xbcc0c8, metalness:0.96, roughness:0.34 });
+const matDeck = new THREE.MeshStandardMaterial({ color:0x1c1f27, metalness:0.15, roughness:0.82 });
+const matDeckTop = new THREE.MeshStandardMaterial({ color:0x23262f, metalness:0.1, roughness:0.7 });
+const matLED  = new THREE.MeshStandardMaterial({ color:0x0a0c12, metalness:0.2, roughness:0.5,
+  emissive:0x101826, emissiveIntensity:1.0 });
+const matLamp = new THREE.MeshStandardMaterial({ color:0x1a1a1a, metalness:0.6, roughness:0.5 });
+const matLens = new THREE.MeshStandardMaterial({ color:0xffb14d, emissive:0xff9a3c, emissiveIntensity:2.2 });
+
+// ---------- truss builder (30×30, 1м-ийн зангилаатай) ----------
+const _up = new THREE.Vector3(0,1,0);
+function tube(p1, p2, r, seg=7){
+  const dir = new THREE.Vector3().subVectors(p2,p1); const len = dir.length();
+  if(len < 1e-4) return null;
+  const g = new THREE.CylinderGeometry(r, r, len, seg, 1);
+  const q = new THREE.Quaternion().setFromUnitVectors(_up, dir.clone().normalize());
+  g.applyQuaternion(q);
+  g.translate((p1.x+p2.x)/2,(p1.y+p2.y)/2,(p1.z+p2.z)/2);
+  return g;
+}
+// Урт нь X тэнхлэгээр, төвдөө. 4 хорд + талбар бүрд зигзаг диагональ + зангилааны хөндлөвч.
+function trussGeo(len){
+  const h = CROSS/2, chordR = 0.019, braceR = 0.011;
+  const geos = [];
+  const V = (x,y,z)=>new THREE.Vector3(x,y,z);
+  const corners = [[h,h],[h,-h],[-h,h],[-h,-h]];
+  for(const [y,z] of corners) geos.push(tube(V(-len/2,y,z), V(len/2,y,z), chordR));
+  const n = Math.max(1, Math.round(len));     // 1м сегментүүд
+  const step = len/n;
+  for(let i=0;i<n;i++){
+    const x0 = -len/2 + i*step, x1 = x0 + step;
+    // зангилааны хөндлөн хүрээ (x1 талд)
+    if(i < n){
+      geos.push(tube(V(x1,h,h),  V(x1,h,-h),  braceR));
+      geos.push(tube(V(x1,-h,h), V(x1,-h,-h), braceR));
+      geos.push(tube(V(x1,h,h),  V(x1,-h,h),  braceR));
+      geos.push(tube(V(x1,h,-h), V(x1,-h,-h), braceR));
+    }
+    // 4 нүүр бүрд зигзаг диагональ
+    const dir = (i%2===0)?1:-1;
+    // top (y=h): z +h <-> -h
+    geos.push(tube(V(x0,h, h*dir), V(x1,h,-h*dir), braceR));
+    // bottom (y=-h)
+    geos.push(tube(V(x0,-h, h*dir), V(x1,-h,-h*dir), braceR));
+    // front (z=h): y +h <-> -h
+    geos.push(tube(V(x0,h*dir, h), V(x1,-h*dir, h), braceR));
+    // back (z=-h)
+    geos.push(tube(V(x0,h*dir,-h), V(x1,-h*dir,-h), braceR));
+  }
+  // эхний зангилааны хүрээ
+  geos.push(tube(V(-len/2,h,h),  V(-len/2,h,-h),  braceR));
+  geos.push(tube(V(-len/2,-h,h), V(-len/2,-h,-h), braceR));
+  geos.push(tube(V(-len/2,h,h),  V(-len/2,-h,h),  braceR));
+  geos.push(tube(V(-len/2,h,-h), V(-len/2,-h,-h), braceR));
+  return mergeGeometries(geos.filter(Boolean), false);
+}
+// кэш (ижил урттай трассыг дахин ашиглана)
+const trussCache = new Map();
+function trussMesh(len){
+  const key = len.toFixed(2);
+  let g = trussCache.get(key);
+  if(!g){ g = trussGeo(len); trussCache.set(key, g); }
+  const m = new THREE.Mesh(g, matAlu); m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+// Трасс байрлуулах: axis 'x'|'y'|'z', center [x,y,z]
+function placeTruss(group, len, axis, cx, cy, cz){
+  const m = trussMesh(len);
+  if(axis==='y') m.rotation.z = Math.PI/2;
+  else if(axis==='z') m.rotation.y = Math.PI/2;
+  m.position.set(cx,cy,cz); group.add(m);
+}
+
+// ---------- stage assembly ----------
+let stageGroup = null;
+const state = { w:8, d:4, h:1.0, truss:true, led:false, roof:false };
+const lampLights = [];
+
+function disposeGroup(g){
+  g.traverse(o=>{ if(o.isMesh){ /* geo cached — битгий dispose */ if(o.material && o.material._temp) o.material.dispose(); }});
+}
+function buildStage(){
+  if(stageGroup){ scene.remove(stageGroup); }
+  lampLights.forEach(l=>scene.remove(l)); lampLights.length = 0;
+  const g = new THREE.Group();
+  const W = state.w, D = state.d, H = state.h;
+  const inset = 0.5, cx = W/2 - inset, cz = D/2 - inset;
+
+  // --- тавцан (дэк) ---
+  const deckThk = 0.14;
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(W, deckThk, D),
+    [matDeck,matDeck,matDeckTop,matDeck,matDeck,matDeck]);
+  deck.position.y = H - deckThk/2; deck.castShadow = true; deck.receiveShadow = true; g.add(deck);
+  // хормогч (skirt)
+  const skirtH = H - deckThk;
+  const skirtMat = matDeck;
+  const skirtF = new THREE.Mesh(new THREE.BoxGeometry(W, skirtH, 0.03), skirtMat);
+  skirtF.position.set(0, skirtH/2, D/2); g.add(skirtF);
+  const skirtB = skirtF.clone(); skirtB.position.z = -D/2; g.add(skirtB);
+  const skirtL = new THREE.Mesh(new THREE.BoxGeometry(0.03, skirtH, D), skirtMat);
+  skirtL.position.set(-W/2, skirtH/2, 0); g.add(skirtL);
+  const skirtR = skirtL.clone(); skirtR.position.x = W/2; g.add(skirtR);
+
+  // --- дэкийн доорх периметр трасс ---
+  const belt = H - deckThk - CROSS/2;
+  placeTruss(g, W, 'x', 0, belt,  cz);
+  placeTruss(g, W, 'x', 0, belt, -cz);
+  placeTruss(g, D, 'z', cx, belt, 0);
+  placeTruss(g, D, 'z', -cx, belt, 0);
+
+  // --- хөл (босоо трасс) ---
+  const legH = H - deckThk;
+  const legXs = [cx,-cx], legZs = [cz,-cz];
+  const legPos = [];
+  legXs.forEach(x=>legZs.forEach(z=>legPos.push([x,z])));
+  if(W >= 10){ legPos.push([0,cz],[0,-cz]); }   // том тайзанд дунд хөл
+  legPos.forEach(([x,z])=> placeTruss(g, legH, 'y', x, legH/2, z));
+
+  // --- гэрэлтүүлгийн трасс (goal-post) ---
+  if(state.truss){
+    const towerH = Math.max(4.2, H + 3.2);
+    const tx = W/2 - 0.35, tz = D/2 - 0.35;
+    [[tx,tz],[tx,-tz],[-tx,tz],[-tx,-tz]].forEach(([x,z])=> placeTruss(g, towerH, 'y', x, towerH/2, z));
+    // толгойн хүрээ
+    placeTruss(g, W-0.4, 'x', 0, towerH, tz);
+    placeTruss(g, W-0.4, 'x', 0, towerH, -tz);
+    placeTruss(g, D-0.4, 'z', tx, towerH, 0);
+    placeTruss(g, D-0.4, 'z', -tx, towerH, 0);
+    // урд трасс дээр гэрлүүд
+    const nL = Math.max(4, Math.round(W));
+    for(let i=0;i<nL;i++){
+      const x = -((W-1.2)/2) + i*((W-1.2)/(nL-1));
+      const yoke = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.28,10), matLamp);
+      yoke.position.set(x, towerH-0.28, tz); g.add(yoke);
+      const head = new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.13,0.24,14), matLamp);
+      head.position.set(x, towerH-0.5, tz); head.rotation.x = 0.5; g.add(head);
+      const lens = new THREE.Mesh(new THREE.CircleGeometry(0.1,16), matLens);
+      lens.position.set(x, towerH-0.6, tz+0.09); lens.rotation.x = -0.5-Math.PI; g.add(lens);
+    }
+    // 3 амбер цэгэн гэрэл (гялбаа)
+    for(let i=0;i<3;i++){
+      const pl = new THREE.PointLight(0xffa64d, 6, 12, 2);
+      pl.position.set((-W/3)+(i*W/3), towerH-0.7, tz-0.5);
+      scene.add(pl); lampLights.push(pl);
+    }
+  }
+
+  // --- LED дэлгэц (ар тал) ---
+  if(state.led){
+    const towerH = state.truss ? Math.max(4.2, H+3.2) : (H+2.6);
+    const ledH = Math.min(2.6, towerH - H - 0.4), ledW = W*0.62;
+    const ledY = H + ledH/2 + 0.2;
+    const led = new THREE.Mesh(new THREE.BoxGeometry(ledW, ledH, 0.12), matLED);
+    led.position.set(0, ledY, -D/2 + 0.25); g.add(led);
+    // хүрээ
+    placeTruss(g, ledW+0.3, 'x', 0, ledY+ledH/2+0.15, -D/2+0.25);
+    placeTruss(g, ledW+0.3, 'x', 0, ledY-ledH/2-0.15, -D/2+0.25);
+  }
+
+  // --- дээвэр (roof truss + мембран) ---
+  if(state.roof && state.truss){
+    const towerH = Math.max(4.2, H+3.2);
+    const peak = towerH + 1.3;
+    placeTruss(g, W-0.4, 'x', 0, peak, 0);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(W+0.6, 0.05, D+0.6),
+      new THREE.MeshStandardMaterial({color:0x15181f, roughness:0.9, metalness:0.0, transparent:true, opacity:0.9}));
+    roof.position.set(0, towerH+0.9, 0); roof.castShadow = true; g.add(roof);
+    placeTruss(g, D-0.4, 'z',  (W-0.4)/2*0.0+0.0, towerH+0.4, 0); // тулгуур (энгийн)
+  }
+
+  stageGroup = g; scene.add(g);
+  controls.target.y = targetY();
+  updateReadout();
+}
+
+function updateReadout(){
+  const r = document.getElementById('readout');
+  const feats = [state.truss?'трасс':null, state.led?'LED':null, state.roof?'дээвэр':null].filter(Boolean).join(' · ');
+  r.innerHTML = `<b>${state.w} × ${state.d} м</b> <span>· ${(state.w*state.d)} м² · h ${state.h}м${feats?' · '+feats:''}</span>`;
+}
+
+// ---------- UI ----------
+const SIZES = [{w:6,d:4},{w:8,d:4},{w:10,d:6},{w:12,d:8}];
+const sizesEl = document.getElementById('sizes');
+SIZES.forEach(s=>{
+  const b=document.createElement('button'); b.className='chip';
+  b.setAttribute('aria-pressed', (s.w===state.w&&s.d===state.d)?'true':'false');
+  b.innerHTML = `${s.w}×${s.d}<span class="u"> м</span>`;
+  b.onclick=()=>{ state.w=s.w; state.d=s.d;
+    [...sizesEl.children].forEach(c=>c.setAttribute('aria-pressed','false')); b.setAttribute('aria-pressed','true');
+    buildStage(); frameCamera(); };
+  sizesEl.appendChild(b);
+});
+const HEIGHTS=[0.6,1.0,1.4];
+const heightsEl=document.getElementById('heights');
+HEIGHTS.forEach(h=>{
+  const b=document.createElement('button'); b.className='chip';
+  b.setAttribute('aria-pressed', h===state.h?'true':'false');
+  b.innerHTML = `${h}<span class="u"> м</span>`;
+  b.onclick=()=>{ state.h=h; [...heightsEl.children].forEach(c=>c.setAttribute('aria-pressed','false')); b.setAttribute('aria-pressed','true'); buildStage(); };
+  heightsEl.appendChild(b);
+});
+document.getElementById('tgl-truss').onchange=e=>{ state.truss=e.target.checked; buildStage(); };
+document.getElementById('tgl-led').onchange=e=>{ state.led=e.target.checked; buildStage(); };
+document.getElementById('tgl-roof').onchange=e=>{ state.roof=e.target.checked; buildStage(); };
+let spin=false;
+document.getElementById('tgl-spin').onchange=e=>{ spin=e.target.checked; };
+document.getElementById('reset').onclick=()=> frameCamera();
+
+// ---------- loop ----------
+addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+let t0=performance.now();
+function animate(){
+  requestAnimationFrame(animate);
+  if(spin && !reduce){ const o=controls.target; camera.position.x; controls.autoRotate=true; controls.autoRotateSpeed=0.9; }
+  else controls.autoRotate=false;
+  // амбер гэрлийн бага зэрэг анивчих
+  const t=performance.now()*0.001;
+  lampLights.forEach((l,i)=> l.intensity = 5.2 + Math.sin(t*2+i)*0.7);
+  controls.update();
+  renderer.render(scene,camera);
+}
+buildStage();
+frameCamera();
+animate();
+requestAnimationFrame(()=>document.getElementById('load').classList.add('hide'));
+</script>
