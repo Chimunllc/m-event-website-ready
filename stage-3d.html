@@ -361,8 +361,8 @@ let stageGroup = null;
 const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false, walls:false, gable:true,
   tables:false, tablePos:null, tableType:'round', chairs:true, stageInTent:false,
   build:false, cells:null, buildTarget:'deck', trussTowers:null, trussH:3 };
-// ₮ түрээсийн үнэ (нэг арга хэмжээнд). trussM = 1м каркасын үнэ.
-const PRICE = { module:25000, trussM:40000 };
+// ₮ түрээсийн үнэ (нэг арга хэмжээнд): 1×1м хавтан 25,000 · 1м каркас 25,000
+const PRICE = { module:25000, trussM:25000 };
 function cellsRect(W,D){ const s=new Set(); const i0=-Math.floor(W/2), j0=-Math.floor(D/2);
   for(let i=0;i<W;i++) for(let j=0;j<D;j++) s.add((i0+i)+','+(j0+j)); return s; }
 function moneyFmt(n){ return (Math.round(n)||0).toLocaleString('en-US')+'₮'; }
