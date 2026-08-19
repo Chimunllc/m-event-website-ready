@@ -114,6 +114,8 @@
     <label class="tgl"><input type="checkbox" id="tgl-gable" checked><span class="sw"></span>Дүнзэн үзүүр</label>
     <label class="tgl"><input type="checkbox" id="tgl-walls"><span class="sw"></span>Хажуу хана</label>
     <label class="tgl"><input type="checkbox" id="tgl-tables"><span class="sw"></span>🍽 Ширээ 160⌀</label>
+    <button class="ghost" id="add-table">＋ ширээ</button>
+    <span id="tableTip" style="font-size:11px;color:var(--dim);display:none;">Ширээг чирж байрлуулна · 2 товшилт = устгах</span>
   </div>
 </div>
 
@@ -174,14 +176,28 @@ function frameCamera(){
 }
 
 // ---------- lights ----------
-scene.add(new THREE.HemisphereLight(0x9fb4d8, 0x191c24, 0.55));
-const key = new THREE.DirectionalLight(0xffffff, 2.3);
-key.position.set(7, 12, 6); key.castShadow = true;
+const hemi = new THREE.HemisphereLight(0xbcd0ec, 0x20242e, 0.8); scene.add(hemi);
+const amb = new THREE.AmbientLight(0xffffff, 0.28); scene.add(amb);
+const key = new THREE.DirectionalLight(0xffffff, 2.4);
+key.position.set(7, 13, 6); key.castShadow = true;
 key.shadow.mapSize.set(2048,2048);
-const sc = key.shadow.camera; sc.near=1; sc.far=42; sc.left=-14; sc.right=14; sc.top=14; sc.bottom=-14;
+const sc = key.shadow.camera; sc.near=1; sc.far=60; sc.left=-20; sc.right=20; sc.top=20; sc.bottom=-20;
 key.shadow.bias = -0.0004;
 scene.add(key);
-const rim = new THREE.DirectionalLight(0x6f8cff, 0.5); rim.position.set(-8,5,-7); scene.add(rim);
+const rim = new THREE.DirectionalLight(0x8fa6ff, 0.6); rim.position.set(-8,6,-7); scene.add(rim);
+const fill = new THREE.DirectionalLight(0xffffff, 0.5); fill.position.set(-4,5,10); scene.add(fill);
+// Гэрэлтүүлэг/фон горимоор: асар = гэгээлэг (өдөр), тайз = бага бараан (тайзны уур амьсгал)
+function setEnv(){
+  if(state.mode==='tent'){
+    scene.background.set(0x2b3345); scene.fog.color.set(0x2b3345); scene.fog.near=34; scene.fog.far=90;
+    hemi.intensity=1.15; amb.intensity=0.55; key.intensity=2.7; renderer.toneMappingExposure=1.28;
+    ground.material.color.set(0x3a424f);
+  } else {
+    scene.background.set(0x141824); scene.fog.color.set(0x141824); scene.fog.near=24; scene.fog.far=52;
+    hemi.intensity=0.75; amb.intensity=0.3; key.intensity=2.4; renderer.toneMappingExposure=1.12;
+    ground.material.color.set(0x1b202b);
+  }
+}
 
 // ---------- ground ----------
 const ground = new THREE.Mesh(
@@ -281,8 +297,22 @@ function placeTruss(group, len, axis, cx, cy, cz){
 
 // ---------- stage assembly ----------
 let stageGroup = null;
-const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false, walls:false, gable:true, tables:false };
+const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false, walls:false, gable:true, tables:false, tablePos:null };
 let _tableCount = 0;
+const draggableTables = [];
+// Ширээний автомат тор (160⌀, ~2.8м зай, ханаас 1.6м) — эхний байршил
+function gridPositions(){
+  const margin = 1.6, spacing = 2.8;
+  const innerW = state.w - 2*margin, innerD = state.d - 2*margin;
+  const pos = [];
+  if(innerW < 0 || innerD < 0) return pos;
+  const cols = Math.floor(innerW/spacing) + 1, rows = Math.floor(innerD/spacing) + 1;
+  const spanX = (cols-1)*spacing, spanZ = (rows-1)*spacing;
+  for(let i=0;i<cols;i++) for(let j=0;j<rows;j++)
+    pos.push({ x:-spanX/2 + i*spacing, z:-spanZ/2 + j*spacing });
+  return pos;
+}
+function clampTable(p){ const mx=state.w/2-1.0, mz=state.d/2-1.0; p.x=Math.max(-mx,Math.min(mx,p.x)); p.z=Math.max(-mz,Math.min(mz,p.z)); return p; }
 const lampLights = [];
 
 function disposeGroup(g){
@@ -449,34 +479,24 @@ function buildTent(){
     back.position.set(0, eaveH/2, -D/2); back.castShadow=true; g.add(back);
   }
 
-  // --- 160⌀ дугуй ширээ (банкет) — торлон байрлуулна ---
-  _tableCount = 0;
+  // --- 160⌀ дугуй ширээ — гараар чирж болдог тусдаа объектууд ---
+  draggableTables.length = 0; _tableCount = 0;
   if(state.tables){
-    const margin = 1.6, spacing = 2.8;   // ханаас зай + ширээ хоорондын төвийн зай
-    const innerW = W - 2*margin, innerD = D - 2*margin;
-    if(innerW >= 0 && innerD >= 0){
-      const cols = Math.floor(innerW/spacing) + 1;
-      const rows = Math.floor(innerD/spacing) + 1;
-      const spanX = (cols-1)*spacing, spanZ = (rows-1)*spacing;
-      const n = cols*rows;
-      const inst = new THREE.InstancedMesh(tableGeo(), matCloth, n);
-      inst.castShadow = true; inst.receiveShadow = true;
-      const m4 = new THREE.Matrix4();
-      let k = 0;
-      for(let i=0;i<cols;i++) for(let j=0;j<rows;j++){
-        const x = -spanX/2 + i*spacing, z = -spanZ/2 + j*spacing;
-        m4.makeTranslation(x, 0, z); inst.setMatrixAt(k++, m4);
-      }
-      inst.instanceMatrix.needsUpdate = true;
-      g.add(inst); _tableCount = n;
-    }
+    if(!state.tablePos || !state.tablePos.length) state.tablePos = gridPositions();
+    state.tablePos.forEach(clampTable);
+    state.tablePos.forEach((p,i)=>{
+      const m = new THREE.Mesh(tableGeo(), matCloth);
+      m.position.set(p.x, 0, p.z); m.castShadow = true; m.receiveShadow = true; m.userData.ti = i;
+      g.add(m); draggableTables.push(m);
+    });
+    _tableCount = state.tablePos.length;
   }
 
   stageGroup = g; scene.add(g);
   controls.target.y = targetY();
   updateReadout();
 }
-function build(){ if(state.mode==='tent') buildTent(); else buildStage(); }
+function build(){ setEnv(); if(state.mode==='tent') buildTent(); else buildStage(); }
 
 function updateReadout(){
   const r = document.getElementById('readout');
@@ -484,6 +504,7 @@ function updateReadout(){
   if(state.mode==='tent'){
     feats = [state.gable?'үзүүртэй':null, state.walls?'ханатай':null, (state.tables&&_tableCount)?`${_tableCount} ширээ`:null].filter(Boolean).join(' · ');
     r.innerHTML = `<b>${state.w} × ${state.d} м</b> <span>· ${(state.w*state.d)} м² · асар${feats?' · '+feats:''}</span>`;
+    const tip=document.getElementById('tableTip'); if(tip) tip.style.display = state.tables ? '' : 'none';
   } else {
     feats = [state.truss?'трасс':null, state.led?'LED':null, state.roof?'дээвэр':null].filter(Boolean).join(' · ');
     r.innerHTML = `<b>${state.w} × ${state.d} м</b> <span>· ${(state.w*state.d)} м² · h ${state.h}м${feats?' · '+feats:''}</span>`;
@@ -504,7 +525,7 @@ function renderSizes(){
     const b=document.createElement('button'); b.className='chip';
     b.setAttribute('aria-pressed', (s.w===state.w&&s.d===state.d)?'true':'false');
     b.innerHTML = `${s.w}×${s.d}<span class="u"> м</span>`;
-    b.onclick=()=>{ state.w=s.w; state.d=s.d;
+    b.onclick=()=>{ state.w=s.w; state.d=s.d; state.tablePos=null;   // хэмжээ солиход тор шинээр тохирно
       [...sizesEl.children].forEach(c=>c.setAttribute('aria-pressed','false')); b.setAttribute('aria-pressed','true');
       build(); frameCamera(); };
     sizesEl.appendChild(b);
@@ -525,7 +546,7 @@ function renderHeights(){
 function applyMode(mode){
   state.mode = mode;
   const def = PRESETS[mode];
-  state.w = def.sizes[1].w; state.d = def.sizes[1].d; state.h = def.heights[1];
+  state.w = def.sizes[1].w; state.d = def.sizes[1].d; state.h = def.heights[1]; state.tablePos = null;
   document.querySelectorAll('#modeSeg .chip').forEach(c=>c.setAttribute('aria-pressed', c.dataset.mode===mode?'true':'false'));
   document.getElementById('stageToggles').style.display = mode==='stage' ? '' : 'none';
   document.getElementById('tentToggles').style.display  = mode==='tent'  ? '' : 'none';
@@ -539,6 +560,46 @@ document.getElementById('tgl-roof').onchange=e=>{ state.roof=e.target.checked; b
 document.getElementById('tgl-gable').onchange=e=>{ state.gable=e.target.checked; build(); };
 document.getElementById('tgl-walls').onchange=e=>{ state.walls=e.target.checked; build(); };
 document.getElementById('tgl-tables').onchange=e=>{ state.tables=e.target.checked; build(); };
+document.getElementById('add-table').onclick=()=>{
+  if(state.mode!=='tent') return;
+  const tgl=document.getElementById('tgl-tables'); if(!state.tables){ state.tables=true; tgl.checked=true; }
+  if(!state.tablePos) state.tablePos=[];
+  state.tablePos.push(clampTable({ x:0, z:0 }));
+  build();
+};
+
+// ---------- ширээ гараар чирэх (raycaster) ----------
+const ray = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+const dragPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+let draggingTable = null;
+function setNDC(e){ const r=renderer.domElement.getBoundingClientRect(); ndc.x=((e.clientX-r.left)/r.width)*2-1; ndc.y=-((e.clientY-r.top)/r.height)*2+1; }
+function tableAt(e){ setNDC(e); ray.setFromCamera(ndc,camera); const h=ray.intersectObjects(draggableTables,false); return h.length?h[0].object:null; }
+renderer.domElement.addEventListener('pointerdown', e=>{
+  if(state.mode!=='tent' || !state.tables) return;
+  const t=tableAt(e);
+  if(t){ draggingTable=t; controls.enabled=false; e.stopPropagation(); e.stopImmediatePropagation();
+    try{ renderer.domElement.setPointerCapture(e.pointerId); }catch(_){} }
+}, true);
+renderer.domElement.addEventListener('pointermove', e=>{
+  if(!draggingTable) return;
+  setNDC(e); ray.setFromCamera(ndc,camera);
+  const p=new THREE.Vector3();
+  if(ray.ray.intersectPlane(dragPlane,p)){
+    clampTable(p);
+    draggingTable.position.x=p.x; draggingTable.position.z=p.z;
+    const i=draggingTable.userData.ti; if(state.tablePos[i]){ state.tablePos[i].x=p.x; state.tablePos[i].z=p.z; }
+  }
+}, true);
+function endDrag(){ if(draggingTable){ draggingTable=null; controls.enabled=true; } }
+renderer.domElement.addEventListener('pointerup', endDrag, true);
+renderer.domElement.addEventListener('pointercancel', endDrag, true);
+// давхар товшилтоор ширээ устгах
+renderer.domElement.addEventListener('dblclick', e=>{
+  if(state.mode!=='tent' || !state.tables) return;
+  const t=tableAt(e);
+  if(t){ const i=t.userData.ti; state.tablePos.splice(i,1); build(); }
+});
 let spin=false;
 document.getElementById('tgl-spin').onchange=e=>{ spin=e.target.checked; };
 document.getElementById('reset').onclick=()=> frameCamera();
