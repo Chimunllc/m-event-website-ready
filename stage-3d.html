@@ -95,6 +95,7 @@
     </div>
     <div class="spacer"></div>
     <label class="tgl"><input type="checkbox" id="tgl-spin"><span class="sw"></span>Эргэлт</label>
+    <button class="ghost" id="ar-btn" style="border-color:var(--accent);color:var(--accent);font-weight:700;">📱 AR</button>
     <button class="ghost" id="reset">↺ Байрлал</button>
   </div>
   <div class="row">
@@ -113,9 +114,17 @@
   <div class="row" id="tentToggles" style="display:none">
     <label class="tgl"><input type="checkbox" id="tgl-gable" checked><span class="sw"></span>Дүнзэн үзүүр</label>
     <label class="tgl"><input type="checkbox" id="tgl-walls"><span class="sw"></span>Хажуу хана</label>
-    <label class="tgl"><input type="checkbox" id="tgl-tables"><span class="sw"></span>🍽 Ширээ 160⌀</label>
+    <label class="tgl"><input type="checkbox" id="tgl-stage"><span class="sw"></span>🎤 Тайз (дотор)</label>
+  </div>
+  <div class="row" id="tentTables" style="display:none">
+    <label class="tgl"><input type="checkbox" id="tgl-tables"><span class="sw"></span>🍽 Ширээ</label>
+    <div class="sizes" id="tableType">
+      <button class="chip" data-ttype="round" aria-pressed="true">Дугуй 160⌀</button>
+      <button class="chip" data-ttype="long" aria-pressed="false">Урт 2.4м</button>
+    </div>
+    <label class="tgl"><input type="checkbox" id="tgl-chairs" checked><span class="sw"></span>🪑 Сандал</label>
     <button class="ghost" id="add-table">＋ ширээ</button>
-    <span id="tableTip" style="font-size:11px;color:var(--dim);display:none;">Ширээг чирж байрлуулна · 2 товшилт = устгах</span>
+    <span id="tableTip" style="font-size:11px;color:var(--dim);display:none;">Чирж байрлуулна · 2 товшилт = устгах</span>
   </div>
 </div>
 
@@ -125,12 +134,16 @@
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
 }}
 </script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+<model-viewer id="mv" ar ar-modes="webxr scene-viewer quick-look" ar-scale="fixed" camera-controls
+  style="position:fixed;width:1px;height:1px;left:-10px;bottom:-10px;opacity:0;pointer-events:none;"></model-viewer>
 
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 
 const CROSS = 0.30;           // трассын огтлол 30см
 const app = document.getElementById('app');
@@ -220,7 +233,8 @@ const matFabric = new THREE.MeshStandardMaterial({ color:0xf3f1ea, roughness:0.9
   side:THREE.DoubleSide, transparent:true, opacity:0.97, emissive:0x15130f, emissiveIntensity:0.45 });
 const matValance = new THREE.MeshStandardMaterial({ color:0xece9e0, roughness:0.95, side:THREE.DoubleSide });
 const matCloth = new THREE.MeshStandardMaterial({ color:0xfaf8f2, roughness:0.88, metalness:0.0 });
-// 160см диаметртэй банкетын дугуй ширээ (даавуу бүрээстэй) — нэг л удаа үүсгэж instance-лнэ
+const matChair = new THREE.MeshStandardMaterial({ color:0x9a7b46, roughness:0.5, metalness:0.35 });  // chiavari алт-бор
+// 160см диаметртэй банкетын дугуй ширээ (даавуу бүрээстэй)
 let _tableGeo = null;
 function tableGeo(){
   if(_tableGeo) return _tableGeo;
@@ -229,6 +243,30 @@ function tableGeo(){
   const top = new THREE.CylinderGeometry(R*1.02, R*1.02, 0.05, 28); top.translate(0, topH, 0);
   _tableGeo = mergeGeometries([cloth, top], false);
   return _tableGeo;
+}
+// Урт банкет ширээ 2.4×0.8м (даавуу бүрээстэй)
+let _longGeo = null;
+function longTableGeo(){
+  if(_longGeo) return _longGeo;
+  const L=2.4, Wd=0.85, topH=0.75;
+  const cloth = new THREE.BoxGeometry(L, topH, Wd); cloth.translate(0, topH/2, 0);
+  const top = new THREE.BoxGeometry(L*1.02, 0.05, Wd*1.05); top.translate(0, topH, 0);
+  _longGeo = mergeGeometries([cloth, top], false);
+  return _longGeo;
+}
+// Энгийн сандал (суудал+түшлэг+4 хөл) — merged
+let _chairGeo = null;
+function chairGeo(){
+  if(_chairGeo) return _chairGeo;
+  const g=[]; const seatH=0.46, s=0.42;
+  const seat=new THREE.BoxGeometry(s,0.06,s); seat.translate(0,seatH,0); g.push(seat);
+  const back=new THREE.BoxGeometry(s,0.5,0.06); back.translate(0,seatH+0.28,-s/2+0.03); g.push(back);
+  const legR=0.022;
+  [[s/2-0.04,s/2-0.04],[s/2-0.04,-s/2+0.04],[-s/2+0.04,s/2-0.04],[-s/2+0.04,-s/2+0.04]].forEach(([x,z])=>{
+    const lg=new THREE.CylinderGeometry(legR,legR,seatH,6); lg.translate(x,seatH/2,z); g.push(lg);
+  });
+  _chairGeo = mergeGeometries(g,false);
+  return _chairGeo;
 }
 
 // ---------- truss builder (30×30, 1м-ийн зангилаатай) ----------
@@ -297,12 +335,40 @@ function placeTruss(group, len, axis, cx, cy, cz){
 
 // ---------- stage assembly ----------
 let stageGroup = null;
-const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false, walls:false, gable:true, tables:false, tablePos:null };
+const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false, walls:false, gable:true,
+  tables:false, tablePos:null, tableType:'round', chairs:true, stageInTent:false };
 let _tableCount = 0;
-const draggableTables = [];
+const draggableTables = [];   // ширээ+сандлын Group-ууд (userData.ti)
+// Нэг ширээний нэгж (ширээ + тойрон/хажуугийн сандал) — Group буцаана
+function makeTableUnit(){
+  const u = new THREE.Group();
+  if(state.tableType==='long'){
+    const t = new THREE.Mesh(longTableGeo(), matCloth); t.castShadow=t.receiveShadow=true; u.add(t);
+    if(state.chairs){
+      const perSide=3, L=2.4, gap=L/perSide;
+      for(let s=-1;s<=1;s+=2) for(let i=0;i<perSide;i++){
+        const c=new THREE.Mesh(chairGeo(), matChair); c.castShadow=true;
+        c.position.set(-L/2+gap/2+i*gap, 0, s*0.72); c.rotation.y = s>0?Math.PI:0;
+        u.add(c);
+      }
+    }
+  } else {
+    const t = new THREE.Mesh(tableGeo(), matCloth); t.castShadow=t.receiveShadow=true; u.add(t);
+    if(state.chairs){
+      const n=8, R=1.15;
+      for(let i=0;i<n;i++){
+        const a=i/n*Math.PI*2;
+        const c=new THREE.Mesh(chairGeo(), matChair); c.castShadow=true;
+        c.position.set(Math.cos(a)*R, 0, Math.sin(a)*R); c.rotation.y = -a + Math.PI/2;
+        u.add(c);
+      }
+    }
+  }
+  return u;
+}
 // Ширээний автомат тор (160⌀, ~2.8м зай, ханаас 1.6м) — эхний байршил
 function gridPositions(){
-  const margin = 1.6, spacing = 2.8;
+  const margin = 2.0, spacing = state.chairs ? 3.4 : 2.8;   // сандалтай бол илүү зай
   const innerW = state.w - 2*margin, innerD = state.d - 2*margin;
   const pos = [];
   if(innerW < 0 || innerD < 0) return pos;
@@ -412,6 +478,19 @@ function buildStage(){
   updateReadout();
 }
 
+// Асар дотор жижиг тайз (ард талд) — дэк + хөл + намхан гэрэлтүүлгийн трасс
+function addStageInTent(g, W, D){
+  const sw=Math.min(W*0.75, 8), sd=Math.min(3.2, D*0.28), deckH=0.6, thk=0.12;
+  const zc=-D/2 + sd/2 + 0.7;
+  const deck=new THREE.Mesh(new THREE.BoxGeometry(sw, thk, sd), matDeck);
+  deck.position.set(0, deckH-thk/2, zc); deck.castShadow=true; deck.receiveShadow=true; g.add(deck);
+  const cx=sw/2-0.4, czf=zc+sd/2-0.4, czb=zc-sd/2+0.4;
+  [[cx,czf],[cx,czb],[-cx,czf],[-cx,czb]].forEach(([x,z])=> placeTruss(g,(deckH-thk),'y',x,(deckH-thk)/2,z));
+  const towerH=Math.min(3.0, state.h + 0.2);
+  const tx=sw/2-0.3;
+  [[tx,czb],[-tx,czb]].forEach(([x,z])=> placeTruss(g,towerH,'y',x,towerH/2,z));
+  placeTruss(g, sw-0.4, 'x', 0, towerH, czb);
+}
 // ---------- АСАР (marquee tent) ----------
 function buildTent(){
   if(stageGroup){ scene.remove(stageGroup); }
@@ -479,24 +558,26 @@ function buildTent(){
     back.position.set(0, eaveH/2, -D/2); back.castShadow=true; g.add(back);
   }
 
-  // --- 160⌀ дугуй ширээ — гараар чирж болдог тусдаа объектууд ---
+  // --- ширээ+сандал — гараар чирж болдог нэгжүүд ---
   draggableTables.length = 0; _tableCount = 0;
   if(state.tables){
     if(!state.tablePos || !state.tablePos.length) state.tablePos = gridPositions();
     state.tablePos.forEach(clampTable);
     state.tablePos.forEach((p,i)=>{
-      const m = new THREE.Mesh(tableGeo(), matCloth);
-      m.position.set(p.x, 0, p.z); m.castShadow = true; m.receiveShadow = true; m.userData.ti = i;
-      g.add(m); draggableTables.push(m);
+      const u = makeTableUnit();
+      u.position.set(p.x, 0, p.z); u.userData.ti = i;
+      g.add(u); draggableTables.push(u);
     });
     _tableCount = state.tablePos.length;
   }
+  // --- тайз (асар дотор, ард талд) ---
+  if(state.stageInTent) addStageInTent(g, W, D);
 
   stageGroup = g; scene.add(g);
   controls.target.y = targetY();
   updateReadout();
 }
-function build(){ setEnv(); if(state.mode==='tent') buildTent(); else buildStage(); }
+function build(){ setEnv(); if(state.mode==='tent') buildTent(); else buildStage(); if(typeof scheduleAR==='function') scheduleAR(); }
 
 function updateReadout(){
   const r = document.getElementById('readout');
@@ -550,6 +631,7 @@ function applyMode(mode){
   document.querySelectorAll('#modeSeg .chip').forEach(c=>c.setAttribute('aria-pressed', c.dataset.mode===mode?'true':'false'));
   document.getElementById('stageToggles').style.display = mode==='stage' ? '' : 'none';
   document.getElementById('tentToggles').style.display  = mode==='tent'  ? '' : 'none';
+  document.getElementById('tentTables').style.display   = mode==='tent'  ? '' : 'none';
   renderSizes(); renderHeights(); build(); frameCamera();
 }
 document.querySelectorAll('#modeSeg .chip').forEach(c=> c.onclick=()=>applyMode(c.dataset.mode));
@@ -560,6 +642,14 @@ document.getElementById('tgl-roof').onchange=e=>{ state.roof=e.target.checked; b
 document.getElementById('tgl-gable').onchange=e=>{ state.gable=e.target.checked; build(); };
 document.getElementById('tgl-walls').onchange=e=>{ state.walls=e.target.checked; build(); };
 document.getElementById('tgl-tables').onchange=e=>{ state.tables=e.target.checked; build(); };
+document.getElementById('tgl-chairs').onchange=e=>{ state.chairs=e.target.checked; state.tablePos=null; build(); };
+document.getElementById('tgl-stage').onchange=e=>{ state.stageInTent=e.target.checked; build(); };
+document.querySelectorAll('#tableType .chip').forEach(c=> c.onclick=()=>{
+  state.tableType=c.dataset.ttype;
+  document.querySelectorAll('#tableType .chip').forEach(x=>x.setAttribute('aria-pressed', x===c?'true':'false'));
+  if(!state.tables){ state.tables=true; document.getElementById('tgl-tables').checked=true; }
+  build();
+});
 document.getElementById('add-table').onclick=()=>{
   if(state.mode!=='tent') return;
   const tgl=document.getElementById('tgl-tables'); if(!state.tables){ state.tables=true; tgl.checked=true; }
@@ -574,7 +664,9 @@ const ndc = new THREE.Vector2();
 const dragPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
 let draggingTable = null;
 function setNDC(e){ const r=renderer.domElement.getBoundingClientRect(); ndc.x=((e.clientX-r.left)/r.width)*2-1; ndc.y=-((e.clientY-r.top)/r.height)*2+1; }
-function tableAt(e){ setNDC(e); ray.setFromCamera(ndc,camera); const h=ray.intersectObjects(draggableTables,false); return h.length?h[0].object:null; }
+function tableAt(e){ setNDC(e); ray.setFromCamera(ndc,camera);
+  const h=ray.intersectObjects(draggableTables,true); if(!h.length) return null;
+  let o=h[0].object; while(o && draggableTables.indexOf(o)<0) o=o.parent; return o||null; }
 renderer.domElement.addEventListener('pointerdown', e=>{
   if(state.mode!=='tent' || !state.tables) return;
   const t=tableAt(e);
@@ -603,6 +695,25 @@ renderer.domElement.addEventListener('dblclick', e=>{
 let spin=false;
 document.getElementById('tgl-spin').onchange=e=>{ spin=e.target.checked; };
 document.getElementById('reset').onclick=()=> frameCamera();
+
+// ---------- AR (model-viewer: Android Scene Viewer + iOS Quick Look) ----------
+const mv = document.getElementById('mv');
+let arURL=null, _arT=null;
+function updateARModel(){
+  if(!stageGroup) return;
+  try{
+    new GLTFExporter().parse(stageGroup, glb=>{
+      if(arURL) URL.revokeObjectURL(arURL);
+      arURL = URL.createObjectURL(new Blob([glb],{type:'model/gltf-binary'}));
+      mv.setAttribute('src', arURL);
+    }, ()=>{}, { binary:true });
+  }catch(e){}
+}
+function scheduleAR(){ clearTimeout(_arT); _arT=setTimeout(updateARModel, 450); }
+document.getElementById('ar-btn').onclick=()=>{
+  if(mv && mv.canActivateAR){ mv.activateAR(); }
+  else { alert('AR-г гар утсан дээрээ (Android эсвэл iPhone) нээж ашиглана уу. Компьютер дээр AR боломжгүй.'); }
+};
 renderSizes(); renderHeights();
 
 // ---------- loop ----------
