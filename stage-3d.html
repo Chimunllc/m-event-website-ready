@@ -113,7 +113,19 @@
     <label class="tgl"><input type="checkbox" id="tgl-led"><span class="sw"></span>LED дэлгэц</label>
     <label class="tgl"><input type="checkbox" id="tgl-roof"><span class="sw"></span>Дээвэр</label>
     <button class="ghost" id="clear-cells" style="display:none;">✕ Цэвэрлэх</button>
-    <span id="buildTip" style="font-size:11px;color:var(--dim);display:none;">Шалан дээр товшиж хавтан нэм/хас</span>
+  </div>
+  <div class="row" id="buildBar" style="display:none">
+    <span class="lbl">Нэмэх</span>
+    <div class="sizes" id="buildTargetSeg">
+      <button class="chip" data-bt="deck" aria-pressed="true">🟫 Хавтан</button>
+      <button class="chip" data-bt="truss" aria-pressed="false">🏗 Каркас</button>
+    </div>
+    <div class="sizes" id="trussHSeg" style="display:none;">
+      <button class="chip" data-th="2" aria-pressed="false">h 2м</button>
+      <button class="chip" data-th="3" aria-pressed="true">h 3м</button>
+      <button class="chip" data-th="4" aria-pressed="false">h 4м</button>
+    </div>
+    <span id="buildTip" style="font-size:11px;color:var(--dim);">Шалан дээр товшиж нэмнэ/хасна</span>
   </div>
   <div class="row" id="tentToggles" style="display:none">
     <label class="tgl"><input type="checkbox" id="tgl-gable" checked><span class="sw"></span>Дүнзэн үзүүр</label>
@@ -336,17 +348,25 @@ function placeTruss(group, len, axis, cx, cy, cz){
   else if(axis==='z') m.rotation.y = Math.PI/2;
   m.position.set(cx,cy,cz); group.add(m);
 }
+// Дурын 2 цэгийн хооронд трасс (диагональ ч болно). Урт буцаана.
+function placeTrussBetween(group, p1, p2){
+  const dir=new THREE.Vector3().subVectors(p2,p1); const len=dir.length(); if(len<0.05) return 0;
+  const m=trussMesh(len);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0), dir.clone().normalize());
+  m.position.copy(p1).add(p2).multiplyScalar(0.5); group.add(m); return len;
+}
 
 // ---------- stage assembly ----------
 let stageGroup = null;
 const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false, walls:false, gable:true,
-  tables:false, tablePos:null, tableType:'round', chairs:true, stageInTent:false, build:false, cells:null };
-// ₮ — тайзны 1×1м хавтангийн түрээсийн үнэ (нэг арга хэмжээнд). Трасс/LED тусдаа тооцно.
-const PRICE = { module:25000 };
+  tables:false, tablePos:null, tableType:'round', chairs:true, stageInTent:false,
+  build:false, cells:null, buildTarget:'deck', trussTowers:null, trussH:3 };
+// ₮ түрээсийн үнэ (нэг арга хэмжээнд). trussM = 1м каркасын үнэ.
+const PRICE = { module:25000, trussM:40000 };
 function cellsRect(W,D){ const s=new Set(); const i0=-Math.floor(W/2), j0=-Math.floor(D/2);
   for(let i=0;i<W;i++) for(let j=0;j<D;j++) s.add((i0+i)+','+(j0+j)); return s; }
 function moneyFmt(n){ return (Math.round(n)||0).toLocaleString('en-US')+'₮'; }
-let _tableCount = 0;
+let _tableCount = 0, _trussMeters = 0;
 const draggableTables = [];   // ширээ+сандлын Group-ууд (userData.ti)
 // Нэг ширээний нэгж (ширээ + тойрон/хажуугийн сандал) — Group буцаана
 function makeTableUnit(){
@@ -504,20 +524,30 @@ function buildStageModular(){
   const corners=new Set(); cells.forEach(([i,j])=>{ corners.add(i+','+j);corners.add((i+1)+','+j);corners.add(i+','+(j+1));corners.add((i+1)+','+(j+1)); });
   const legG=[]; corners.forEach(c=>{ const [x,z]=c.split(',').map(Number); const b=new THREE.BoxGeometry(0.09,H-thk,0.09); b.translate(x,(H-thk)/2,z); legG.push(b); });
   if(legG.length){ const legs=new THREE.Mesh(mergeGeometries(legG,false), matAlu); legs.castShadow=true; g.add(legs); }
-  // гэрэлтүүлгийн трасс (bounding box дээгүүр)
-  if(state.truss && cells.length){
-    const towerH=Math.max(4.2, H+3.2), tx0=minI+0.35, tx1=maxI-0.35, tz0=minJ+0.35, tz1=maxJ-0.35;
-    [[tx0,tz0],[tx1,tz0],[tx0,tz1],[tx1,tz1]].forEach(([x,z])=> placeTruss(g,towerH,'y',x,towerH/2,z));
-    placeTruss(g, (tx1-tx0), 'x', (tx0+tx1)/2, towerH, tz0);
-    placeTruss(g, (tx1-tx0), 'x', (tx0+tx1)/2, towerH, tz1);
-    placeTruss(g, (tz1-tz0), 'z', tx0, towerH, (tz0+tz1)/2);
-    placeTruss(g, (tz1-tz0), 'z', tx1, towerH, (tz0+tz1)/2);
-    const nL=Math.max(3, Math.round(maxI-minI));
-    for(let k=0;k<nL;k++){ const x=tx0+ (k+0.5)*((tx1-tx0)/nL);
-      const head=new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.13,0.24,12), matLamp); head.position.set(x,towerH-0.45,tz0); head.rotation.x=0.5; g.add(head);
-      const lens=new THREE.Mesh(new THREE.CircleGeometry(0.1,14), matLens); lens.position.set(x,towerH-0.55,tz0+0.09); lens.rotation.x=-0.5-Math.PI; g.add(lens);
+  // --- КАРКАС (лего box-truss тауэр + 30×30×30 холбоос) — өөрсдөө байрлуулна ---
+  _trussMeters = 0;
+  if(state.trussTowers && state.trussTowers.size){
+    const th = state.trussH;
+    const towers = [...state.trussTowers].map(k=>k.split(',').map(Number));
+    const cubeG=[];
+    const addCube=(x,y,z)=>{ const b=new THREE.BoxGeometry(0.3,0.3,0.3); b.translate(x,y,z); cubeG.push(b); };
+    // босоо тауэрууд + метр бүрт холбоос шоо
+    towers.forEach(([i,j])=>{ placeTruss(g, th, 'y', i, th/2, j); for(let y=0;y<=th;y++) addCube(i,y,j); _trussMeters += th; });
+    // дээд талыг хамгийн ойроор автоматаар холбоно (MST — үргэлж холбогдож frame болно)
+    if(towers.length>1){
+      const edges=[];
+      for(let a=0;a<towers.length;a++) for(let b=a+1;b<towers.length;b++){
+        const dx=towers[a][0]-towers[b][0], dz=towers[a][1]-towers[b][1];
+        edges.push({a,b,d:Math.hypot(dx,dz)});
+      }
+      edges.sort((x,y)=>x.d-y.d);
+      const par=towers.map((_,i)=>i); const find=x=>par[x]===x?x:(par[x]=find(par[x]));
+      edges.forEach(e=>{ const ra=find(e.a),rb=find(e.b); if(ra!==rb){ par[ra]=rb;
+        const p1=new THREE.Vector3(towers[e.a][0],th,towers[e.a][1]), p2=new THREE.Vector3(towers[e.b][0],th,towers[e.b][1]);
+        _trussMeters += placeTrussBetween(g,p1,p2);
+      }});
     }
-    const pl=new THREE.PointLight(0xffa64d,5,16,2); pl.position.set((tx0+tx1)/2,towerH-0.6,tz0-0.5); scene.add(pl); lampLights.push(pl);
+    if(cubeG.length){ const cubes=new THREE.Mesh(mergeGeometries(cubeG,false), matAlu); cubes.castShadow=true; g.add(cubes); }
   }
   stageGroup=g; scene.add(g);
   controls.target.y = targetY();
@@ -525,7 +555,8 @@ function buildStageModular(){
 }
 function stagePrice(){
   const n = state.cells ? state.cells.size : 0;
-  return { modules:n, total:n*PRICE.module };   // зөвхөн тайзны хавтан (трасс/LED тусдаа)
+  const deck = n*PRICE.module, truss = Math.round(_trussMeters)*PRICE.trussM;
+  return { modules:n, trussM:Math.round(_trussMeters), deck, truss, total:deck+truss };
 }
 // Асар дотор жижиг тайз (ард талд) — дэк + хөл + намхан гэрэлтүүлгийн трасс
 function addStageInTent(g, W, D){
@@ -642,8 +673,9 @@ function updateReadout(){
     const tip=document.getElementById('tableTip'); if(tip) tip.style.display = state.tables ? '' : 'none';
   } else if(state.build){
     const pr=stagePrice();
-    r.innerHTML = `<b>${pr.modules} хавтан</b> <span>· ${pr.modules} м² · h ${state.h}м · 1×1м</span>`;
-    const pe=document.getElementById('price'); if(pe){ pe.style.display=''; pe.innerHTML=`💰 <b>${moneyFmt(pr.total)}</b> <span style="font-size:10px;color:var(--dim)">тайзны хавтан</span>`; }
+    r.innerHTML = `<b>${pr.modules} хавтан</b> <span>· ${pr.modules} м²${pr.trussM?` · ${pr.trussM}м каркас`:''} · h ${state.h}м</span>`;
+    const pe=document.getElementById('price'); if(pe){ pe.style.display='';
+      pe.innerHTML=`💰 <b>${moneyFmt(pr.total)}</b> <span style="font-size:10px;color:var(--dim)">${pr.modules}хавтан${pr.trussM?` + ${pr.trussM}м каркас`:''}</span>`; }
   } else {
     feats = [state.truss?'трасс':null, state.led?'LED':null, state.roof?'дээвэр':null].filter(Boolean).join(' · ');
     r.innerHTML = `<b>${state.w} × ${state.d} м</b> <span>· ${(state.w*state.d)} м² · h ${state.h}м${feats?' · '+feats:''}</span>`;
@@ -704,10 +736,27 @@ document.getElementById('tgl-build').onchange=e=>{
   state.build=e.target.checked;
   if(state.build && !state.cells) state.cells=cellsRect(state.w,state.d);
   document.getElementById('clear-cells').style.display=state.build?'':'none';
-  document.getElementById('buildTip').style.display=state.build?'':'none';
+  document.getElementById('buildBar').style.display=state.build?'':'none';
+  ['tgl-truss','tgl-led','tgl-roof'].forEach(id=>{ const el=document.getElementById(id); const lab=el&&el.closest('.tgl'); if(lab) lab.style.display=state.build?'none':''; });
   build(); frameCamera();
 };
-document.getElementById('clear-cells').onclick=()=>{ state.cells=new Set(); build(); };
+document.getElementById('clear-cells').onclick=()=>{
+  if(state.buildTarget==='truss') state.trussTowers=new Set(); else state.cells=new Set();
+  build();
+};
+document.querySelectorAll('#buildTargetSeg .chip').forEach(c=> c.onclick=()=>{
+  state.buildTarget=c.dataset.bt;
+  document.querySelectorAll('#buildTargetSeg .chip').forEach(x=>x.setAttribute('aria-pressed', x===c?'true':'false'));
+  document.getElementById('trussHSeg').style.display = state.buildTarget==='truss'?'':'none';
+  document.getElementById('buildTip').textContent = state.buildTarget==='truss'
+    ? 'Зангилаан дээр товшиж каркас босго — 2+ тавихад дээрээ холбогдоно'
+    : 'Шалан дээр товшиж хавтан нэм/хас';
+});
+document.querySelectorAll('#trussHSeg .chip').forEach(c=> c.onclick=()=>{
+  state.trussH=+c.dataset.th;
+  document.querySelectorAll('#trussHSeg .chip').forEach(x=>x.setAttribute('aria-pressed', x===c?'true':'false'));
+  build();
+});
 document.getElementById('tgl-gable').onchange=e=>{ state.gable=e.target.checked; build(); };
 document.getElementById('tgl-walls').onchange=e=>{ state.walls=e.target.checked; build(); };
 document.getElementById('tgl-tables').onchange=e=>{ state.tables=e.target.checked; build(); };
@@ -768,10 +817,18 @@ renderer.domElement.addEventListener('pointerup', e=>{
   if(state.mode!=='stage' || !state.build) return;
   if(Math.abs(e.clientX-_tapX)>6 || Math.abs(e.clientY-_tapY)>6) return;   // чирсэн = эргэлт
   setNDC(e); ray.setFromCamera(ndc,camera);
-  const tapPlane=new THREE.Plane(new THREE.Vector3(0,1,0), -state.h);
+  const tapPlane=new THREE.Plane(new THREE.Vector3(0,1,0), state.buildTarget==='truss'?0:-state.h);
   const p=new THREE.Vector3();
-  if(ray.ray.intersectPlane(tapPlane,p)){
-    const i=Math.floor(p.x), j=Math.floor(p.z);
+  if(!ray.ray.intersectPlane(tapPlane,p)) return;
+  if(state.buildTarget==='truss'){
+    const i=Math.round(p.x), j=Math.round(p.z);          // каркас = зангилаа (integer цэг)
+    if(Math.abs(i)>25||Math.abs(j)>25) return;
+    const k=i+','+j;
+    if(!state.trussTowers) state.trussTowers=new Set();
+    if(state.trussTowers.has(k)) state.trussTowers.delete(k); else state.trussTowers.add(k);
+    build();
+  } else {
+    const i=Math.floor(p.x), j=Math.floor(p.z);          // хавтан = нүд
     if(Math.abs(i)>25||Math.abs(j)>25) return;
     const k=i+','+j;
     if(!state.cells) state.cells=new Set();
