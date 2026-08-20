@@ -76,11 +76,6 @@
   .pl{font-size:11px;color:var(--mut);font-weight:600}
   .numv{font-size:12px;min-width:60px;text-align:center;color:var(--txt);font-variant-numeric:tabular-nums}
   .popup .chip{padding:6px 11px}
-  .txt-input{flex:1 1 100%;box-sizing:border-box;background:#1b2029;border:1px solid var(--line);border-radius:9px;
-    color:var(--txt);font-size:12.5px;padding:7px 10px;outline:none}
-  .txt-input:focus{border-color:var(--accent-soft)}
-  #map-credit{position:fixed;left:14px;bottom:10px;z-index:9;font-size:10px;color:var(--mut);
-    background:rgba(10,12,17,.6);border:1px solid var(--line);border-radius:6px;padding:3px 8px;backdrop-filter:blur(6px)}
   @media (max-width:600px){
     .dock{top:auto;bottom:0;left:0;right:0;width:auto;max-height:58vh;border-radius:16px 16px 0 0}
     .popup{top:auto;bottom:0;left:0;right:0;width:auto;max-height:72vh;border-radius:16px 16px 0 0}
@@ -122,9 +117,7 @@
   <div class="tag">30×30 трасс · Pro</div>
 </div>
 <div class="readout" id="readout"></div>
-<div class="readout" id="price" style="top:102px;display:none;font-size:14px;"></div>
-<div id="map-credit" style="display:none;">Imagery © Esri, Maxar, Earthstar Geographics</div>
-<div class="hint">Чирж эргүүлнэ · 2 хуруу / дугуйгаар зумна</div>
+<div class="readout" id="price" style="top:102px;display:none;font-size:14px;"></div><div class="hint">Чирж эргүүлнэ · 2 хуруу / дугуйгаар зумна</div>
 
 <div class="dock" id="dock">
   <div class="panel-head" id="dock-head">
@@ -137,13 +130,6 @@
     <div class="spacer"></div>
     <button class="ghost" id="ar-btn" style="border-color:var(--accent);color:var(--accent);font-weight:700;">📱 AR</button>
     <button class="ghost" id="reset">↺ Байрлал</button>
-  </div>
-  <div class="row" id="mapRow">
-    <span class="lbl">📍 Байршил</span>
-    <input id="map-input" class="txt-input" placeholder="Google Map линк эсвэл: өргөрөг, уртраг" autocomplete="off">
-    <button class="ghost" id="map-load">Газрын зураг оруулах</button>
-    <button class="ghost" id="map-clear" style="display:none;">✕ Арилгах</button>
-    <span id="map-msg" style="font-size:11px;color:var(--dim);flex-basis:100%;"></span>
   </div>
   <div class="row" id="stageModeRow">
     <span class="lbl">Загвар</span>
@@ -214,7 +200,16 @@
       <button class="chip" data-add="ltable">▬ Урт ширээ</button>
       <button class="chip" data-add="chair">🪑 Сандал</button>
       <button class="chip" data-add="tree">🌲 Мод</button>
+      <button class="chip" data-add="hill">⛰ Уул</button>
+      <button class="chip" data-draw="river">🌊 Гол зурах</button>
+      <button class="chip" data-draw="forest">🌳 Ой зурах</button>
     </div>
+  </div>
+  <div class="row" id="drawBar" style="display:none">
+    <span class="lbl" id="drawLbl">Зурж байна</span>
+    <button class="ghost" id="draw-finish" style="border-color:var(--accent);color:var(--accent);font-weight:700;">✓ Дуусгах</button>
+    <button class="ghost" id="draw-cancel">✕ Болих</button>
+    <span id="drawTip" style="font-size:11px;color:var(--dim);flex-basis:100%;margin-top:2px;">Газар дээр дараалан дарж цэг тавь → Дуусгах</span>
   </div>
   <div class="row" id="venueSel" style="display:none">
     <span class="lbl" id="venueSelLbl">Сонгосон</span>
@@ -555,7 +550,7 @@ const state = { mode:'venue', w:8, d:4, h:1.0, stageTrussH:4.5, truss:true, led:
   tables:false, tablePos:null, tableType:'round', chairs:true, stageInTent:false,
   build:false, cells:null, buildTarget:'deck',
   trussSegs:[], trussBlocks:[], trussTip:null, trussDel:false,
-  items:[], sel:null, editId:null,
+  items:[], sel:null, editId:null, draw:null,
   banner:{on:false, type:'print', img:null, w:null, h:null, dx:0, dy:0, dz:0} };
 // ₮ түрээсийн үнэ (нэг арга хэмжээнд): 1×1м хавтан 25,000 · 1м каркас 25,000
 const PRICE = { module:25000, trussM:25000 };
@@ -859,9 +854,9 @@ let _venueId = 0, _selRing = null;
 const VENUE_DEFAULTS = {
   stage:  { w:6, d:4, h:0.6, truss:true, trussH:4.5, led:false, roof:false },
   tent:   { w:10, d:15, h:2.6, walls:false, gable:true },
-  rtable: {}, ltable: {}, chair: {}, tree: {}
+  rtable: {}, ltable: {}, chair: {}, tree: {}, hill: { r:10, h:4 }
 };
-const VENUE_LABEL = { stage:'Тайз', tent:'Асар', rtable:'Дугуй ширээ', ltable:'Урт ширээ', chair:'Сандал', tree:'Мод' };
+const VENUE_LABEL = { stage:'Тайз', tent:'Асар', rtable:'Дугуй ширээ', ltable:'Урт ширээ', chair:'Сандал', tree:'Мод', hill:'Уул', river:'Гол', forest:'Ой' };
 // --- объект тус бүрийн Group үүсгэгчид (одоо байгаа геометрийн туслахуудыг дахин ашиглана) ---
 function objStage(p){
   const g=new THREE.Group();
@@ -924,11 +919,60 @@ function objTent(p){
 function objChair(){ const g=new THREE.Group(); const c=new THREE.Mesh(chairGeo(),matChair); c.castShadow=true; g.add(c); return g; }
 const _leafMat=new THREE.MeshStandardMaterial({color:0x3f7d3a, roughness:1});
 const _barkMat=new THREE.MeshStandardMaterial({color:0x6b4b2a, roughness:1});
-function objTree(){
+function objTree(s){
   const g=new THREE.Group();
   const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.2,1.1,7),_barkMat); trunk.position.y=0.55; trunk.castShadow=true; g.add(trunk);
   const c1=new THREE.Mesh(new THREE.ConeGeometry(1.15,1.8,9),_leafMat); c1.position.y=1.7; c1.castShadow=true; g.add(c1);
   const c2=new THREE.Mesh(new THREE.ConeGeometry(0.9,1.4,9),_leafMat); c2.position.y=2.5; c2.castShadow=true; g.add(c2);
+  if(s) g.scale.setScalar(s);
+  return g;
+}
+// Уул / толгод — гөлгөр бөмбөлөг (доод хагас), өндөр/радиус тохируулна
+const _hillMat=new THREE.MeshStandardMaterial({color:0x4a6437, roughness:1});
+function objHill(it){
+  const r=it.r||10, h=it.h||4;
+  const geo=new THREE.SphereGeometry(r,32,16,0,Math.PI*2,0,Math.PI*0.5); geo.scale(1,h/r,1);
+  const m=new THREE.Mesh(geo,_hillMat); m.castShadow=m.receiveShadow=true;
+  const g=new THREE.Group(); g.add(m); return g;
+}
+// Гол — гараар зурсан замын дагуу усны туузан гадаргуу (өргөн тохируулна)
+const _waterMat=new THREE.MeshStandardMaterial({color:0x2f6ea5, roughness:0.22, metalness:0.15, transparent:true, opacity:0.9, side:THREE.DoubleSide});
+function riverGeo(pts,width){
+  const w=width/2, verts=[], idx=[];
+  for(let i=0;i<pts.length;i++){
+    const prev=pts[Math.max(0,i-1)], next=pts[Math.min(pts.length-1,i+1)];
+    let dx=next.x-prev.x, dz=next.z-prev.z; const len=Math.hypot(dx,dz)||1; dx/=len; dz/=len;
+    const nx=-dz, nz=dx;
+    verts.push(pts[i].x+nx*w, 0, pts[i].z+nz*w);
+    verts.push(pts[i].x-nx*w, 0, pts[i].z-nz*w);
+  }
+  for(let i=0;i<pts.length-1;i++){ const a=i*2,b=i*2+1,c=(i+1)*2,d=(i+1)*2+1; idx.push(a,c,b, b,c,d); }
+  const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
+  geo.setIndex(idx); geo.computeVertexNormals(); return geo;
+}
+function objRiver(it){
+  const g=new THREE.Group(); if(!it.pts||it.pts.length<2) return g;
+  const m=new THREE.Mesh(riverGeo(it.pts, it.width||3), _waterMat); m.position.y=0.05; m.receiveShadow=true; g.add(m);
+  return g;
+}
+function pointInPoly(x,z,pts){
+  let inside=false;
+  for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+    const xi=pts[i].x,zi=pts[i].z,xj=pts[j].x,zj=pts[j].z;
+    if(((zi>z)!==(zj>z)) && (x < (xj-xi)*(z-zi)/(zj-zi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+// Ой / модны бүс — гараар зурсан талбайг модоор дүүргэнэ
+function objForest(it){
+  const g=new THREE.Group(); const pts=it.pts; if(!pts||pts.length<3) return g;
+  let minx=1e9,maxx=-1e9,minz=1e9,maxz=-1e9;
+  pts.forEach(p=>{minx=Math.min(minx,p.x);maxx=Math.max(maxx,p.x);minz=Math.min(minz,p.z);maxz=Math.max(maxz,p.z);});
+  const sp=it.spacing||6; let n=0;
+  for(let x=minx;x<=maxx&&n<220;x+=sp) for(let z=minz;z<=maxz&&n<220;z+=sp){
+    const jx=x+(Math.random()-0.5)*sp*0.7, jz=z+(Math.random()-0.5)*sp*0.7;
+    if(pointInPoly(jx,jz,pts)){ const t=objTree(0.7+Math.random()*0.5); t.position.set(jx,0,jz); t.rotation.y=Math.random()*6.283; g.add(t); n++; }
+  }
   return g;
 }
 function makeVenueObj(it){
@@ -938,11 +982,15 @@ function makeVenueObj(it){
   if(it.type==='ltable')  return makeTableUnit('long', true);
   if(it.type==='chair')   return objChair();
   if(it.type==='tree')    return objTree();
+  if(it.type==='hill')    return objHill(it);
+  if(it.type==='river')   return objRiver(it);
+  if(it.type==='forest')  return objForest(it);
   return new THREE.Group();
 }
 function itemRadius(it){
   if(it.type==='stage'||it.type==='tent') return Math.hypot(it.w,it.d)/2+0.4;
   if(it.type==='ltable') return 1.9; if(it.type==='rtable') return 1.6;
+  if(it.type==='hill') return (it.r||10)+0.5;
   if(it.type==='tree') return 1.2; return 0.45;
 }
 function selRing(it){
@@ -950,6 +998,7 @@ function selRing(it){
   const m=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:0xffb14d,transparent:true,opacity:0.95,side:THREE.DoubleSide}));
   m.position.set(it.x,0.03,it.z); m.renderOrder=2; return m;
 }
+let mapPlane=null;   // (газрын зураг хассан — үргэлж null; ирээдүйд газрын гадаргуу нэмбэл ашиглана)
 const _downRay=new THREE.Raycaster();
 function terrainHeightAt(x,z){
   if(!mapPlane) return 0;
@@ -962,16 +1011,31 @@ function buildVenue(){
   lampLights.forEach(l=>scene.remove(l)); lampLights.length=0;
   if(venueGroup) scene.remove(venueGroup);
   venueGroup=new THREE.Group(); venuePick.length=0; _selRing=null;
+  const pathType=it=>(it.type==='river'||it.type==='forest');
   state.items.forEach(it=>{
     const og=makeVenueObj(it);
-    og.position.set(it.x, terrainHeightAt(it.x,it.z), it.z); og.rotation.y=it.rot||0;
+    if(pathType(it)){ og.position.set(0,0,0); }               // гол/ой = үнэмлэхүй цэгтэй
+    else { og.position.set(it.x, terrainHeightAt(it.x,it.z), it.z); og.rotation.y=it.rot||0; }
     og.userData.itemId=it.id;
     og.traverse(o=>{ if(o.isMesh) o.userData.itemId=it.id; });
     venueGroup.add(og); venuePick.push(og);
-    if(state.sel===it.id){ const rg=selRing(it); rg.position.y+=terrainHeightAt(it.x,it.z); venueGroup.add(rg); _selRing=rg; }
+    if(state.sel===it.id && !pathType(it)){ const rg=selRing(it); rg.position.y+=terrainHeightAt(it.x,it.z); venueGroup.add(rg); _selRing=rg; }
   });
+  if(state.draw) drawPreview();   // зурж буй зам/бүсийг харуулна
   scene.add(venueGroup);
   updateReadout();
+}
+// Зурж байх үеийн урьдчилсан харагдац (цэгүүд + туслах шугам)
+function drawPreview(){
+  const d=state.draw; if(!d||!d.pts.length) return;
+  const mkMat=new THREE.MeshBasicMaterial({color:0xffb14d});
+  d.pts.forEach(p=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(0.4,10,8),mkMat); m.position.set(p.x,0.4,p.z); venueGroup.add(m); });
+  if(d.pts.length>1){
+    const arr=[]; d.pts.forEach(p=>arr.push(p.x,0.3,p.z));
+    if(d.type==='forest'){ const f=d.pts[0]; arr.push(f.x,0.3,f.z); }  // бүс хаана
+    const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.Float32BufferAttribute(arr,3));
+    venueGroup.add(new THREE.Line(geo, new THREE.LineBasicMaterial({color:0xffb14d})));
+  }
 }
 function venueItem(id){ return state.items.find(i=>i.id===id); }
 // давхцахгүй сул зай хайж байрлуулна (тойрог спираль)
@@ -1005,10 +1069,11 @@ function updateReadout(){
   const r = document.getElementById('readout');
   let feats;
   if(state.mode==='venue'){
-    const c={stage:0,tent:0,rtable:0,ltable:0,chair:0,tree:0}; let sum=0;
+    const c={stage:0,tent:0,rtable:0,ltable:0,chair:0,tree:0,hill:0,river:0,forest:0}; let sum=0;
     state.items.forEach(i=>{ c[i.type]=(c[i.type]||0)+1; if(i.type==='stage'||i.type==='tent') sum+=Math.round((i.w||0)*(i.d||0))*PRICE.module; });
     const parts=[]; if(c.stage)parts.push(c.stage+' тайз'); if(c.tent)parts.push(c.tent+' асар');
-    const tbl=c.rtable+c.ltable; if(tbl)parts.push(tbl+' ширээ'); if(c.chair)parts.push(c.chair+' сандал'); if(c.tree)parts.push(c.tree+' мод');
+    const tbl=c.rtable+c.ltable; if(tbl)parts.push(tbl+' ширээ'); if(c.chair)parts.push(c.chair+' сандал');
+    if(c.tree)parts.push(c.tree+' мод'); if(c.hill)parts.push(c.hill+' уул'); if(c.river)parts.push(c.river+' гол'); if(c.forest)parts.push(c.forest+' ой');
     r.innerHTML = `<b>${state.items.length} объект</b> <span>· ${parts.join(' · ')||'хоосон талбай'}</span>`;
     const pe=document.getElementById('price');
     if(pe){ if(sum>0){ pe.style.display=''; pe.innerHTML=`💰 <b>${moneyFmt(sum)}</b> <span style="font-size:10px;color:var(--dim)">тайз/асрын үнэ (ойролцоо)</span>`; } else pe.style.display='none'; }
@@ -1105,9 +1170,33 @@ function renderVenueSel(){
 // сонгосон тайз/асрын хэлбэр хэмжээ, онцлогийг ШУУД талбай дээр тааруулна
 const STAGE_SIZES=[{w:4,d:3},{w:6,d:4},{w:8,d:4},{w:10,d:6},{w:12,d:8}];
 const TENT_SIZES=[{w:6,d:9},{w:10,d:15},{w:12,d:20},{w:15,d:30}];
+function stepRow(label, valTxt, dec, inc){
+  return `<div class="row"><span class="lbl">${label}</span><button class="chip" ${dec}>−</button><span class="numv">${valTxt}</span><button class="chip" ${inc}>＋</button><div class="spacer"></div></div>`;
+}
 function renderStructCfg(it){
   const box=document.getElementById('structCfg'); if(!box) return;
-  if(!it || (it.type!=='stage' && it.type!=='tent')){ box.innerHTML=''; return; }
+  if(!it){ box.innerHTML=''; return; }
+  // Гол — өргөн тохируулна
+  if(it.type==='river'){
+    box.innerHTML=stepRow('Өргөн', (it.width||3)+'м', 'data-rv="-1"', 'data-rv="1"');
+    box.querySelectorAll('[data-rv]').forEach(b=>b.onclick=()=>{ it.width=Math.max(1,Math.round((it.width||3)+Number(b.dataset.rv))); buildVenue(); renderVenueSel(); });
+    return;
+  }
+  // Ой — модны нягтрал (зай)
+  if(it.type==='forest'){
+    box.innerHTML=stepRow('Нягт (зай)', (it.spacing||6)+'м', 'data-fs="1"', 'data-fs="-1"');
+    box.querySelectorAll('[data-fs]').forEach(b=>b.onclick=()=>{ it.spacing=Math.max(3,Math.min(15,(it.spacing||6)+Number(b.dataset.fs))); buildVenue(); renderVenueSel(); });
+    return;
+  }
+  // Уул — радиус/өндөр
+  if(it.type==='hill'){
+    box.innerHTML=stepRow('Хэмжээ', (it.r||10)+'м', 'data-hr="-2"', 'data-hr="2"')
+                + stepRow('Өндөр', (it.h||4)+'м', 'data-hh="-1"', 'data-hh="1"');
+    box.querySelectorAll('[data-hr]').forEach(b=>b.onclick=()=>{ it.r=Math.max(3,(it.r||10)+Number(b.dataset.hr)); buildVenue(); renderVenueSel(); });
+    box.querySelectorAll('[data-hh]').forEach(b=>b.onclick=()=>{ it.h=Math.max(1,(it.h||4)+Number(b.dataset.hh)); buildVenue(); renderVenueSel(); });
+    return;
+  }
+  if(it.type!=='stage' && it.type!=='tent'){ box.innerHTML=''; return; }
   const chip=(txt,on,attr)=>`<button class="chip" ${attr} aria-pressed="${on?'true':'false'}">${txt}</button>`;
   const sizes = it.type==='stage'?STAGE_SIZES:TENT_SIZES;
   const heights = it.type==='stage'?[0.6,1.0,1.4]:[2.2,2.6,3.0];
@@ -1126,129 +1215,38 @@ function renderStructCfg(it){
   box.querySelectorAll('[data-sth]').forEach(b=>b.onclick=()=>{ it.trussH=Number(b.dataset.sth); buildVenue(); renderVenueSel(); });
   box.querySelectorAll('[data-sfeat]').forEach(c=>c.onchange=()=>{ it[c.dataset.sfeat]=c.checked; buildVenue(); renderVenueSel(); });
 }
-document.querySelectorAll('#venuePalette .chip').forEach(c=> c.onclick=()=>addItem(c.dataset.add));
+document.querySelectorAll('#venuePalette .chip').forEach(c=> c.onclick=()=>{
+  if(c.dataset.draw) startDraw(c.dataset.draw); else addItem(c.dataset.add);
+});
+// ---------- Гараар зурах (гол / ой бүс) ----------
+function startDraw(type){
+  state.draw={ type, pts:[] }; state.sel=null; renderVenueSel();
+  document.getElementById('drawBar').style.display='';
+  document.getElementById('drawLbl').textContent = type==='river'?'🌊 Гол':'🌳 Ой';
+  document.getElementById('drawTip').textContent = type==='river'
+    ? 'Голын дагуу цэг дараалан дарж зур → Дуусгах (өргөнийг дараа тохируулна)'
+    : 'Ойн захын цэгүүдийг дарж бүс зур → Дуусгах';
+  buildVenue();
+}
+function finishDraw(){
+  const d=state.draw; if(!d){ return; }
+  const need = d.type==='river'?2:3;
+  if(d.pts.length>=need){
+    const it={ id:++_venueId, type:d.type, pts:d.pts };
+    if(d.type==='river') it.width=3; else it.spacing=6;
+    state.items.push(it); state.sel=it.id;
+  }
+  state.draw=null; document.getElementById('drawBar').style.display='none';
+  buildVenue(); renderVenueSel();
+}
+function cancelDraw(){ state.draw=null; document.getElementById('drawBar').style.display='none'; buildVenue(); }
+document.getElementById('draw-finish').onclick=finishDraw;
+document.getElementById('draw-cancel').onclick=cancelDraw;
 document.getElementById('v-rotL').onclick=()=>rotateSel(-15);
 document.getElementById('v-rotR').onclick=()=>rotateSel(15);
 document.getElementById('v-del').onclick=()=>deleteSel();
 document.getElementById('v-none').onclick=()=>{ state.sel=null; buildVenue(); renderVenueSel(); };
 
-// ---------- Газрын зураг (Google Map байршил → Esri хиймэл дагуулын зураг, бодит хэмжээ) ----------
-let mapPlane=null;
-function parseLatLng(str){
-  if(!str) return null; str=str.trim();
-  const m = str.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
-         || str.match(/[?&](?:q|ll|sll|daddr)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/)
-         || str.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
-         || str.match(/(-?\d{1,2}\.\d{3,}),\s*(-?\d{1,3}\.\d{3,})/);
-  if(!m) return null;
-  const lat=parseFloat(m[1]), lng=parseFloat(m[2]);
-  if(!isFinite(lat)||!isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180) return null;
-  return {lat,lng};
-}
-function lonLatToTile(lat,lng,z){
-  const n=Math.pow(2,z);
-  return { x:(lng+180)/360*n, y:(1 - Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*n };
-}
-function esriTileURL(z,tx,ty){ return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${ty}/${tx}`; }
-function fetchTile(z,tx,ty){ return new Promise(res=>{
-  const im=new Image(); im.crossOrigin='anonymous';
-  im.onload=()=>res(im); im.onerror=()=>res(null); im.src=esriTileURL(z,tx,ty);
-}); }
-// "Map data not yet available" саарал хавтан = бараг жигд өнгө → пикселийн хэлбэлзэл бага
-function tileHasImagery(img){
-  if(!img) return false;
-  const c=document.createElement('canvas'); c.width=c.height=64; const x=c.getContext('2d');
-  x.drawImage(img,0,0,64,64);
-  let d; try{ d=x.getImageData(0,0,64,64).data; }catch(_){ return true; }
-  let sum=0,sum2=0; const n=64*64;
-  for(let i=0;i<d.length;i+=4){ const l=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]; sum+=l; sum2+=l*l; }
-  const mean=sum/n; return Math.sqrt(Math.max(0,sum2/n-mean*mean)) > 11;
-}
-async function loadSiteMap(lat,lng){
-  const msg=document.getElementById('map-msg'); msg.textContent='Газрын зураг татаж байна…';
-  // хамгийн нарийвчилсан боломжит zoom-ыг ол (z19-оос буурч; хотод z19 = 2× тод)
-  let z=0, fx=0, fy=0;
-  for(let zz=19; zz>=13; zz--){
-    const t=lonLatToTile(lat,lng,zz);
-    const ctile=await fetchTile(zz, Math.floor(t.x), Math.floor(t.y));
-    if(tileHasImagery(ctile)){ z=zz; fx=t.x; fy=t.y; break; }
-  }
-  if(!z){ msg.textContent='Энэ байршилд хиймэл дагуулын зураг олдсонгүй (хэт алслагдсан).'; return; }
-  const mpp = 156543.03392 * Math.cos(lat*Math.PI/180) / Math.pow(2,z);
-  // ~340м талбайг бүрхэх тайлын тоо (3..7); өндөр zoom = илүү нягт текстур
-  const N = Math.max(3, Math.min(7, Math.round(340/(256*mpp))));
-  const startX=Math.round(fx-N/2), startY=Math.round(fy-N/2);
-  const cvs=document.createElement('canvas'); cvs.width=N*256; cvs.height=N*256;
-  const g2=cvs.getContext('2d'); g2.fillStyle='#39414d'; g2.fillRect(0,0,cvs.width,cvs.height);
-  let ok=0;
-  await Promise.all([].concat(...Array.from({length:N},(_,i)=>Array.from({length:N},(_,j)=>(async()=>{
-    const im=await fetchTile(z, startX+i, startY+j);
-    if(im){ g2.drawImage(im,i*256,j*256); ok++; }
-  })()))));
-  if(!ok){ msg.textContent='Зураг татаж чадсангүй. Дараа дахин оролдоно уу.'; return; }
-  const sizeM = N*256*mpp;
-  const tex=new THREE.CanvasTexture(cvs); tex.colorSpace=THREE.SRGBColorSpace;
-  try{ tex.anisotropy=renderer.capabilities.getMaxAnisotropy(); }catch(_){}
-  const cpx=(fx-startX)*256, cpy=(fy-startY)*256;
-  // --- 3D товгор газар (өндрийн дата) — вершин бүрийн lat/lng-ийн өндрийг Open-Meteo-оос авна ---
-  msg.textContent='Газрын өндөр тооцож байна…';
-  const G=24, n2=Math.pow(2,z);
-  const geo=new THREE.PlaneGeometry(sizeM,sizeM,G-1,G-1);
-  const pos=geo.attributes.position, lats=[], lngs=[];
-  for(let k=0;k<pos.count;k++){
-    const u=pos.getX(k)/sizeM+0.5, v=pos.getY(k)/sizeM+0.5;
-    const gtx=startX+(u*cvs.width)/256, gty=startY+((1-v)*cvs.height)/256;
-    lngs.push(gtx/n2*360-180);
-    lats.push(Math.atan(Math.sinh(Math.PI*(1-2*gty/n2)))*180/Math.PI);
-  }
-  const elevs=await fetchElevations(lats,lngs);
-  const valid=elevs.filter(e=>typeof e==='number').sort((a,b)=>a-b);
-  const base=valid.length?valid[Math.floor(valid.length/2)]:0;
-  let relief=0;
-  for(let k=0;k<pos.count;k++){ const e=elevs[k]; const h=(typeof e==='number')?e-base:0; pos.setZ(k,h); relief=Math.max(relief,Math.abs(h)); }
-  geo.rotateX(-Math.PI/2); geo.computeVertexNormals();
-  if(mapPlane){ scene.remove(mapPlane); if(mapPlane.material.map) mapPlane.material.map.dispose(); mapPlane.material.dispose(); }
-  mapPlane=new THREE.Mesh(geo, new THREE.MeshStandardMaterial({map:tex, roughness:1, metalness:0}));
-  mapPlane.receiveShadow=true;
-  mapPlane.position.set((cvs.width/2 - cpx)*mpp, 0.02, (cpy - cvs.height/2)*mpp);
-  scene.add(mapPlane);
-  ground.visible=false; grid.visible=false;
-  buildVenue();   // объектуудыг товгор газрын гадаргуу дээр суулгана
-  document.getElementById('map-credit').style.display='';
-  document.getElementById('map-clear').style.display='';
-  msg.textContent=`✓ ${lat.toFixed(5)}, ${lng.toFixed(5)} · ~${Math.round(sizeM)}м · өндөр ±${Math.round(relief)}м${z<18?' · бага нарийвчлал':''}`;
-}
-// вершин бүрийн өндрийг Open-Meteo Elevation-оос багцалж авна (100 цэг/хүсэлт)
-async function fetchElevations(lats,lngs){
-  const out=new Array(lats.length).fill(undefined), B=100;
-  for(let s=0;s<lats.length;s+=B){
-    const la=lats.slice(s,s+B).map(x=>x.toFixed(5)), lo=lngs.slice(s,s+B).map(x=>x.toFixed(5));
-    try{ const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${la.join(',')}&longitude=${lo.join(',')}`);
-      const j=await r.json(); (j.elevation||[]).forEach((e,i)=>out[s+i]=e); }catch(_){}
-  }
-  return out;
-}
-function clearSiteMap(){
-  if(mapPlane){ scene.remove(mapPlane); if(mapPlane.material.map) mapPlane.material.map.dispose(); mapPlane.material.dispose(); mapPlane=null; }
-  ground.visible=true; grid.visible=true;
-  document.getElementById('map-credit').style.display='none';
-  document.getElementById('map-clear').style.display='none';
-  document.getElementById('map-msg').textContent='';
-  document.getElementById('map-input').value='';
-}
-document.getElementById('map-load').onclick=()=>{
-  const v=document.getElementById('map-input').value;
-  const ll=parseLatLng(v);
-  const msg=document.getElementById('map-msg');
-  if(!ll){
-    if(/goo\.gl|maps\.app/.test(v)) msg.textContent='Богино холбоос дэмжигдэхгүй. Google Map дээр цэг дээр баруун товшоод координатыг (өргөрөг, уртраг) хуулж оруулна уу.';
-    else msg.textContent='Байршил танигдсангүй. Жишээ: 47.91542, 106.91760';
-    return;
-  }
-  loadSiteMap(ll.lat, ll.lng);
-};
-document.getElementById('map-clear').onclick=clearSiteMap;
-document.getElementById('map-input').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('map-load').click(); });
 
 document.getElementById('tgl-truss').onchange=e=>{ state.truss=e.target.checked; refreshUI(); build(); };
 document.getElementById('tgl-led').onchange=e=>{ state.led=e.target.checked; build(); };
@@ -1408,14 +1406,16 @@ function itemAt(e){ setNDC(e); ray.setFromCamera(ndc,camera);
 function groundHit(e){ setNDC(e); ray.setFromCamera(ndc,camera); const p=new THREE.Vector3();
   return ray.ray.intersectPlane(dragPlane,p) ? p : null; }
 renderer.domElement.addEventListener('pointerdown', e=>{
-  if(state.mode!=='venue') return;
+  if(state.mode!=='venue' || state.draw) return;   // зурах горимд сонгох/чирэхгүй (цэгийг pointerup дээр тавина)
   _vDownX=e.clientX; _vDownY=e.clientY;
   const id=itemAt(e);
   if(id!=null){
     const changed = state.sel!==id; state.sel=id; renderVenueSel();
     if(changed) buildVenue();   // сонголтын цагираг зурах (venuePick шинэчлэгдэнэ)
-    draggingItem=venueItem(id); draggingGroup=venuePick.find(g=>g.userData.itemId===id);
-    const gh=groundHit(e); _dragOff = gh ? {x:draggingItem.x-gh.x, z:draggingItem.z-gh.z} : {x:0,z:0};
+    const it=venueItem(id);
+    draggingItem=(it && it.type!=='river' && it.type!=='forest') ? it : null;   // гол/ой чирэгдэхгүй
+    draggingGroup=draggingItem ? venuePick.find(g=>g.userData.itemId===id) : null;
+    if(draggingItem){ const gh=groundHit(e); _dragOff = gh ? {x:draggingItem.x-gh.x, z:draggingItem.z-gh.z} : {x:0,z:0}; }
     controls.enabled=false; e.stopPropagation(); e.stopImmediatePropagation();
     try{ renderer.domElement.setPointerCapture(e.pointerId); }catch(_){}
   }
@@ -1434,10 +1434,14 @@ renderer.domElement.addEventListener('pointermove', e=>{
 function endItemDrag(){ if(draggingItem){ draggingItem=null; draggingGroup=null; controls.enabled=true; updateReadout(); } }
 renderer.domElement.addEventListener('pointerup', endItemDrag, true);
 renderer.domElement.addEventListener('pointercancel', endItemDrag, true);
-// хоосон газар товшвол сонголт болино
+// хоосон газар товшвол сонголт болино / зурах горимд цэг нэмнэ
 renderer.domElement.addEventListener('pointerup', e=>{
   if(state.mode!=='venue') return;
-  if(Math.abs(e.clientX-_vDownX)>6||Math.abs(e.clientY-_vDownY)>6) return;
+  if(Math.abs(e.clientX-_tapX)>6||Math.abs(e.clientY-_tapY)>6) return;   // чирсэн бол алгас
+  if(state.draw){
+    const p=groundHit(e); if(p){ state.draw.pts.push({x:Math.round(p.x*2)/2, z:Math.round(p.z*2)/2}); buildVenue(); }
+    return;
+  }
   if(itemAt(e)==null && state.sel!=null){ state.sel=null; buildVenue(); renderVenueSel(); }
 });
 // ---------- модуль тайз: шалан дээр товшиж 1×1м хавтан нэм/хас ----------
