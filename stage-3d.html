@@ -1130,21 +1130,40 @@ function lonLatToTile(lat,lng,z){
   const n=Math.pow(2,z);
   return { x:(lng+180)/360*n, y:(1 - Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*n };
 }
+function esriTileURL(z,tx,ty){ return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${ty}/${tx}`; }
+function fetchTile(z,tx,ty){ return new Promise(res=>{
+  const im=new Image(); im.crossOrigin='anonymous';
+  im.onload=()=>res(im); im.onerror=()=>res(null); im.src=esriTileURL(z,tx,ty);
+}); }
+// "Map data not yet available" саарал хавтан = бараг жигд өнгө → пикселийн хэлбэлзэл бага
+function tileHasImagery(img){
+  if(!img) return false;
+  const c=document.createElement('canvas'); c.width=c.height=64; const x=c.getContext('2d');
+  x.drawImage(img,0,0,64,64);
+  let d; try{ d=x.getImageData(0,0,64,64).data; }catch(_){ return true; }
+  let sum=0,sum2=0; const n=64*64;
+  for(let i=0;i<d.length;i+=4){ const l=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]; sum+=l; sum2+=l*l; }
+  const mean=sum/n; return Math.sqrt(Math.max(0,sum2/n-mean*mean)) > 11;
+}
 async function loadSiteMap(lat,lng){
   const msg=document.getElementById('map-msg'); msg.textContent='Газрын зураг татаж байна…';
-  const z=18, N=4;
-  const {x:fx,y:fy}=lonLatToTile(lat,lng,z);
+  const N=4;
+  // хамгийн нарийвчилсан боломжит zoom-ыг ол (z18 байхгүй бол буурч)
+  let z=0, fx=0, fy=0;
+  for(let zz=18; zz>=13; zz--){
+    const t=lonLatToTile(lat,lng,zz);
+    const ctile=await fetchTile(zz, Math.floor(t.x), Math.floor(t.y));
+    if(tileHasImagery(ctile)){ z=zz; fx=t.x; fy=t.y; break; }
+  }
+  if(!z){ msg.textContent='Энэ байршилд хиймэл дагуулын зураг олдсонгүй (хэт алслагдсан).'; return; }
   const startX=Math.floor(fx)-1, startY=Math.floor(fy)-1;
   const cvs=document.createElement('canvas'); cvs.width=N*256; cvs.height=N*256;
   const g2=cvs.getContext('2d'); g2.fillStyle='#39414d'; g2.fillRect(0,0,cvs.width,cvs.height);
   let ok=0;
-  await Promise.all([].concat(...Array.from({length:N},(_,i)=>Array.from({length:N},(_,j)=>new Promise(res=>{
-    const tx=startX+i, ty=startY+j;
-    const im=new Image(); im.crossOrigin='anonymous';
-    im.onload=()=>{ g2.drawImage(im,i*256,j*256); ok++; res(); };
-    im.onerror=()=>res();
-    im.src=`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${ty}/${tx}`;
-  })))));
+  await Promise.all([].concat(...Array.from({length:N},(_,i)=>Array.from({length:N},(_,j)=>(async()=>{
+    const im=await fetchTile(z, startX+i, startY+j);
+    if(im){ g2.drawImage(im,i*256,j*256); ok++; }
+  })()))));
   if(!ok){ msg.textContent='Зураг татаж чадсангүй. Дараа дахин оролдоно уу.'; return; }
   const mpp = 156543.03392 * Math.cos(lat*Math.PI/180) / Math.pow(2,z);
   const sizeM = N*256*mpp;
@@ -1160,7 +1179,7 @@ async function loadSiteMap(lat,lng){
   ground.visible=false; grid.visible=false;
   document.getElementById('map-credit').style.display='';
   document.getElementById('map-clear').style.display='';
-  msg.textContent=`✓ ${lat.toFixed(5)}, ${lng.toFixed(5)} · ~${Math.round(sizeM)}м талбай`;
+  msg.textContent=`✓ ${lat.toFixed(5)}, ${lng.toFixed(5)} · ~${Math.round(sizeM)}м${z<18?' · бага нарийвчлал (алслагдсан)':''}`;
 }
 function clearSiteMap(){
   if(mapPlane){ scene.remove(mapPlane); if(mapPlane.material.map) mapPlane.material.map.dispose(); mapPlane.material.dispose(); mapPlane=null; }
