@@ -41,25 +41,44 @@
   .readout b{color:var(--accent);font-weight:700}
   .readout span{color:var(--mut)}
 
-  /* Dock */
-  .dock{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:10;
-    width:min(680px,calc(100vw - 24px));background:var(--panel);border:1px solid var(--line);
-    border-radius:16px;padding:12px 14px;backdrop-filter:blur(14px);
-    box-shadow:0 20px 50px -24px #000;display:flex;flex-direction:column;gap:11px}
-  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  /* Хэвлэл тохируулгын нээгддэг цонх */
-  .popup{position:fixed;left:50%;bottom:calc(16px + 220px);transform:translateX(-50%);z-index:12;
-    width:min(440px,calc(100vw - 24px));background:var(--panel);border:1px solid var(--line);
-    border-radius:16px;padding:14px 16px;backdrop-filter:blur(16px);
-    box-shadow:0 24px 60px -20px #000;display:flex;flex-direction:column;gap:11px}
-  .popup-head{display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:14px}
-  .popup-x{appearance:none;border:none;background:transparent;color:var(--mut);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;border-radius:6px}
+  /* Dock — зөөж болдог, эвхэгддэг хажуугийн самбар */
+  .dock{position:fixed;top:64px;right:14px;z-index:11;
+    width:300px;max-height:calc(100vh - 84px);
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;backdrop-filter:blur(14px);
+    box-shadow:0 20px 50px -24px #000;display:flex;flex-direction:column;overflow:hidden}
+  .panel-head{display:flex;align-items:center;gap:6px;padding:9px 11px;cursor:grab;
+    user-select:none;border-bottom:1px solid var(--line);background:#ffffff08;flex:0 0 auto}
+  .panel-head.grabbing{cursor:grabbing}
+  .panel-head .ttl{font-size:12px;font-weight:700;letter-spacing:.03em;flex:1;
+    display:flex;align-items:center;gap:7px;color:var(--txt)}
+  .panel-head .grip{color:var(--dim);font-size:13px;letter-spacing:-1px}
+  .hbtn{appearance:none;border:none;background:transparent;color:var(--mut);
+    font-size:15px;cursor:pointer;line-height:1;padding:3px 8px;border-radius:7px}
+  .hbtn:hover{color:var(--txt);background:#ffffff12}
+  .panel-body{padding:11px 12px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;overscroll-behavior:contain;flex:1 1 auto}
+  .dock.collapsed{max-height:none}
+  .dock.collapsed .panel-body{display:none}
+  .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .row .spacer{flex:1 1 100%;height:0}
+  /* Хэвлэл тохируулгын хөвөгч цонх */
+  .popup{position:fixed;top:132px;left:14px;z-index:12;
+    width:300px;max-height:calc(100vh - 150px);
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;backdrop-filter:blur(16px);
+    box-shadow:0 24px 60px -20px #000;display:flex;flex-direction:column;overflow:hidden}
+  .popup .panel-body{gap:11px}
+  .popup-x{appearance:none;border:none;background:transparent;color:var(--mut);font-size:16px;cursor:pointer;line-height:1;padding:3px 8px;border-radius:7px}
   .popup-x:hover{color:var(--txt);background:#ffffff12}
   .popup-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .pl{font-size:11px;color:var(--mut);font-weight:600}
   .numv{font-size:12px;min-width:60px;text-align:center;color:var(--txt);font-variant-numeric:tabular-nums}
   .popup .chip{padding:6px 11px}
-  @media (max-width:560px){ .popup{bottom:auto;top:12px} }
+  @media (max-width:600px){
+    .dock{top:auto;bottom:0;left:0;right:0;width:auto;max-height:58vh;border-radius:16px 16px 0 0}
+    .popup{top:auto;bottom:0;left:0;right:0;width:auto;max-height:72vh;border-radius:16px 16px 0 0}
+  }
   .lbl{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.14em;font-weight:600;min-width:54px}
   .sizes{display:flex;gap:7px;flex-wrap:wrap}
   .chip{appearance:none;border:1px solid var(--line);background:#1b2029;color:var(--txt);
@@ -100,7 +119,12 @@
 <div class="readout" id="price" style="top:102px;display:none;font-size:14px;"></div>
 <div class="hint">Чирж эргүүлнэ · 2 хуруу / дугуйгаар зумна</div>
 
-<div class="dock">
+<div class="dock" id="dock">
+  <div class="panel-head" id="dock-head">
+    <span class="ttl"><span class="grip">⣿</span> Тохиргоо</span>
+    <button class="hbtn" id="dock-collapse" title="Хумих/дэлгэх">▾</button>
+  </div>
+  <div class="panel-body">
   <div class="row">
     <span class="lbl">Төрөл</span>
     <div class="sizes" id="modeSeg">
@@ -172,12 +196,17 @@
     <button class="ghost" id="add-table">＋ ширээ</button>
     <span id="tableTip" style="font-size:11px;color:var(--dim);display:none;">Чирж байрлуулна · 2 товшилт = устгах</span>
   </div>
+  </div>
 </div>
 
-<!-- Хэвлэл / LED тохируулгын цонх -->
+<!-- Хэвлэл / LED тохируулгын хөвөгч цонх -->
 <div id="bannerPopup" class="popup" style="display:none;">
-  <div class="popup-head"><span>🖼 Хэвлэл / LED</span><button class="popup-x" id="banner-close">✕</button></div>
-  <label class="tgl" style="margin:2px 0 10px;"><input type="checkbox" id="tgl-banner"><span class="sw"></span>Труссан дээр харуулах</label>
+  <div class="panel-head" id="banner-head">
+    <span class="ttl"><span class="grip">⣿</span> 🖼 Хэвлэл / LED</span>
+    <button class="popup-x" id="banner-close">✕</button>
+  </div>
+  <div class="panel-body">
+  <label class="tgl" style="margin:0 0 4px;"><input type="checkbox" id="tgl-banner"><span class="sw"></span>Труссан дээр харуулах</label>
   <div class="popup-row"><span class="pl">Төрөл</span>
     <div class="sizes" id="bannerType">
       <button class="chip" data-bn="print" aria-pressed="true">Хэвлэл</button>
@@ -198,6 +227,7 @@
     <button class="ghost" id="banner-center">↺ Голд</button>
   </div>
   <input type="file" id="banner-file" accept="image/*" style="display:none;">
+  </div>
 </div>
 
 <script type="importmap">
@@ -1063,6 +1093,38 @@ renderer.domElement.addEventListener('pointerup', e=>{
 let spin=false;
 document.getElementById('tgl-spin').onchange=e=>{ spin=e.target.checked; };
 document.getElementById('reset').onclick=()=> frameCamera();
+
+// ---------- Самбар зөөх (drag) + хумих ----------
+function makeDraggable(panel, handle){
+  let drag=false, sx=0, sy=0, ox=0, oy=0;
+  handle.addEventListener('pointerdown', e=>{
+    if(e.target.closest('button,input,select,.chip,label')) return;
+    const r=panel.getBoundingClientRect();
+    panel.style.left=r.left+'px'; panel.style.top=r.top+'px';
+    panel.style.right='auto'; panel.style.bottom='auto';
+    drag=true; sx=e.clientX; sy=e.clientY; ox=r.left; oy=r.top;
+    handle.classList.add('grabbing');
+    try{ handle.setPointerCapture(e.pointerId); }catch(_){}
+    e.preventDefault();
+  });
+  handle.addEventListener('pointermove', e=>{
+    if(!drag) return;
+    const w=panel.offsetWidth;
+    let nx=ox+(e.clientX-sx), ny=oy+(e.clientY-sy);
+    nx=Math.max(4, Math.min(window.innerWidth-Math.min(w,80), nx));
+    ny=Math.max(4, Math.min(window.innerHeight-44, ny));
+    panel.style.left=nx+'px'; panel.style.top=ny+'px';
+  });
+  const end=()=>{ drag=false; handle.classList.remove('grabbing'); };
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', end);
+}
+makeDraggable(document.getElementById('dock'), document.getElementById('dock-head'));
+makeDraggable(document.getElementById('bannerPopup'), document.getElementById('banner-head'));
+document.getElementById('dock-collapse').onclick=()=>{
+  const d=document.getElementById('dock'); const on=d.classList.toggle('collapsed');
+  document.getElementById('dock-collapse').textContent = on ? '▸' : '▾';
+};
 
 // ---------- AR (model-viewer: Android Scene Viewer + iOS Quick Look) ----------
 const mv = document.getElementById('mv');
