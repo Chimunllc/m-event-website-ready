@@ -47,6 +47,19 @@
     border-radius:16px;padding:12px 14px;backdrop-filter:blur(14px);
     box-shadow:0 20px 50px -24px #000;display:flex;flex-direction:column;gap:11px}
   .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  /* Хэвлэл тохируулгын нээгддэг цонх */
+  .popup{position:fixed;left:50%;bottom:calc(16px + 220px);transform:translateX(-50%);z-index:12;
+    width:min(440px,calc(100vw - 24px));background:var(--panel);border:1px solid var(--line);
+    border-radius:16px;padding:14px 16px;backdrop-filter:blur(16px);
+    box-shadow:0 24px 60px -20px #000;display:flex;flex-direction:column;gap:11px}
+  .popup-head{display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:14px}
+  .popup-x{appearance:none;border:none;background:transparent;color:var(--mut);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;border-radius:6px}
+  .popup-x:hover{color:var(--txt);background:#ffffff12}
+  .popup-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .pl{font-size:11px;color:var(--mut);font-weight:600}
+  .numv{font-size:12px;min-width:60px;text-align:center;color:var(--txt);font-variant-numeric:tabular-nums}
+  .popup .chip{padding:6px 11px}
+  @media (max-width:560px){ .popup{bottom:auto;top:12px} }
   .lbl{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.14em;font-weight:600;min-width:54px}
   .sizes{display:flex;gap:7px;flex-wrap:wrap}
   .chip{appearance:none;border:1px solid var(--line);background:#1b2029;color:var(--txt);
@@ -99,20 +112,28 @@
     <button class="ghost" id="ar-btn" style="border-color:var(--accent);color:var(--accent);font-weight:700;">📱 AR</button>
     <button class="ghost" id="reset">↺ Байрлал</button>
   </div>
-  <div class="row">
+  <div class="row" id="stageModeRow">
+    <span class="lbl">Загвар</span>
+    <div class="sizes" id="stageModeSeg">
+      <button class="chip" data-sm="preset" aria-pressed="true">📐 Бэлэн</button>
+      <button class="chip" data-sm="build" aria-pressed="false">🧩 Өөрөө угсрах</button>
+    </div>
+  </div>
+  <div class="row" id="presetSize">
     <span class="lbl">Хэмжээ</span>
     <div class="sizes" id="sizes"></div>
   </div>
-  <div class="row">
+  <div class="row" id="presetOpts">
     <span class="lbl" id="hlbl">Өндөр</span>
     <div class="sizes" id="heights"></div>
-  </div>
-  <div class="row" id="stageToggles">
-    <label class="tgl"><input type="checkbox" id="tgl-build"><span class="sw"></span>🧩 Угсрах (1×1м)</label>
-    <label class="tgl"><input type="checkbox" id="tgl-truss" checked><span class="sw"></span>Гэрэлтүүлгийн трасс</label>
-    <label class="tgl"><input type="checkbox" id="tgl-led"><span class="sw"></span>LED дэлгэц</label>
+    <div class="spacer"></div>
+    <label class="tgl"><input type="checkbox" id="tgl-truss" checked><span class="sw"></span>Трасс</label>
+    <label class="tgl"><input type="checkbox" id="tgl-led"><span class="sw"></span>LED</label>
     <label class="tgl"><input type="checkbox" id="tgl-roof"><span class="sw"></span>Дээвэр</label>
-    <button class="ghost" id="clear-cells" style="display:none;">✕ Цэвэрлэх</button>
+  </div>
+  <div class="row" id="presetTrussH">
+    <span class="lbl">Трасс өндөр</span>
+    <div class="sizes" id="trussHeights"></div>
   </div>
   <div class="row" id="buildBar" style="display:none">
     <span class="lbl">Нэмэх</span>
@@ -120,48 +141,21 @@
       <button class="chip" data-bt="deck" aria-pressed="true">🟫 Хавтан</button>
       <button class="chip" data-bt="truss" aria-pressed="false">🏗 Каркас</button>
     </div>
-    <div class="sizes" id="trussPad" style="display:none;">
-      <button class="chip" data-td="up" title="Дээш 1м">⬆</button>
-      <button class="chip" data-td="down" title="Доош 1м">⬇</button>
-      <button class="chip" data-td="fwd" title="Урагш 1м">▲</button>
-      <button class="chip" data-td="back" title="Хойш 1м">▼</button>
-      <button class="chip" data-td="left" title="Зүүн 1м">◀</button>
-      <button class="chip" data-td="right" title="Баруун 1м">▶</button>
-      <button class="chip" id="truss-block" title="Холбогч блок">🔲 Блок</button>
-      <button class="chip" id="truss-undo" title="Буцаах">↩</button>
-      <button class="chip" id="truss-del" title="Устгах горим — асаагаад хэсэг дээр дарна">🗑</button>
-    </div>
-    <span id="buildTip" style="font-size:11px;color:var(--dim);">Шалан дээр товшиж нэмнэ/хасна</span>
+    <div class="spacer"></div>
+    <button class="ghost" id="banner-open">🖼 Хэвлэл</button>
+    <button class="ghost" id="clear-cells">✕ Цэвэрлэх</button>
   </div>
-  <div class="row" id="bannerBar" style="display:none">
-    <label class="tgl"><input type="checkbox" id="tgl-banner"><span class="sw"></span>🖼 Хэвлэл / LED</label>
-    <div class="sizes" id="bannerType" style="display:none;">
-      <button class="chip" data-bn="print" aria-pressed="true">Хэвлэл</button>
-      <button class="chip" data-bn="led" aria-pressed="false">LED</button>
-    </div>
-    <button class="ghost" id="banner-upload" style="display:none;">📷 Зураг оруулах</button>
-    <div class="sizes" id="bannerSize" style="display:none;align-items:center;">
-      <span style="font-size:11px;color:var(--mut);">Өргөн</span>
-      <button class="chip" data-bd="w:-1" style="padding:6px 11px;">−</button>
-      <span id="bw" style="font-size:12px;min-width:64px;text-align:center;color:var(--txt);">авто</span>
-      <button class="chip" data-bd="w:1" style="padding:6px 11px;">＋</button>
-      <span style="font-size:11px;color:var(--mut);margin-left:6px;">Өндөр</span>
-      <button class="chip" data-bd="h:-1" style="padding:6px 11px;">−</button>
-      <span id="bh" style="font-size:12px;min-width:64px;text-align:center;color:var(--txt);">авто</span>
-      <button class="chip" data-bd="h:1" style="padding:6px 11px;">＋</button>
-      <button class="ghost" id="banner-auto" style="margin-left:4px;">↺ Авто</button>
-    </div>
-    <div class="sizes" id="bannerPos" style="display:none;align-items:center;">
-      <span style="font-size:11px;color:var(--mut);">Байршил</span>
-      <button class="chip" data-bp="dx:-1" style="padding:6px 10px;">◀</button>
-      <button class="chip" data-bp="dx:1" style="padding:6px 10px;">▶</button>
-      <button class="chip" data-bp="dy:1" style="padding:6px 10px;">⬆</button>
-      <button class="chip" data-bp="dy:-1" style="padding:6px 10px;">⬇</button>
-      <button class="chip" data-bp="dz:1" style="padding:6px 11px;">Урд</button>
-      <button class="chip" data-bp="dz:-1" style="padding:6px 11px;">Хойд</button>
-      <button class="ghost" id="banner-center" style="margin-left:4px;">↺ Голд</button>
-    </div>
-    <input type="file" id="banner-file" accept="image/*" style="display:none;">
+  <div class="row" id="trussPad" style="display:none;">
+    <button class="chip" data-td="up" title="Дээш 1м">⬆</button>
+    <button class="chip" data-td="down" title="Доош 1м">⬇</button>
+    <button class="chip" data-td="fwd" title="Урагш 1м">▲</button>
+    <button class="chip" data-td="back" title="Хойш 1м">▼</button>
+    <button class="chip" data-td="left" title="Зүүн 1м">◀</button>
+    <button class="chip" data-td="right" title="Баруун 1м">▶</button>
+    <button class="chip" id="truss-block" title="Холбогч блок">🔲 Блок</button>
+    <button class="chip" id="truss-undo" title="Буцаах">↩</button>
+    <button class="chip" id="truss-del" title="Устгах горим">🗑</button>
+    <span id="buildTip" style="font-size:11px;color:var(--dim);flex-basis:100%;margin-top:4px;">Шалан дээр товшиж нэмнэ/хасна</span>
   </div>
   <div class="row" id="tentToggles" style="display:none">
     <label class="tgl"><input type="checkbox" id="tgl-gable" checked><span class="sw"></span>Дүнзэн үзүүр</label>
@@ -178,6 +172,32 @@
     <button class="ghost" id="add-table">＋ ширээ</button>
     <span id="tableTip" style="font-size:11px;color:var(--dim);display:none;">Чирж байрлуулна · 2 товшилт = устгах</span>
   </div>
+</div>
+
+<!-- Хэвлэл / LED тохируулгын цонх -->
+<div id="bannerPopup" class="popup" style="display:none;">
+  <div class="popup-head"><span>🖼 Хэвлэл / LED</span><button class="popup-x" id="banner-close">✕</button></div>
+  <label class="tgl" style="margin:2px 0 10px;"><input type="checkbox" id="tgl-banner"><span class="sw"></span>Труссан дээр харуулах</label>
+  <div class="popup-row"><span class="pl">Төрөл</span>
+    <div class="sizes" id="bannerType">
+      <button class="chip" data-bn="print" aria-pressed="true">Хэвлэл</button>
+      <button class="chip" data-bn="led" aria-pressed="false">LED</button>
+    </div>
+    <button class="ghost" id="banner-upload">📷 Зураг оруулах</button>
+  </div>
+  <div class="popup-row" id="bannerSize"><span class="pl">Өргөн</span>
+    <button class="chip" data-bd="w:-1">−</button><span id="bw" class="numv">авто</span><button class="chip" data-bd="w:1">＋</button>
+    <span class="pl" style="margin-left:8px;">Өндөр</span>
+    <button class="chip" data-bd="h:-1">−</button><span id="bh" class="numv">авто</span><button class="chip" data-bd="h:1">＋</button>
+    <button class="ghost" id="banner-auto">↺ Авто</button>
+  </div>
+  <div class="popup-row" id="bannerPos"><span class="pl">Байршил</span>
+    <button class="chip" data-bp="dx:-1">◀</button><button class="chip" data-bp="dx:1">▶</button>
+    <button class="chip" data-bp="dy:1">⬆</button><button class="chip" data-bp="dy:-1">⬇</button>
+    <button class="chip" data-bp="dz:1">Урд</button><button class="chip" data-bp="dz:-1">Хойд</button>
+    <button class="ghost" id="banner-center">↺ Голд</button>
+  </div>
+  <input type="file" id="banner-file" accept="image/*" style="display:none;">
 </div>
 
 <script type="importmap">
@@ -229,7 +249,7 @@ controls.target.set(0, 1.8, 0);
 function tentRise(){ return Math.min(2.6, state.w*0.20); }
 function targetY(){
   if(state.mode==='tent') return state.h + tentRise()*0.5 + 0.3;
-  return state.truss ? Math.max(2.4, state.h+1.6) : (state.h*0.6 + 0.6);
+  return state.truss ? Math.max(2.4, state.stageTrussH*0.55) : (state.h*0.6 + 0.6);
 }
 function frameCamera(){
   const span = Math.max(state.w, state.d, 5);
@@ -453,7 +473,7 @@ function addBanner(g){
 
 // ---------- stage assembly ----------
 let stageGroup = null;
-const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false, walls:false, gable:true,
+const state = { mode:'stage', w:8, d:4, h:1.0, stageTrussH:4.5, truss:true, led:false, roof:false, walls:false, gable:true,
   tables:false, tablePos:null, tableType:'round', chairs:true, stageInTent:false,
   build:false, cells:null, buildTarget:'deck',
   trussSegs:[], trussBlocks:[], trussTip:null, trussDel:false,
@@ -550,7 +570,7 @@ function buildStage(){
 
   // --- гэрэлтүүлгийн трасс (goal-post) ---
   if(state.truss){
-    const towerH = Math.max(4.2, H + 3.2);
+    const towerH = Math.max(H + 1.2, state.stageTrussH);
     const tx = W/2 - 0.35, tz = D/2 - 0.35;
     [[tx,tz],[tx,-tz],[-tx,tz],[-tx,-tz]].forEach(([x,z])=> placeTruss(g, towerH, 'y', x, towerH/2, z));
     // толгойн хүрээ
@@ -579,7 +599,7 @@ function buildStage(){
 
   // --- LED дэлгэц (ар тал) ---
   if(state.led){
-    const towerH = state.truss ? Math.max(4.2, H+3.2) : (H+2.6);
+    const towerH = state.truss ? Math.max(H+1.2, state.stageTrussH) : (H+2.6);
     const ledH = Math.min(2.6, towerH - H - 0.4), ledW = W*0.62;
     const ledY = H + ledH/2 + 0.2;
     const led = new THREE.Mesh(new THREE.BoxGeometry(ledW, ledH, 0.12), matLED);
@@ -591,7 +611,7 @@ function buildStage(){
 
   // --- дээвэр (roof truss + мембран) ---
   if(state.roof && state.truss){
-    const towerH = Math.max(4.2, H+3.2);
+    const towerH = Math.max(H+1.2, state.stageTrussH);
     const peak = towerH + 1.3;
     placeTruss(g, W-0.4, 'x', 0, peak, 0);
     const roof = new THREE.Mesh(new THREE.BoxGeometry(W+0.6, 0.05, D+0.6),
@@ -813,30 +833,51 @@ function renderHeights(){
     heightsEl.appendChild(b);
   });
 }
+function renderTrussHeights(){
+  const el=document.getElementById('trussHeights'); if(!el) return;
+  el.innerHTML='';
+  [3.5,4.5,6.0].forEach(h=>{
+    const b=document.createElement('button'); b.className='chip';
+    b.setAttribute('aria-pressed', h===state.stageTrussH?'true':'false');
+    b.innerHTML = `${h}<span class="u"> м</span>`;
+    b.onclick=()=>{ state.stageTrussH=h; [...el.children].forEach(c=>c.setAttribute('aria-pressed','false')); b.setAttribute('aria-pressed','true'); build(); };
+    el.appendChild(b);
+  });
+}
+function closeBannerPopup(){ const p=document.getElementById('bannerPopup'); if(p) p.style.display='none'; }
+function refreshUI(){
+  const isStage=state.mode==='stage', bld=state.build;
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.style.display=v?'':'none'; };
+  set('stageModeRow', isStage);
+  set('presetSize', isStage && !bld);
+  set('presetOpts', isStage && !bld);
+  set('presetTrussH', isStage && !bld && state.truss);
+  set('buildBar', isStage && bld);
+  set('trussPad', isStage && bld && state.buildTarget==='truss');
+  set('tentToggles', !isStage);
+  set('tentTables', !isStage);
+  document.querySelectorAll('#stageModeSeg .chip').forEach(c=>c.setAttribute('aria-pressed', (c.dataset.sm==='build')===bld?'true':'false'));
+  if(!(isStage && bld)) closeBannerPopup();
+}
 function applyMode(mode){
   state.mode = mode;
   const def = PRESETS[mode];
   state.w = def.sizes[1].w; state.d = def.sizes[1].d; state.h = def.heights[1]; state.tablePos = null;
   document.querySelectorAll('#modeSeg .chip').forEach(c=>c.setAttribute('aria-pressed', c.dataset.mode===mode?'true':'false'));
-  document.getElementById('stageToggles').style.display = mode==='stage' ? '' : 'none';
-  document.getElementById('tentToggles').style.display  = mode==='tent'  ? '' : 'none';
-  document.getElementById('tentTables').style.display   = mode==='tent'  ? '' : 'none';
-  renderSizes(); renderHeights(); build(); frameCamera();
+  renderSizes(); renderHeights(); renderTrussHeights(); refreshUI(); build(); frameCamera();
 }
 document.querySelectorAll('#modeSeg .chip').forEach(c=> c.onclick=()=>applyMode(c.dataset.mode));
 
-document.getElementById('tgl-truss').onchange=e=>{ state.truss=e.target.checked; build(); };
+document.getElementById('tgl-truss').onchange=e=>{ state.truss=e.target.checked; refreshUI(); build(); };
 document.getElementById('tgl-led').onchange=e=>{ state.led=e.target.checked; build(); };
 document.getElementById('tgl-roof').onchange=e=>{ state.roof=e.target.checked; build(); };
-document.getElementById('tgl-build').onchange=e=>{
-  state.build=e.target.checked;
-  if(state.build && !state.cells) state.cells=cellsRect(state.w,state.d);
-  document.getElementById('clear-cells').style.display=state.build?'':'none';
-  document.getElementById('buildBar').style.display=state.build?'':'none';
-  document.getElementById('bannerBar').style.display=state.build?'':'none';
-  ['tgl-truss','tgl-led','tgl-roof'].forEach(id=>{ const el=document.getElementById(id); const lab=el&&el.closest('.tgl'); if(lab) lab.style.display=state.build?'none':''; });
-  build(); frameCamera();
-};
+// Загвар: 📐 Бэлэн / 🧩 Өөрөө угсрах
+function setStageMode(on){
+  state.build=on;
+  if(on && !state.cells) state.cells=cellsRect(state.w,state.d);
+  refreshUI(); build(); frameCamera();
+}
+document.querySelectorAll('#stageModeSeg .chip').forEach(c=> c.onclick=()=>setStageMode(c.dataset.sm==='build'));
 document.getElementById('clear-cells').onclick=()=>{
   if(state.buildTarget==='truss'){ state.trussSegs=[]; state.trussBlocks=[]; state.trussTip=null; }
   else state.cells=new Set();
@@ -854,11 +895,14 @@ function bumpBanner(which, dir){
   if(which==='w') state.banner.w=v; else state.banner.h=v;
   build(); updateBannerLabels();
 }
-function _bannerCtrls(show){ ['bannerType','banner-upload','bannerSize','bannerPos'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=show?'':'none'; }); }
 function bumpBannerPos(axis, dir){ state.banner[axis]=Math.round((state.banner[axis]+dir*0.5)*2)/2; build(); }
-document.getElementById('tgl-banner').onchange=e=>{
-  state.banner.on=e.target.checked; _bannerCtrls(state.banner.on); build(); updateBannerLabels();
+document.getElementById('banner-open').onclick=()=>{
+  const p=document.getElementById('bannerPopup'); const opening = p.style.display==='none';
+  p.style.display = opening?'':'none';
+  if(opening && !state.banner.on){ state.banner.on=true; document.getElementById('tgl-banner').checked=true; build(); updateBannerLabels(); }
 };
+document.getElementById('banner-close').onclick=closeBannerPopup;
+document.getElementById('tgl-banner').onchange=e=>{ state.banner.on=e.target.checked; build(); updateBannerLabels(); };
 document.querySelectorAll('#bannerSize [data-bd]').forEach(b=> b.onclick=()=>{ const [w,d]=b.dataset.bd.split(':'); bumpBanner(w, +d); });
 document.getElementById('banner-auto').onclick=()=>{ state.banner.w=null; state.banner.h=null; build(); updateBannerLabels(); };
 document.querySelectorAll('#bannerPos [data-bp]').forEach(b=> b.onclick=()=>{ const [a,d]=b.dataset.bp.split(':'); bumpBannerPos(a, +d); });
@@ -871,12 +915,12 @@ document.querySelectorAll('#bannerType .chip').forEach(c=> c.onclick=()=>{
 document.getElementById('banner-upload').onclick=()=>document.getElementById('banner-file').click();
 document.getElementById('banner-file').onchange=e=>{
   const f=e.target.files&&e.target.files[0]; if(!f) return;
-  const r=new FileReader(); r.onload=()=>{ state.banner.img=r.result; if(!state.banner.on){ state.banner.on=true; document.getElementById('tgl-banner').checked=true; _bannerCtrls(true); } build(); updateBannerLabels(); }; r.readAsDataURL(f);
+  const r=new FileReader(); r.onload=()=>{ state.banner.img=r.result; if(!state.banner.on){ state.banner.on=true; document.getElementById('tgl-banner').checked=true; } build(); updateBannerLabels(); }; r.readAsDataURL(f);
 };
 document.querySelectorAll('#buildTargetSeg .chip').forEach(c=> c.onclick=()=>{
   state.buildTarget=c.dataset.bt;
   document.querySelectorAll('#buildTargetSeg .chip').forEach(x=>x.setAttribute('aria-pressed', x===c?'true':'false'));
-  document.getElementById('trussPad').style.display = state.buildTarget==='truss'?'':'none';
+  refreshUI();
   document.getElementById('buildTip').textContent = state.buildTarget==='truss'
     ? 'Шалан дээр товшиж эхлэл тавь → сумаар 1м өр · 🔲 блок · хэсэг дээр дарж tip зөө · 🗑 устга'
     : 'Шалан дээр товшиж хавтан нэм/хас';
@@ -1038,7 +1082,7 @@ document.getElementById('ar-btn').onclick=()=>{
   if(mv && mv.canActivateAR){ mv.activateAR(); }
   else { alert('AR-г гар утсан дээрээ (Android эсвэл iPhone) нээж ашиглана уу. Компьютер дээр AR боломжгүй.'); }
 };
-renderSizes(); renderHeights();
+renderSizes(); renderHeights(); renderTrussHeights(); refreshUI();
 
 // ---------- loop ----------
 addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
