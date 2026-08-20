@@ -133,6 +133,15 @@
     </div>
     <span id="buildTip" style="font-size:11px;color:var(--dim);">Шалан дээр товшиж нэмнэ/хасна</span>
   </div>
+  <div class="row" id="bannerBar" style="display:none">
+    <label class="tgl"><input type="checkbox" id="tgl-banner"><span class="sw"></span>🖼 Хэвлэл / LED</label>
+    <div class="sizes" id="bannerType" style="display:none;">
+      <button class="chip" data-bn="print" aria-pressed="true">Хэвлэл</button>
+      <button class="chip" data-bn="led" aria-pressed="false">LED</button>
+    </div>
+    <button class="ghost" id="banner-upload" style="display:none;">📷 Зураг оруулах</button>
+    <input type="file" id="banner-file" accept="image/*" style="display:none;">
+  </div>
   <div class="row" id="tentToggles" style="display:none">
     <label class="tgl"><input type="checkbox" id="tgl-gable" checked><span class="sw"></span>Дүнзэн үзүүр</label>
     <label class="tgl"><input type="checkbox" id="tgl-walls"><span class="sw"></span>Хажуу хана</label>
@@ -373,12 +382,54 @@ function cubeConnGeo(){
 }
 function cubeConnAt(x,y,z){ const g=cubeConnGeo().clone(); g.translate(x,y,z); return g; }
 
+// --- Хэвлэл / LED банер (труссан дээр өлгөнө, зураг upload хийж болно) ---
+let _bannerTex=null, _bannerSrc=null;
+function bannerTexture(){
+  const src = state.banner.img || '__ph__';
+  if(src===_bannerSrc && _bannerTex) return _bannerTex;
+  _bannerSrc=src;
+  if(state.banner.img){
+    const t=new THREE.Texture(); const im=new Image(); im.crossOrigin='anonymous';
+    im.onload=()=>{ t.image=im; t.needsUpdate=true; }; im.src=state.banner.img;
+    t.colorSpace=THREE.SRGBColorSpace; _bannerTex=t; return t;
+  }
+  const c=document.createElement('canvas'); c.width=1024; c.height=576; const x=c.getContext('2d');
+  x.fillStyle='#181c26'; x.fillRect(0,0,1024,576);
+  x.strokeStyle='#2b3242'; x.lineWidth=3;
+  for(let i=1;i<8;i++){ x.beginPath(); x.moveTo(i*128,0); x.lineTo(i*128,576); x.stroke(); }
+  x.fillStyle='#ffb14d'; x.font='bold 62px system-ui,sans-serif'; x.textAlign='center';
+  x.fillText('ТАНЫ ХЭВЛЭЛ / ЗУРАГ', 512, 285);
+  x.fillStyle='#9aa0ad'; x.font='30px system-ui,sans-serif';
+  x.fillText('📷 «Зураг оруулах»-аар өөрийн дизайнаа тавина', 512, 345);
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; _bannerTex=t; return t;
+}
+function addBanner(g){
+  if(!state.banner || !state.banner.on) return;
+  const segs=state.trussSegs||[]; let bb=null;
+  const ext=(x,y,z)=>{ if(!bb) bb={minx:x,maxx:x,miny:y,maxy:y,minz:z,maxz:z};
+    else{ bb.minx=Math.min(bb.minx,x);bb.maxx=Math.max(bb.maxx,x);bb.miny=Math.min(bb.miny,y);bb.maxy=Math.max(bb.maxy,y);bb.minz=Math.min(bb.minz,z);bb.maxz=Math.max(bb.maxz,z);} };
+  segs.forEach(s=>{ ext(s.x,s.y,s.z); ext(s.x+(s.dir==='x'?1:0), s.y+(s.dir==='y'?1:0), s.z+(s.dir==='z'?1:0)); });
+  if(!bb){ ext(-2,0,0); ext(2,3,0); }   // трусс алга бол өгөгдмөл 4×3
+  const w=bb.maxx-bb.minx, d=bb.maxz-bb.minz, alongX = w>=d;
+  const span=Math.max(alongX?w:d, 1.2);
+  const height=Math.max(Math.min(bb.maxy-0.3, 6), 1.2);
+  const cx=(bb.minx+bb.maxx)/2, cz=(bb.minz+bb.maxz)/2, cy=bb.maxy - height/2;
+  const tex=bannerTexture();
+  const mat = state.banner.type==='led'
+    ? new THREE.MeshStandardMaterial({ map:tex, emissive:0xffffff, emissiveMap:tex, emissiveIntensity:0.85, roughness:0.5, side:THREE.DoubleSide })
+    : new THREE.MeshStandardMaterial({ map:tex, roughness:0.92, metalness:0, side:THREE.DoubleSide });
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(span, height), mat);
+  m.position.set(cx, cy, cz); if(!alongX) m.rotation.y=Math.PI/2; m.castShadow=false; m.receiveShadow=false;
+  g.add(m);
+}
+
 // ---------- stage assembly ----------
 let stageGroup = null;
 const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false, walls:false, gable:true,
   tables:false, tablePos:null, tableType:'round', chairs:true, stageInTent:false,
   build:false, cells:null, buildTarget:'deck',
-  trussSegs:[], trussBlocks:[], trussTip:null, trussDel:false };
+  trussSegs:[], trussBlocks:[], trussTip:null, trussDel:false,
+  banner:{on:false, type:'print', img:null} };
 // ₮ түрээсийн үнэ (нэг арга хэмжээнд): 1×1м хавтан 25,000 · 1м каркас 25,000
 const PRICE = { module:25000, trussM:25000 };
 function cellsRect(W,D){ const s=new Set(); const i0=-Math.floor(W/2), j0=-Math.floor(D/2);
@@ -558,6 +609,7 @@ function buildStageModular(){
     const bm=new THREE.Mesh(cubeConnGeo(), matAlu); bm.position.set(b.x,b.y,b.z); bm.castShadow=true;
     bm.userData={kind:'block', ref:b}; g.add(bm); _pickTruss.push(bm);
   });
+  addBanner(g);   // хэвлэл / LED банер (труссан дээр)
   // идэвхтэй цэг (tip) — дараагийн хэсэг залгах газар
   if(state.buildTarget==='truss' && state.trussTip){
     const t=state.trussTip;
@@ -753,6 +805,7 @@ document.getElementById('tgl-build').onchange=e=>{
   if(state.build && !state.cells) state.cells=cellsRect(state.w,state.d);
   document.getElementById('clear-cells').style.display=state.build?'':'none';
   document.getElementById('buildBar').style.display=state.build?'':'none';
+  document.getElementById('bannerBar').style.display=state.build?'':'none';
   ['tgl-truss','tgl-led','tgl-roof'].forEach(id=>{ const el=document.getElementById(id); const lab=el&&el.closest('.tgl'); if(lab) lab.style.display=state.build?'none':''; });
   build(); frameCamera();
 };
@@ -760,6 +813,24 @@ document.getElementById('clear-cells').onclick=()=>{
   if(state.buildTarget==='truss'){ state.trussSegs=[]; state.trussBlocks=[]; state.trussTip=null; }
   else state.cells=new Set();
   build();
+};
+// Хэвлэл / LED банер
+document.getElementById('tgl-banner').onchange=e=>{
+  state.banner.on=e.target.checked;
+  const show=state.banner.on?'':'none';
+  document.getElementById('bannerType').style.display=show;
+  document.getElementById('banner-upload').style.display=show;
+  build();
+};
+document.querySelectorAll('#bannerType .chip').forEach(c=> c.onclick=()=>{
+  state.banner.type=c.dataset.bn;
+  document.querySelectorAll('#bannerType .chip').forEach(x=>x.setAttribute('aria-pressed', x===c?'true':'false'));
+  build();
+});
+document.getElementById('banner-upload').onclick=()=>document.getElementById('banner-file').click();
+document.getElementById('banner-file').onchange=e=>{
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  const r=new FileReader(); r.onload=()=>{ state.banner.img=r.result; if(!state.banner.on){ state.banner.on=true; document.getElementById('tgl-banner').checked=true; document.getElementById('bannerType').style.display=''; document.getElementById('banner-upload').style.display=''; } build(); }; r.readAsDataURL(f);
 };
 document.querySelectorAll('#buildTargetSeg .chip').forEach(c=> c.onclick=()=>{
   state.buildTarget=c.dataset.bt;
