@@ -197,6 +197,7 @@
       <button class="chip" data-add="stage">🎤 Тайз</button>
       <button class="chip" data-add="tent">⛺ Асар</button>
       <button class="chip" data-add="bell">🏕 Bell майхан</button>
+      <button class="chip" data-add="booth">🏬 Бүүд</button>
       <button class="chip" data-add="rtable">⭕ Дугуй ширээ</button>
       <button class="chip" data-add="ltable">▬ Урт ширээ</button>
       <button class="chip" data-add="chair">🪑 Сандал</button>
@@ -234,6 +235,7 @@
     <span id="venueTip" style="font-size:11px;color:var(--dim);flex-basis:100%;margin-top:2px;">Объект дээр дарж сонго → чирж зөө · хоосон газар дарж болино</span>
   </div>
   <div id="structCfg"></div>
+  <input type="file" id="booth-file" accept="image/*" style="display:none;">
   </div>
 </div>
 
@@ -869,9 +871,10 @@ const VENUE_DEFAULTS = {
   stage:  { w:6, d:4, h:0.6, truss:true, trussH:4.5, led:false, roof:false },
   tent:   { w:10, d:15, h:2.6, walls:false, gable:true },
   rtable: {}, ltable: {}, chair: {}, tree: {}, hill: { r:10, h:4 }, bell: { d:5 },
+  booth: { w:5, d:2, h:4, lit:false, sides:{back:true,left:true,right:true,front:false} },
   sofa:{}, arch:{}, dance:{}, speaker:{}, light:{}, plant:{}, bar:{}, parasol:{}
 };
-const VENUE_LABEL = { stage:'Тайз', tent:'Асар', rtable:'Дугуй ширээ', ltable:'Урт ширээ', chair:'Сандал', tree:'Мод', hill:'Уул', river:'Гол', forest:'Ой', bell:'Bell майхан',
+const VENUE_LABEL = { stage:'Тайз', tent:'Асар', rtable:'Дугуй ширээ', ltable:'Урт ширээ', chair:'Сандал', tree:'Мод', hill:'Уул', river:'Гол', forest:'Ой', bell:'Bell майхан', booth:'Бүүд',
   sofa:'Буйдан', arch:'Арк', dance:'Бүжгийн шал', speaker:'Чанга яригч', light:'Гэрлийн багана', plant:'Ургамал', bar:'Бар', parasol:'Шүхэр' };
 // --- объект тус бүрийн Group үүсгэгчид (одоо байгаа геометрийн туслахуудыг дахин ашиглана) ---
 function objStage(p){
@@ -1091,8 +1094,53 @@ function objParasol(){
   return g;
 }
 const PROP_BUILDERS={ sofa:objSofa, arch:objArch, dance:objDance, speaker:objSpeaker, light:objLight, plant:objPlant, bar:objBar, parasol:objParasol };
+// ===== Бүүд (booth / үзэсгэлэнгийн стенд) — прус модон каркас + хэвлэлтэй талууд =====
+const _boothWood=new THREE.MeshStandardMaterial({color:0xc9a06a, roughness:0.82});
+const _imgTexCache=new Map();
+function imageTexture(src){
+  if(_imgTexCache.has(src)) return _imgTexCache.get(src);
+  const t=new THREE.Texture(); t.colorSpace=THREE.SRGBColorSpace;
+  const im=new Image(); if(!src.startsWith('data:')) im.crossOrigin='anonymous';
+  im.onload=()=>{ t.image=im; t.needsUpdate=true; }; im.src=src;
+  _imgTexCache.set(src,t); return t;
+}
+let _boothPh=null;
+function boothPlaceholderTex(){
+  if(_boothPh) return _boothPh;
+  const c=document.createElement('canvas'); c.width=1024; c.height=768; const x=c.getContext('2d');
+  x.fillStyle='#e9e4d8'; x.fillRect(0,0,1024,768);
+  x.strokeStyle='#c9c0ab'; x.lineWidth=3; for(let i=1;i<8;i++){ x.beginPath(); x.moveTo(i*128,0); x.lineTo(i*128,768); x.stroke(); }
+  x.fillStyle='#7a6f57'; x.font='bold 66px system-ui,sans-serif'; x.textAlign='center';
+  x.fillText('ТАНЫ ХЭВЛЭЛ', 512, 360); x.font='34px system-ui,sans-serif'; x.fillText('📷 «Зураг оруулах»', 512, 430);
+  _boothPh=new THREE.CanvasTexture(c); _boothPh.colorSpace=THREE.SRGBColorSpace; return _boothPh;
+}
+function boothTexture(it){ return it.img ? imageTexture(it.img) : boothPlaceholderTex(); }
+function objBooth(it){
+  const g=new THREE.Group();
+  const W=it.w||5, D=it.d||2, H=it.h||4, post=0.1;
+  const cxs=[W/2,-W/2], czs=[D/2,-D/2];
+  cxs.forEach(x=>czs.forEach(z=>{ const p=new THREE.Mesh(new THREE.BoxGeometry(post,H,post),_boothWood); p.position.set(x,H/2,z); p.castShadow=true; g.add(p); }));
+  function rail(y){
+    const a=new THREE.Mesh(new THREE.BoxGeometry(W,post,post),_boothWood); a.position.set(0,y,D/2); g.add(a);
+    const b=a.clone(); b.position.z=-D/2; g.add(b);
+    const c=new THREE.Mesh(new THREE.BoxGeometry(post,post,D),_boothWood); c.position.set(W/2,y,0); g.add(c);
+    const d2=c.clone(); d2.position.x=-W/2; g.add(d2);
+  }
+  rail(H-post/2); rail(post/2); if(H>=3) rail(H/2);
+  const tex=boothTexture(it);
+  const mat = it.lit
+    ? new THREE.MeshStandardMaterial({map:tex, emissive:0xffffff, emissiveMap:tex, emissiveIntensity:1.15, roughness:0.5, side:THREE.DoubleSide})
+    : new THREE.MeshStandardMaterial({map:tex, roughness:0.9, metalness:0, side:THREE.DoubleSide});
+  const sd=it.sides||{back:true,left:true,right:true,front:false};
+  if(sd.back){ const m=new THREE.Mesh(new THREE.PlaneGeometry(W-post,H-post),mat); m.position.set(0,H/2,-D/2+0.012); m.rotation.y=Math.PI; g.add(m); }
+  if(sd.front){ const m=new THREE.Mesh(new THREE.PlaneGeometry(W-post,H-post),mat); m.position.set(0,H/2,D/2-0.012); g.add(m); }
+  if(sd.left){ const m=new THREE.Mesh(new THREE.PlaneGeometry(D-post,H-post),mat); m.position.set(-W/2+0.012,H/2,0); m.rotation.y=-Math.PI/2; g.add(m); }
+  if(sd.right){ const m=new THREE.Mesh(new THREE.PlaneGeometry(D-post,H-post),mat); m.position.set(W/2-0.012,H/2,0); m.rotation.y=Math.PI/2; g.add(m); }
+  return g;
+}
 function makeVenueObj(it){
   if(PROP_BUILDERS[it.type]) return PROP_BUILDERS[it.type]();
+  if(it.type==='booth')   return objBooth(it);
   if(it.type==='stage')   return objStage(it);
   if(it.type==='tent')    return objTent(it);
   if(it.type==='rtable')  return makeTableUnit('round', true);
@@ -1108,7 +1156,7 @@ function makeVenueObj(it){
 const PROP_RADIUS={ sofa:1.4, arch:1.5, dance:4.4, speaker:0.7, light:1.1, plant:0.7, bar:1.6, parasol:1.9 };
 function itemRadius(it){
   if(PROP_RADIUS[it.type]) return PROP_RADIUS[it.type];
-  if(it.type==='stage'||it.type==='tent') return Math.hypot(it.w,it.d)/2+0.4;
+  if(it.type==='stage'||it.type==='tent'||it.type==='booth') return Math.hypot(it.w,it.d)/2+0.4;
   if(it.type==='ltable') return 1.9; if(it.type==='rtable') return 1.6;
   if(it.type==='hill') return (it.r||10)+0.5;
   if(it.type==='bell') return (it.d||5)/2*1.4+0.3;
@@ -1190,9 +1238,9 @@ function updateReadout(){
   const r = document.getElementById('readout');
   let feats;
   if(state.mode==='venue'){
-    const c={stage:0,tent:0,bell:0,rtable:0,ltable:0,chair:0,tree:0,hill:0,river:0,forest:0}; let sum=0, props=0;
+    const c={stage:0,tent:0,bell:0,booth:0,rtable:0,ltable:0,chair:0,tree:0,hill:0,river:0,forest:0}; let sum=0, props=0;
     state.items.forEach(i=>{ c[i.type]=(c[i.type]||0)+1; if(PROP_BUILDERS[i.type]) props++; if(i.type==='stage'||i.type==='tent') sum+=Math.round((i.w||0)*(i.d||0))*PRICE.module; });
-    const parts=[]; if(c.stage)parts.push(c.stage+' тайз'); if(c.tent)parts.push(c.tent+' асар'); if(c.bell)parts.push(c.bell+' bell');
+    const parts=[]; if(c.stage)parts.push(c.stage+' тайз'); if(c.tent)parts.push(c.tent+' асар'); if(c.bell)parts.push(c.bell+' bell'); if(c.booth)parts.push(c.booth+' бүүд');
     const tbl=c.rtable+c.ltable; if(tbl)parts.push(tbl+' ширээ'); if(c.chair)parts.push(c.chair+' сандал'); if(props)parts.push(props+' тавилга');
     if(c.tree)parts.push(c.tree+' мод'); if(c.hill)parts.push(c.hill+' уул'); if(c.river)parts.push(c.river+' гол'); if(c.forest)parts.push(c.forest+' ой');
     r.innerHTML = `<b>${state.items.length} объект</b> <span>· ${parts.join(' · ')||'хоосон талбай'}</span>`;
@@ -1309,6 +1357,29 @@ function renderStructCfg(it){
     box.querySelectorAll('[data-fs]').forEach(b=>b.onclick=()=>{ it.spacing=Math.max(3,Math.min(15,(it.spacing||6)+Number(b.dataset.fs))); genForest(it); buildVenue(); renderVenueSel(); });
     return;
   }
+  // Бүүд — урт/зузаан/өндөр, хэвлэлтэй талууд, гэрэлтдэг, зураг
+  if(it.type==='booth'){
+    const sd=it.sides||{back:true,left:true,right:true,front:false};
+    box.innerHTML =
+      stepRow('Урт', (it.w||5)+'м', 'data-bw="-1"','data-bw="1"') +
+      stepRow('Зузаан', (it.d||2)+'м', 'data-bdp="-1"','data-bdp="1"') +
+      stepRow('Өндөр', (it.h||4)+'м', 'data-bh="-1"','data-bh="1"') +
+      `<div class="row"><span class="lbl">Хэвлэл тал</span>`+
+        `<label class="tgl"><input type="checkbox" data-bs="back" ${sd.back?'checked':''}><span class="sw"></span>Ард</label>`+
+        `<label class="tgl"><input type="checkbox" data-bs="front" ${sd.front?'checked':''}><span class="sw"></span>Урд</label>`+
+        `<label class="tgl"><input type="checkbox" data-bs="left" ${sd.left?'checked':''}><span class="sw"></span>Зүүн</label>`+
+        `<label class="tgl"><input type="checkbox" data-bs="right" ${sd.right?'checked':''}><span class="sw"></span>Баруун</label></div>`+
+      `<div class="row"><label class="tgl"><input type="checkbox" data-blit ${it.lit?'checked':''}><span class="sw"></span>💡 Гэрэлтдэг</label>`+
+        `<div class="spacer"></div><button class="ghost" id="booth-upload">📷 Зураг оруулах</button></div>`;
+    const rb=()=>{ buildVenue(); renderVenueSel(); };
+    box.querySelectorAll('[data-bw]').forEach(b=>b.onclick=()=>{ it.w=Math.max(1,(it.w||5)+Number(b.dataset.bw)); rb(); });
+    box.querySelectorAll('[data-bdp]').forEach(b=>b.onclick=()=>{ it.d=Math.max(1,(it.d||2)+Number(b.dataset.bdp)); rb(); });
+    box.querySelectorAll('[data-bh]').forEach(b=>b.onclick=()=>{ it.h=Math.max(1,(it.h||4)+Number(b.dataset.bh)); rb(); });
+    box.querySelectorAll('[data-bs]').forEach(c=>c.onchange=()=>{ it.sides=Object.assign({back:true,left:true,right:true,front:false}, it.sides); it.sides[c.dataset.bs]=c.checked; rb(); });
+    const lit=box.querySelector('[data-blit]'); if(lit) lit.onchange=()=>{ it.lit=lit.checked; rb(); };
+    const up=box.querySelector('#booth-upload'); if(up) up.onclick=()=>{ _boothTarget=it; document.getElementById('booth-file').click(); };
+    return;
+  }
   // Bell майхан — диаметр
   if(it.type==='bell'){
     box.innerHTML=stepRow('Диаметр', (it.d||5)+'м', 'data-bd="-1"', 'data-bd="1"');
@@ -1373,6 +1444,13 @@ document.getElementById('v-rotL').onclick=()=>rotateSel(-15);
 document.getElementById('v-rotR').onclick=()=>rotateSel(15);
 document.getElementById('v-del').onclick=()=>deleteSel();
 document.getElementById('v-none').onclick=()=>{ state.sel=null; buildVenue(); renderVenueSel(); };
+// Бүүдийн хэвлэлийн зураг оруулах
+let _boothTarget=null;
+document.getElementById('booth-file').onchange=e=>{
+  const f=e.target.files && e.target.files[0]; if(!f||!_boothTarget) return;
+  const r=new FileReader(); r.onload=()=>{ _boothTarget.img=r.result; buildVenue(); renderVenueSel(); }; r.readAsDataURL(f);
+  e.target.value='';
+};
 
 
 document.getElementById('tgl-truss').onchange=e=>{ state.truss=e.target.checked; refreshUI(); build(); };
