@@ -196,6 +196,7 @@
     <div class="sizes">
       <button class="chip" data-add="stage">🎤 Тайз</button>
       <button class="chip" data-add="tent">⛺ Асар</button>
+      <button class="chip" data-add="bell">🏕 Bell майхан</button>
       <button class="chip" data-add="rtable">⭕ Дугуй ширээ</button>
       <button class="chip" data-add="ltable">▬ Урт ширээ</button>
       <button class="chip" data-add="chair">🪑 Сандал</button>
@@ -854,9 +855,9 @@ let _venueId = 0, _selRing = null;
 const VENUE_DEFAULTS = {
   stage:  { w:6, d:4, h:0.6, truss:true, trussH:4.5, led:false, roof:false },
   tent:   { w:10, d:15, h:2.6, walls:false, gable:true },
-  rtable: {}, ltable: {}, chair: {}, tree: {}, hill: { r:10, h:4 }
+  rtable: {}, ltable: {}, chair: {}, tree: {}, hill: { r:10, h:4 }, bell: { d:5 }
 };
-const VENUE_LABEL = { stage:'Тайз', tent:'Асар', rtable:'Дугуй ширээ', ltable:'Урт ширээ', chair:'Сандал', tree:'Мод', hill:'Уул', river:'Гол', forest:'Ой' };
+const VENUE_LABEL = { stage:'Тайз', tent:'Асар', rtable:'Дугуй ширээ', ltable:'Урт ширээ', chair:'Сандал', tree:'Мод', hill:'Уул', river:'Гол', forest:'Ой', bell:'Bell майхан' };
 // --- объект тус бүрийн Group үүсгэгчид (одоо байгаа геометрийн туслахуудыг дахин ашиглана) ---
 function objStage(p){
   const g=new THREE.Group();
@@ -935,6 +936,22 @@ function objHill(it){
   const m=new THREE.Mesh(geo,_hillMat); m.castShadow=m.receiveShadow=true;
   const g=new THREE.Group(); g.add(m); return g;
 }
+// Bell майхан (glamping) — дугуй суурь, намхан босоо хана, конус дээвэр, төв багана
+function objBell(it){
+  const g=new THREE.Group();
+  const R=(it.d||5)/2, wallH=0.75, peakH=(it.d||5)*0.6, roofH=peakH-wallH;
+  const wall=new THREE.Mesh(new THREE.CylinderGeometry(R,R,wallH,40,1,true), matFabric);
+  wall.position.y=wallH/2; wall.castShadow=wall.receiveShadow=true; g.add(wall);
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(R,roofH,40,1,true), matFabric);
+  roof.position.y=wallH+roofH/2; roof.castShadow=roof.receiveShadow=true; g.add(roof);
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,peakH,8), matAlu);
+  pole.position.y=peakH/2; g.add(pole);
+  // хаалга (урд талын бараан нээлхий)
+  const door=new THREE.Mesh(new THREE.PlaneGeometry(R*0.5, wallH*0.95),
+    new THREE.MeshStandardMaterial({color:0x2a2620, roughness:0.9, side:THREE.DoubleSide}));
+  door.position.set(0, wallH*0.48, R+0.005); g.add(door);
+  return g;
+}
 // Гол — гараар зурсан замын дагуу усны туузан гадаргуу (өргөн тохируулна)
 const _waterMat=new THREE.MeshStandardMaterial({color:0x2f6ea5, roughness:0.22, metalness:0.15, transparent:true, opacity:0.9, side:THREE.DoubleSide});
 function riverGeo(pts,width){
@@ -988,6 +1005,7 @@ function makeVenueObj(it){
   if(it.type==='chair')   return objChair();
   if(it.type==='tree')    return objTree();
   if(it.type==='hill')    return objHill(it);
+  if(it.type==='bell')    return objBell(it);
   if(it.type==='river')   return objRiver(it);
   if(it.type==='forest')  return objForest(it);
   return new THREE.Group();
@@ -996,6 +1014,7 @@ function itemRadius(it){
   if(it.type==='stage'||it.type==='tent') return Math.hypot(it.w,it.d)/2+0.4;
   if(it.type==='ltable') return 1.9; if(it.type==='rtable') return 1.6;
   if(it.type==='hill') return (it.r||10)+0.5;
+  if(it.type==='bell') return (it.d||5)/2+0.4;
   if(it.type==='tree') return 1.2; return 0.45;
 }
 function selRing(it){
@@ -1074,9 +1093,9 @@ function updateReadout(){
   const r = document.getElementById('readout');
   let feats;
   if(state.mode==='venue'){
-    const c={stage:0,tent:0,rtable:0,ltable:0,chair:0,tree:0,hill:0,river:0,forest:0}; let sum=0;
+    const c={stage:0,tent:0,bell:0,rtable:0,ltable:0,chair:0,tree:0,hill:0,river:0,forest:0}; let sum=0;
     state.items.forEach(i=>{ c[i.type]=(c[i.type]||0)+1; if(i.type==='stage'||i.type==='tent') sum+=Math.round((i.w||0)*(i.d||0))*PRICE.module; });
-    const parts=[]; if(c.stage)parts.push(c.stage+' тайз'); if(c.tent)parts.push(c.tent+' асар');
+    const parts=[]; if(c.stage)parts.push(c.stage+' тайз'); if(c.tent)parts.push(c.tent+' асар'); if(c.bell)parts.push(c.bell+' bell');
     const tbl=c.rtable+c.ltable; if(tbl)parts.push(tbl+' ширээ'); if(c.chair)parts.push(c.chair+' сандал');
     if(c.tree)parts.push(c.tree+' мод'); if(c.hill)parts.push(c.hill+' уул'); if(c.river)parts.push(c.river+' гол'); if(c.forest)parts.push(c.forest+' ой');
     r.innerHTML = `<b>${state.items.length} объект</b> <span>· ${parts.join(' · ')||'хоосон талбай'}</span>`;
@@ -1191,6 +1210,12 @@ function renderStructCfg(it){
   if(it.type==='forest'){
     box.innerHTML=stepRow('Нягт (зай)', (it.spacing||6)+'м', 'data-fs="1"', 'data-fs="-1"');
     box.querySelectorAll('[data-fs]').forEach(b=>b.onclick=()=>{ it.spacing=Math.max(3,Math.min(15,(it.spacing||6)+Number(b.dataset.fs))); genForest(it); buildVenue(); renderVenueSel(); });
+    return;
+  }
+  // Bell майхан — диаметр
+  if(it.type==='bell'){
+    box.innerHTML=stepRow('Диаметр', (it.d||5)+'м', 'data-bd="-1"', 'data-bd="1"');
+    box.querySelectorAll('[data-bd]').forEach(b=>b.onclick=()=>{ it.d=Math.max(3,Math.min(10,(it.d||5)+Number(b.dataset.bd))); buildVenue(); renderVenueSel(); });
     return;
   }
   // Уул — радиус/өндөр
