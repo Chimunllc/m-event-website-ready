@@ -151,6 +151,16 @@
       <button class="chip" data-bd="h:1" style="padding:6px 11px;">＋</button>
       <button class="ghost" id="banner-auto" style="margin-left:4px;">↺ Авто</button>
     </div>
+    <div class="sizes" id="bannerPos" style="display:none;align-items:center;">
+      <span style="font-size:11px;color:var(--mut);">Байршил</span>
+      <button class="chip" data-bp="dx:-1" style="padding:6px 10px;">◀</button>
+      <button class="chip" data-bp="dx:1" style="padding:6px 10px;">▶</button>
+      <button class="chip" data-bp="dy:1" style="padding:6px 10px;">⬆</button>
+      <button class="chip" data-bp="dy:-1" style="padding:6px 10px;">⬇</button>
+      <button class="chip" data-bp="dz:1" style="padding:6px 11px;">Урд</button>
+      <button class="chip" data-bp="dz:-1" style="padding:6px 11px;">Хойд</button>
+      <button class="ghost" id="banner-center" style="margin-left:4px;">↺ Голд</button>
+    </div>
     <input type="file" id="banner-file" accept="image/*" style="display:none;">
   </div>
   <div class="row" id="tentToggles" style="display:none">
@@ -433,7 +443,11 @@ function addBanner(g){
     ? new THREE.MeshStandardMaterial({ map:tex, emissive:0xffffff, emissiveMap:tex, emissiveIntensity:0.85, roughness:0.5, side:THREE.DoubleSide })
     : new THREE.MeshStandardMaterial({ map:tex, roughness:0.92, metalness:0, side:THREE.DoubleSide });
   const m=new THREE.Mesh(new THREE.PlaneGeometry(span, height), mat);
-  m.position.set(cx, cy, cz); if(!alongX) m.rotation.y=Math.PI/2; m.castShadow=false; m.receiveShadow=false;
+  // байршлын шилжүүлэг: dx=хажуу (банерын дагуу), dy=өндөр, dz=гүн (хавтгайд перпендикуляр)
+  let px=cx, pz=cz;
+  if(alongX){ px+=state.banner.dx; pz+=state.banner.dz; } else { pz+=state.banner.dx; px+=state.banner.dz; }
+  m.position.set(px, cy + state.banner.dy, pz);
+  if(!alongX) m.rotation.y=Math.PI/2; m.castShadow=false; m.receiveShadow=false;
   g.add(m);
 }
 
@@ -443,7 +457,7 @@ const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false
   tables:false, tablePos:null, tableType:'round', chairs:true, stageInTent:false,
   build:false, cells:null, buildTarget:'deck',
   trussSegs:[], trussBlocks:[], trussTip:null, trussDel:false,
-  banner:{on:false, type:'print', img:null, w:null, h:null} };
+  banner:{on:false, type:'print', img:null, w:null, h:null, dx:0, dy:0, dz:0} };
 // ₮ түрээсийн үнэ (нэг арга хэмжээнд): 1×1м хавтан 25,000 · 1м каркас 25,000
 const PRICE = { module:25000, trussM:25000 };
 function cellsRect(W,D){ const s=new Set(); const i0=-Math.floor(W/2), j0=-Math.floor(D/2);
@@ -840,12 +854,15 @@ function bumpBanner(which, dir){
   if(which==='w') state.banner.w=v; else state.banner.h=v;
   build(); updateBannerLabels();
 }
-function _bannerCtrls(show){ ['bannerType','banner-upload','bannerSize'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=show?'':'none'; }); }
+function _bannerCtrls(show){ ['bannerType','banner-upload','bannerSize','bannerPos'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=show?'':'none'; }); }
+function bumpBannerPos(axis, dir){ state.banner[axis]=Math.round((state.banner[axis]+dir*0.5)*2)/2; build(); }
 document.getElementById('tgl-banner').onchange=e=>{
   state.banner.on=e.target.checked; _bannerCtrls(state.banner.on); build(); updateBannerLabels();
 };
 document.querySelectorAll('#bannerSize [data-bd]').forEach(b=> b.onclick=()=>{ const [w,d]=b.dataset.bd.split(':'); bumpBanner(w, +d); });
 document.getElementById('banner-auto').onclick=()=>{ state.banner.w=null; state.banner.h=null; build(); updateBannerLabels(); };
+document.querySelectorAll('#bannerPos [data-bp]').forEach(b=> b.onclick=()=>{ const [a,d]=b.dataset.bp.split(':'); bumpBannerPos(a, +d); });
+document.getElementById('banner-center').onclick=()=>{ state.banner.dx=0; state.banner.dy=0; state.banner.dz=0; build(); };
 document.querySelectorAll('#bannerType .chip').forEach(c=> c.onclick=()=>{
   state.banner.type=c.dataset.bn;
   document.querySelectorAll('#bannerType .chip').forEach(x=>x.setAttribute('aria-pressed', x===c?'true':'false'));
