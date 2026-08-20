@@ -936,20 +936,34 @@ function objHill(it){
   const m=new THREE.Mesh(geo,_hillMat); m.castShadow=m.receiveShadow=true;
   const g=new THREE.Group(); g.add(m); return g;
 }
-// Bell майхан (glamping) — дугуй суурь, намхан босоо хана, конус дээвэр, төв багана
+// Bell майхан (glamping) — шаргал даавуу, дугуй хана, конус дээвэр, оройн малгай, татлага
+const _bellMat=new THREE.MeshStandardMaterial({color:0xe6d3a3, roughness:0.92, metalness:0, side:THREE.DoubleSide, emissive:0x2a2416, emissiveIntensity:0.22});
+const _ropeMat=new THREE.LineBasicMaterial({color:0x5a5044});
 function objBell(it){
   const g=new THREE.Group();
-  const R=(it.d||5)/2, wallH=0.75, peakH=(it.d||5)*0.6, roofH=peakH-wallH;
-  const wall=new THREE.Mesh(new THREE.CylinderGeometry(R,R,wallH,40,1,true), matFabric);
+  const D=it.d||5, R=D/2, wallH=Math.max(0.8, D*0.16), peakH=D*0.62, roofH=peakH-wallH;
+  const wall=new THREE.Mesh(new THREE.CylinderGeometry(R,R,wallH,48,1,true), _bellMat);
   wall.position.y=wallH/2; wall.castShadow=wall.receiveShadow=true; g.add(wall);
-  const roof=new THREE.Mesh(new THREE.ConeGeometry(R,roofH,40,1,true), matFabric);
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(R,roofH,48,1,true), _bellMat);
   roof.position.y=wallH+roofH/2; roof.castShadow=roof.receiveShadow=true; g.add(roof);
-  const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,peakH,8), matAlu);
+  // оройн малгай (collar)
+  const cap=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.24,0.4,14), _bellMat);
+  cap.position.y=peakH-0.12; cap.castShadow=true; g.add(cap);
+  // төв багана
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,peakH,8), matAlu);
   pole.position.y=peakH/2; g.add(pole);
-  // хаалга (урд талын бараан нээлхий)
-  const door=new THREE.Mesh(new THREE.PlaneGeometry(R*0.5, wallH*0.95),
-    new THREE.MeshStandardMaterial({color:0x2a2620, roughness:0.9, side:THREE.DoubleSide}));
-  door.position.set(0, wallH*0.48, R+0.005); g.add(door);
+  // хаалганы нээлхий (бараан)
+  const door=new THREE.Mesh(new THREE.PlaneGeometry(R*0.55, wallH*0.92),
+    new THREE.MeshStandardMaterial({color:0x241f18, roughness:0.9, side:THREE.DoubleSide}));
+  door.position.set(0, wallH*0.47, R+0.01); g.add(door);
+  // татлагын оосрууд (guy ropes)
+  const nR=8, eaveY=wallH+roofH*0.14, eaveR=R*0.98, pegR=R*1.4;
+  for(let i=0;i<nR;i++){ const a=(i+0.5)/nR*Math.PI*2;
+    const geo=new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(Math.cos(a)*eaveR, eaveY, Math.sin(a)*eaveR),
+      new THREE.Vector3(Math.cos(a)*pegR, 0, Math.sin(a)*pegR)]);
+    g.add(new THREE.Line(geo, _ropeMat));
+  }
   return g;
 }
 // Гол — гараар зурсан замын дагуу усны туузан гадаргуу (өргөн тохируулна)
@@ -1014,7 +1028,7 @@ function itemRadius(it){
   if(it.type==='stage'||it.type==='tent') return Math.hypot(it.w,it.d)/2+0.4;
   if(it.type==='ltable') return 1.9; if(it.type==='rtable') return 1.6;
   if(it.type==='hill') return (it.r||10)+0.5;
-  if(it.type==='bell') return (it.d||5)/2+0.4;
+  if(it.type==='bell') return (it.d||5)/2*1.4+0.3;
   if(it.type==='tree') return 1.2; return 0.45;
 }
 function selRing(it){
