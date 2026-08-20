@@ -140,6 +140,17 @@
       <button class="chip" data-bn="led" aria-pressed="false">LED</button>
     </div>
     <button class="ghost" id="banner-upload" style="display:none;">📷 Зураг оруулах</button>
+    <div class="sizes" id="bannerSize" style="display:none;align-items:center;">
+      <span style="font-size:11px;color:var(--mut);">Өргөн</span>
+      <button class="chip" data-bd="w:-1" style="padding:6px 11px;">−</button>
+      <span id="bw" style="font-size:12px;min-width:64px;text-align:center;color:var(--txt);">авто</span>
+      <button class="chip" data-bd="w:1" style="padding:6px 11px;">＋</button>
+      <span style="font-size:11px;color:var(--mut);margin-left:6px;">Өндөр</span>
+      <button class="chip" data-bd="h:-1" style="padding:6px 11px;">−</button>
+      <span id="bh" style="font-size:12px;min-width:64px;text-align:center;color:var(--txt);">авто</span>
+      <button class="chip" data-bd="h:1" style="padding:6px 11px;">＋</button>
+      <button class="ghost" id="banner-auto" style="margin-left:4px;">↺ Авто</button>
+    </div>
     <input type="file" id="banner-file" accept="image/*" style="display:none;">
   </div>
   <div class="row" id="tentToggles" style="display:none">
@@ -383,7 +394,7 @@ function cubeConnGeo(){
 function cubeConnAt(x,y,z){ const g=cubeConnGeo().clone(); g.translate(x,y,z); return g; }
 
 // --- Хэвлэл / LED банер (труссан дээр өлгөнө, зураг upload хийж болно) ---
-let _bannerTex=null, _bannerSrc=null;
+let _bannerTex=null, _bannerSrc=null, _bannerAutoW=4, _bannerAutoH=3;
 function bannerTexture(){
   const src = state.banner.img || '__ph__';
   if(src===_bannerSrc && _bannerTex) return _bannerTex;
@@ -411,9 +422,12 @@ function addBanner(g){
   segs.forEach(s=>{ ext(s.x,s.y,s.z); ext(s.x+(s.dir==='x'?1:0), s.y+(s.dir==='y'?1:0), s.z+(s.dir==='z'?1:0)); });
   if(!bb){ ext(-2,0,0); ext(2,3,0); }   // трусс алга бол өгөгдмөл 4×3
   const w=bb.maxx-bb.minx, d=bb.maxz-bb.minz, alongX = w>=d;
-  const span=Math.max(alongX?w:d, 1.2);
-  const height=Math.max(Math.min(bb.maxy-0.3, 6), 1.2);
+  _bannerAutoW = Math.max(alongX?w:d, 1.2);
+  _bannerAutoH = Math.max(Math.min(bb.maxy-0.3, 6), 1.2);
+  const span = state.banner.w!=null ? state.banner.w : _bannerAutoW;
+  const height = state.banner.h!=null ? state.banner.h : _bannerAutoH;
   const cx=(bb.minx+bb.maxx)/2, cz=(bb.minz+bb.maxz)/2, cy=bb.maxy - height/2;
+  if(typeof updateBannerLabels==='function') updateBannerLabels();
   const tex=bannerTexture();
   const mat = state.banner.type==='led'
     ? new THREE.MeshStandardMaterial({ map:tex, emissive:0xffffff, emissiveMap:tex, emissiveIntensity:0.85, roughness:0.5, side:THREE.DoubleSide })
@@ -429,7 +443,7 @@ const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false
   tables:false, tablePos:null, tableType:'round', chairs:true, stageInTent:false,
   build:false, cells:null, buildTarget:'deck',
   trussSegs:[], trussBlocks:[], trussTip:null, trussDel:false,
-  banner:{on:false, type:'print', img:null} };
+  banner:{on:false, type:'print', img:null, w:null, h:null} };
 // ₮ түрээсийн үнэ (нэг арга хэмжээнд): 1×1м хавтан 25,000 · 1м каркас 25,000
 const PRICE = { module:25000, trussM:25000 };
 function cellsRect(W,D){ const s=new Set(); const i0=-Math.floor(W/2), j0=-Math.floor(D/2);
@@ -815,13 +829,23 @@ document.getElementById('clear-cells').onclick=()=>{
   build();
 };
 // Хэвлэл / LED банер
+function updateBannerLabels(){
+  const bw=document.getElementById('bw'), bh=document.getElementById('bh');
+  if(bw) bw.textContent = state.banner.w!=null ? state.banner.w+'м' : (_bannerAutoW.toFixed(1)+'м·авто');
+  if(bh) bh.textContent = state.banner.h!=null ? state.banner.h+'м' : (_bannerAutoH.toFixed(1)+'м·авто');
+}
+function bumpBanner(which, dir){
+  const cur = which==='w' ? (state.banner.w!=null?state.banner.w:_bannerAutoW) : (state.banner.h!=null?state.banner.h:_bannerAutoH);
+  const v = Math.max(0.5, Math.round((cur + dir*0.5)*2)/2);
+  if(which==='w') state.banner.w=v; else state.banner.h=v;
+  build(); updateBannerLabels();
+}
+function _bannerCtrls(show){ ['bannerType','banner-upload','bannerSize'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=show?'':'none'; }); }
 document.getElementById('tgl-banner').onchange=e=>{
-  state.banner.on=e.target.checked;
-  const show=state.banner.on?'':'none';
-  document.getElementById('bannerType').style.display=show;
-  document.getElementById('banner-upload').style.display=show;
-  build();
+  state.banner.on=e.target.checked; _bannerCtrls(state.banner.on); build(); updateBannerLabels();
 };
+document.querySelectorAll('#bannerSize [data-bd]').forEach(b=> b.onclick=()=>{ const [w,d]=b.dataset.bd.split(':'); bumpBanner(w, +d); });
+document.getElementById('banner-auto').onclick=()=>{ state.banner.w=null; state.banner.h=null; build(); updateBannerLabels(); };
 document.querySelectorAll('#bannerType .chip').forEach(c=> c.onclick=()=>{
   state.banner.type=c.dataset.bn;
   document.querySelectorAll('#bannerType .chip').forEach(x=>x.setAttribute('aria-pressed', x===c?'true':'false'));
@@ -830,7 +854,7 @@ document.querySelectorAll('#bannerType .chip').forEach(c=> c.onclick=()=>{
 document.getElementById('banner-upload').onclick=()=>document.getElementById('banner-file').click();
 document.getElementById('banner-file').onchange=e=>{
   const f=e.target.files&&e.target.files[0]; if(!f) return;
-  const r=new FileReader(); r.onload=()=>{ state.banner.img=r.result; if(!state.banner.on){ state.banner.on=true; document.getElementById('tgl-banner').checked=true; document.getElementById('bannerType').style.display=''; document.getElementById('banner-upload').style.display=''; } build(); }; r.readAsDataURL(f);
+  const r=new FileReader(); r.onload=()=>{ state.banner.img=r.result; if(!state.banner.on){ state.banner.on=true; document.getElementById('tgl-banner').checked=true; _bannerCtrls(true); } build(); updateBannerLabels(); }; r.readAsDataURL(f);
 };
 document.querySelectorAll('#buildTargetSeg .chip').forEach(c=> c.onclick=()=>{
   state.buildTarget=c.dataset.bt;
