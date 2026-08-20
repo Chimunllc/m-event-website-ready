@@ -120,10 +120,15 @@
       <button class="chip" data-bt="deck" aria-pressed="true">🟫 Хавтан</button>
       <button class="chip" data-bt="truss" aria-pressed="false">🏗 Каркас</button>
     </div>
-    <div class="sizes" id="trussHSeg" style="display:none;">
-      <button class="chip" data-th="2" aria-pressed="false">h 2м</button>
-      <button class="chip" data-th="3" aria-pressed="true">h 3м</button>
-      <button class="chip" data-th="4" aria-pressed="false">h 4м</button>
+    <div class="sizes" id="trussPad" style="display:none;">
+      <button class="chip" data-td="up" title="Дээш 1м">⬆</button>
+      <button class="chip" data-td="down" title="Доош 1м">⬇</button>
+      <button class="chip" data-td="fwd" title="Урагш 1м">▲</button>
+      <button class="chip" data-td="back" title="Хойш 1м">▼</button>
+      <button class="chip" data-td="left" title="Зүүн 1м">◀</button>
+      <button class="chip" data-td="right" title="Баруун 1м">▶</button>
+      <button class="chip" id="truss-block" title="Холбогч блок">🔲 Блок</button>
+      <button class="chip" id="truss-undo" title="Буцаах">↩</button>
     </div>
     <span id="buildTip" style="font-size:11px;color:var(--dim);">Шалан дээр товшиж нэмнэ/хасна</span>
   </div>
@@ -371,7 +376,8 @@ function cubeConnAt(x,y,z){ const g=cubeConnGeo().clone(); g.translate(x,y,z); r
 let stageGroup = null;
 const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false, walls:false, gable:true,
   tables:false, tablePos:null, tableType:'round', chairs:true, stageInTent:false,
-  build:false, cells:null, buildTarget:'deck', trussCells:null, trussH:3 };
+  build:false, cells:null, buildTarget:'deck',
+  trussSegs:[], trussBlocks:[], trussTip:null };
 // ₮ түрээсийн үнэ (нэг арга хэмжээнд): 1×1м хавтан 25,000 · 1м каркас 25,000
 const PRICE = { module:25000, trussM:25000 };
 function cellsRect(W,D){ const s=new Set(); const i0=-Math.floor(W/2), j0=-Math.floor(D/2);
@@ -535,33 +541,23 @@ function buildStageModular(){
   const corners=new Set(); cells.forEach(([i,j])=>{ corners.add(i+','+j);corners.add((i+1)+','+j);corners.add(i+','+(j+1));corners.add((i+1)+','+(j+1)); });
   const legG=[]; corners.forEach(c=>{ const [x,z]=c.split(',').map(Number); const b=new THREE.BoxGeometry(0.09,H-thk,0.09); b.translate(x,(H-thk)/2,z); legG.push(b); });
   if(legG.length){ const legs=new THREE.Mesh(mergeGeometries(legG,false), matAlu); legs.castShadow=true; g.add(legs); }
-  // --- КАРКАС (дээд талын тор — өөрсдөө өрнө; холбогч зөвхөн буланд/уулзварт) ---
+  // --- КАРКАС (1 метрээр өрдөг лего: сегмент + блок) ---
   _trussMeters = 0;
-  if(state.trussCells && state.trussCells.size){
-    const topH = state.trussH;
-    const tc = [...state.trussCells].map(k=>k.split(',').map(Number));
-    // 1×1м нүд бүрийн 4 ирмэгийг цуглуулж давхардлыг арилгана
-    const edges = new Map();  // "x:i,j" эсвэл "z:i,j"
-    const addE = (dir,i,j)=> edges.set(dir+':'+i+','+j, {dir,i,j});
-    tc.forEach(([i,j])=>{ addE('x',i,j); addE('x',i,j+1); addE('z',i,j); addE('z',i+1,j); });
-    // хэвтээ каркасын хэрчмүүд + зангилаа бүрийн чиглэл тоол
-    const nd = {};  // "i,j" -> {x,z}
-    const bump=(i,j,a)=>{ const k=i+','+j; (nd[k]=nd[k]||{x:0,z:0})[a]++; };
-    edges.forEach(({dir,i,j})=>{
-      if(dir==='x'){ placeTruss(g,1,'x',i+0.5,topH,j); bump(i,j,'x'); bump(i+1,j,'x'); }
-      else         { placeTruss(g,1,'z',i,topH,j+0.5); bump(i,j,'z'); bump(i,j+1,'z'); }
-      _trussMeters += 1;
-    });
-    // холбогч (30×30×30) зөвхөн ЭРГЭЛТ/УУЛЗВАРТ (x ба z хоёул) + буланд босоо багана
-    const cubeG=[];
-    Object.keys(nd).forEach(k=>{ const [i,j]=k.split(',').map(Number); const d=nd[k];
-      if(d.x>0 && d.z>0) cubeG.push(cubeConnAt(i, topH, j));   // холбогч: 90° эргэлт / T / +
-      if(d.x===1 && d.z===1){                                  // ЗӨВХӨН жинхэнэ булан → тулгуур багана
-        placeTruss(g, topH, 'y', i, topH/2, j); _trussMeters += topH;
-        cubeG.push(cubeConnAt(i, 0, j));
-      }
-    });
-    if(cubeG.length){ const cubes=new THREE.Mesh(mergeGeometries(cubeG,false), matAlu); cubes.castShadow=true; g.add(cubes); }
+  const segs = state.trussSegs || [], blocks = state.trussBlocks || [];
+  segs.forEach(s=>{
+    if(s.dir==='x')      placeTruss(g,1,'x', s.x+0.5, s.y, s.z);
+    else if(s.dir==='z') placeTruss(g,1,'z', s.x, s.y, s.z+0.5);
+    else                 placeTruss(g,1,'y', s.x, s.y+0.5, s.z);   // босоо
+    _trussMeters += 1;
+  });
+  if(blocks.length){ const cubeG=blocks.map(b=>cubeConnAt(b.x,b.y,b.z));
+    const cubes=new THREE.Mesh(mergeGeometries(cubeG,false), matAlu); cubes.castShadow=true; g.add(cubes); }
+  // идэвхтэй цэг (tip) — дараагийн хэсэг залгах газар
+  if(state.buildTarget==='truss' && state.trussTip){
+    const t=state.trussTip;
+    const mk=new THREE.Mesh(new THREE.SphereGeometry(0.16,16,12),
+      new THREE.MeshStandardMaterial({color:0xffb14d, emissive:0xff8f2e, emissiveIntensity:1.4}));
+    mk.position.set(t.x,t.y,t.z); g.add(mk);
   }
   stageGroup=g; scene.add(g);
   controls.target.y = targetY();
@@ -755,22 +751,49 @@ document.getElementById('tgl-build').onchange=e=>{
   build(); frameCamera();
 };
 document.getElementById('clear-cells').onclick=()=>{
-  if(state.buildTarget==='truss') state.trussCells=new Set(); else state.cells=new Set();
+  if(state.buildTarget==='truss'){ state.trussSegs=[]; state.trussBlocks=[]; state.trussTip=null; }
+  else state.cells=new Set();
   build();
 };
 document.querySelectorAll('#buildTargetSeg .chip').forEach(c=> c.onclick=()=>{
   state.buildTarget=c.dataset.bt;
   document.querySelectorAll('#buildTargetSeg .chip').forEach(x=>x.setAttribute('aria-pressed', x===c?'true':'false'));
-  document.getElementById('trussHSeg').style.display = state.buildTarget==='truss'?'':'none';
+  document.getElementById('trussPad').style.display = state.buildTarget==='truss'?'':'none';
   document.getElementById('buildTip').textContent = state.buildTarget==='truss'
-    ? 'Шалан дээр товшиж дээд каркас (тор) өр — холбогч зөвхөн буланд гарна'
+    ? 'Шалан дээр товшиж эхлэл тавь → сум товчоор 1м өр, 🔲 блокоор эргэлт гарга'
     : 'Шалан дээр товшиж хавтан нэм/хас';
-});
-document.querySelectorAll('#trussHSeg .chip').forEach(c=> c.onclick=()=>{
-  state.trussH=+c.dataset.th;
-  document.querySelectorAll('#trussHSeg .chip').forEach(x=>x.setAttribute('aria-pressed', x===c?'true':'false'));
   build();
 });
+// Камерын өнцгөөс хамаарсан хэвтээ чиглэл (сум товч харагдацтай тохирно)
+function _camAxes(){
+  const f=new THREE.Vector3(); camera.getWorldDirection(f); f.y=0; f.normalize();
+  const fAxis = Math.abs(f.x)>=Math.abs(f.z)?'x':'z';
+  const fSign = Math.sign(fAxis==='x'?f.x:f.z)||1;
+  const rAxis = fAxis==='x'?'z':'x';
+  // баруун = f × up
+  const r=new THREE.Vector3().crossVectors(f, new THREE.Vector3(0,1,0));
+  const rSign = Math.sign(rAxis==='x'?r.x:r.z)||1;
+  return { fAxis, fSign, rAxis, rSign };
+}
+function trussAdd(dc){
+  if(!state.trussTip){ showTipHint(); return; }
+  const t=state.trussTip; let seg, nx=t.x,ny=t.y,nz=t.z, prev={x:t.x,y:t.y,z:t.z};
+  if(dc==='up'){ seg={x:t.x,y:t.y,z:t.z,dir:'y',prev}; ny=t.y+1; }
+  else if(dc==='down'){ if(t.y<=0) return; seg={x:t.x,y:t.y-1,z:t.z,dir:'y',prev}; ny=t.y-1; }
+  else {
+    const a=_camAxes(); let ax,sign;
+    if(dc==='fwd'){ ax=a.fAxis; sign=a.fSign; } else if(dc==='back'){ ax=a.fAxis; sign=-a.fSign; }
+    else if(dc==='right'){ ax=a.rAxis; sign=a.rSign; } else { ax=a.rAxis; sign=-a.rSign; }
+    if(ax==='x'){ seg={x:(sign>0?t.x:t.x-1),y:t.y,z:t.z,dir:'x',prev}; nx=t.x+sign; }
+    else        { seg={x:t.x,y:t.y,z:(sign>0?t.z:t.z-1),dir:'z',prev}; nz=t.z+sign; }
+  }
+  state.trussSegs.push(seg); state.trussTip={x:nx,y:ny,z:nz}; build();
+}
+function showTipHint(){ const el=document.getElementById('buildTip'); if(el){ el.textContent='Эхлээд шалан дээр товшиж эхлэлийн цэг тавина уу'; el.style.color='var(--accent)'; setTimeout(()=>el.style.color='',1500); } }
+document.querySelectorAll('#trussPad [data-td]').forEach(b=> b.onclick=()=>trussAdd(b.dataset.td));
+document.getElementById('truss-block').onclick=()=>{ if(!state.trussTip){ showTipHint(); return; } const t=state.trussTip;
+  if(!state.trussBlocks.some(x=>x.x===t.x&&x.y===t.y&&x.z===t.z)) state.trussBlocks.push({x:t.x,y:t.y,z:t.z}); build(); };
+document.getElementById('truss-undo').onclick=()=>{ if(state.trussSegs.length){ const s=state.trussSegs.pop(); if(s.prev) state.trussTip=s.prev; build(); } };
 document.getElementById('tgl-gable').onchange=e=>{ state.gable=e.target.checked; build(); };
 document.getElementById('tgl-walls').onchange=e=>{ state.walls=e.target.checked; build(); };
 document.getElementById('tgl-tables').onchange=e=>{ state.tables=e.target.checked; build(); };
@@ -834,17 +857,20 @@ renderer.domElement.addEventListener('pointerup', e=>{
   const tapPlane=new THREE.Plane(new THREE.Vector3(0,1,0), -state.h);
   const p=new THREE.Vector3();
   if(!ray.ray.intersectPlane(tapPlane,p)) return;
-  const i=Math.floor(p.x), j=Math.floor(p.z);            // нүд (1×1м)
-  if(Math.abs(i)>25||Math.abs(j)>25) return;
-  const k=i+','+j;
-  if(state.buildTarget==='truss'){                        // каркас = дээд талын тор нүд
-    if(!state.trussCells) state.trussCells=new Set();
-    if(state.trussCells.has(k)) state.trussCells.delete(k); else state.trussCells.add(k);
+  if(state.buildTarget==='truss'){                        // каркас = эхлэлийн цэг (tip) шалан дээр
+    const x=Math.round(p.x), z=Math.round(p.z);
+    if(Math.abs(x)>25||Math.abs(z)>25) return;
+    state.trussTip={x, y:0, z};
+    if(!state.trussBlocks.some(b=>b.x===x&&b.y===0&&b.z===z)) state.trussBlocks.push({x,y:0,z});  // суурь блок
+    build();
   } else {                                                // хавтан = тайзны дэк нүд
+    const i=Math.floor(p.x), j=Math.floor(p.z);
+    if(Math.abs(i)>25||Math.abs(j)>25) return;
+    const k=i+','+j;
     if(!state.cells) state.cells=new Set();
     if(state.cells.has(k)) state.cells.delete(k); else state.cells.add(k);
+    build();
   }
-  build();
 });
 let spin=false;
 document.getElementById('tgl-spin').onchange=e=>{ spin=e.target.checked; };
