@@ -143,18 +143,9 @@
     <button class="hbtn" id="dock-collapse" title="Хумих/дэлгэх">▾</button>
   </div>
   <div class="panel-body">
-  <div class="row" id="editReturn" style="display:none">
-    <button class="ghost" id="edit-back" style="border-color:var(--accent);color:var(--accent);font-weight:700;width:100%;justify-content:center;">✓ Талбай руу буцах (хадгална)</button>
-  </div>
   <div class="row" id="modeRow">
-    <span class="lbl">Төрөл</span>
-    <div class="sizes" id="modeSeg">
-      <button class="chip" data-mode="venue" aria-pressed="true">🗺 Талбай</button>
-      <button class="chip" data-mode="stage" aria-pressed="false">🎤 Тайз</button>
-      <button class="chip" data-mode="tent" aria-pressed="false">⛺ Асар</button>
-    </div>
-    <div class="spacer"></div>
     <label class="tgl"><input type="checkbox" id="tgl-spin"><span class="sw"></span>Эргэлт</label>
+    <div class="spacer"></div>
     <button class="ghost" id="ar-btn" style="border-color:var(--accent);color:var(--accent);font-weight:700;">📱 AR</button>
     <button class="ghost" id="reset">↺ Байрлал</button>
   </div>
@@ -230,13 +221,11 @@
     <span class="lbl" id="venueSelLbl">Сонгосон</span>
     <button class="chip" id="v-rotL" title="Зүүн эргүүлэх">⟲</button>
     <button class="chip" id="v-rotR" title="Баруун эргүүлэх">⟳</button>
-    <button class="chip" id="v-smaller" title="Жижигрүүлэх">−</button>
-    <button class="chip" id="v-bigger" title="Томруулах">＋</button>
-    <button class="chip" id="v-edit" title="Дэлгэрэнгүй тохируулах">✎ Тохируулах</button>
     <button class="chip" id="v-del" title="Устгах">🗑</button>
     <button class="chip" id="v-none" title="Сонголт болих">✕</button>
     <span id="venueTip" style="font-size:11px;color:var(--dim);flex-basis:100%;margin-top:2px;">Объект дээр дарж сонго → чирж зөө · хоосон газар дарж болино</span>
   </div>
+  <div id="structCfg"></div>
   </div>
 </div>
 
@@ -1061,11 +1050,7 @@ function rotateSel(deg){ const it=venueItem(state.sel); if(!it) return; it.rot=(
 function resizeSel(f){ const it=venueItem(state.sel); if(!it||(it.type!=='stage'&&it.type!=='tent')) return;
   it.w=Math.max(2,Math.round((it.w+f)*2)/2); it.d=Math.max(2,Math.round((it.d+f*1.4)*2)/2); buildVenue(); renderVenueSel(); }
 
-function build(){ setEnv();
-  if(state.mode==='venue') buildVenue();
-  else if(state.mode==='tent') buildTent();
-  else if(state.build) buildStageModular();
-  else buildStage();
+function build(){ state.mode='venue'; setEnv(); buildVenue();
   if(typeof scheduleAR==='function') scheduleAR();
 }
 
@@ -1162,69 +1147,41 @@ function refreshUI(){
   if(!isVenue){ const pp=document.getElementById('prodPopup'); if(pp) pp.style.display='none'; }
   if(typeof renderVenueSel==='function') renderVenueSel();
 }
-function applyMode(mode){
-  state.mode = mode;
-  if(state.editId!=null){ state.editId=null; const er=document.getElementById('editReturn'); if(er) er.style.display='none';
-    const mr=document.getElementById('modeRow'); if(mr) mr.style.display=''; }
-  document.querySelectorAll('#modeSeg .chip').forEach(c=>c.setAttribute('aria-pressed', c.dataset.mode===mode?'true':'false'));
-  if(mode!=='venue'){
-    const def = PRESETS[mode];
-    state.w = def.sizes[1].w; state.d = def.sizes[1].d; state.h = def.heights[1]; state.tablePos = null;
-    renderSizes(); renderHeights(); renderTrussHeights();
-  }
-  refreshUI(); build(); frameCamera();
-}
-document.querySelectorAll('#modeSeg .chip').forEach(c=> c.onclick=()=>applyMode(c.dataset.mode));
-
-// ---------- Талбай: палитр + сонголтын удирдлага ----------
+// ---------- Талбай: сонголт + бүтцийн ШУУД (inline) тохиргоо ----------
 function renderVenueSel(){
   const row=document.getElementById('venueSel'); if(!row) return;
-  const it = state.mode==='venue' && state.sel!=null ? venueItem(state.sel) : null;
+  const it = state.sel!=null ? venueItem(state.sel) : null;
   row.style.display = it ? '' : 'none';
-  if(it){
-    document.getElementById('venueSelLbl').textContent = VENUE_LABEL[it.type]||'Объект';
-    const sz = (it.type==='stage'||it.type==='tent');
-    document.getElementById('v-smaller').style.display = sz?'':'none';
-    document.getElementById('v-bigger').style.display = sz?'':'none';
-    document.getElementById('v-edit').style.display = sz?'':'none';
+  if(it) document.getElementById('venueSelLbl').textContent = VENUE_LABEL[it.type]||'Объект';
+  renderStructCfg(it);
+}
+// сонгосон тайз/асрын хэлбэр хэмжээ, онцлогийг ШУУД талбай дээр тааруулна
+const STAGE_SIZES=[{w:4,d:3},{w:6,d:4},{w:8,d:4},{w:10,d:6},{w:12,d:8}];
+const TENT_SIZES=[{w:6,d:9},{w:10,d:15},{w:12,d:20},{w:15,d:30}];
+function renderStructCfg(it){
+  const box=document.getElementById('structCfg'); if(!box) return;
+  if(!it || (it.type!=='stage' && it.type!=='tent')){ box.innerHTML=''; return; }
+  const chip=(txt,on,attr)=>`<button class="chip" ${attr} aria-pressed="${on?'true':'false'}">${txt}</button>`;
+  const sizes = it.type==='stage'?STAGE_SIZES:TENT_SIZES;
+  const heights = it.type==='stage'?[0.6,1.0,1.4]:[2.2,2.6,3.0];
+  const rows=[];
+  rows.push(`<div class="row"><span class="lbl">Хэмжээ</span><div class="sizes">${sizes.map(s=>chip(`${s.w}×${s.d}<span class="u"> м</span>`, s.w===it.w&&s.d===it.d, `data-ssz="${s.w},${s.d}"`)).join('')}</div></div>`);
+  rows.push(`<div class="row"><span class="lbl">${it.type==='stage'?'Өндөр':'Хажуу өндөр'}</span><div class="sizes">${heights.map(h=>chip(`${h}<span class="u"> м</span>`, h===it.h, `data-shh="${h}"`)).join('')}<div class="spacer"></div></div>`);
+  if(it.type==='stage'){
+    rows.push(`<div class="row"><span class="lbl">Трасс өндөр</span><div class="sizes">${[3.5,4.5,6].map(h=>chip(`${h}<span class="u"> м</span>`, h===(it.trussH||4.5), `data-sth="${h}"`)).join('')}<div class="spacer"></div></div>`);
+    rows.push(`<div class="row"><label class="tgl"><input type="checkbox" data-sfeat="truss" ${it.truss!==false?'checked':''}><span class="sw"></span>Трасс</label><label class="tgl"><input type="checkbox" data-sfeat="led" ${it.led?'checked':''}><span class="sw"></span>LED</label><label class="tgl"><input type="checkbox" data-sfeat="roof" ${it.roof?'checked':''}><span class="sw"></span>Дээвэр</label></div>`);
+  } else {
+    rows.push(`<div class="row"><label class="tgl"><input type="checkbox" data-sfeat="walls" ${it.walls?'checked':''}><span class="sw"></span>Хажуу хана</label><label class="tgl"><input type="checkbox" data-sfeat="gable" ${it.gable!==false?'checked':''}><span class="sw"></span>Дүнзэн үзүүр</label></div>`);
   }
+  box.innerHTML=rows.join('');
+  box.querySelectorAll('[data-ssz]').forEach(b=>b.onclick=()=>{ const [w,d]=b.dataset.ssz.split(',').map(Number); it.w=w; it.d=d; buildVenue(); renderVenueSel(); });
+  box.querySelectorAll('[data-shh]').forEach(b=>b.onclick=()=>{ it.h=Number(b.dataset.shh); buildVenue(); renderVenueSel(); });
+  box.querySelectorAll('[data-sth]').forEach(b=>b.onclick=()=>{ it.trussH=Number(b.dataset.sth); buildVenue(); renderVenueSel(); });
+  box.querySelectorAll('[data-sfeat]').forEach(c=>c.onchange=()=>{ it[c.dataset.sfeat]=c.checked; buildVenue(); renderVenueSel(); });
 }
-// бүтэц (тайз/асар)-ыг дэлгэрэнгүй дизайнерт нээж тохируулна → буцахад талбайд хадгална
-function syncStructToggles(){
-  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.checked=v; };
-  set('tgl-truss',state.truss); set('tgl-led',state.led); set('tgl-roof',state.roof);
-  set('tgl-gable',state.gable); set('tgl-walls',state.walls);
-}
-function editStructure(){
-  const it=venueItem(state.sel); if(!it||(it.type!=='stage'&&it.type!=='tent')) return;
-  state.editId=it.id; state.mode=it.type; state.build=false;
-  state.w=it.w; state.d=it.d; state.h=it.h;
-  state.truss=it.truss!==false; state.led=!!it.led; state.roof=!!it.roof;
-  state.walls=!!it.walls; state.gable=it.gable!==false; state.stageTrussH=it.trussH||4.5;
-  document.querySelectorAll('#modeSeg .chip').forEach(c=>c.setAttribute('aria-pressed', c.dataset.mode===it.type?'true':'false'));
-  renderSizes(); renderHeights(); renderTrussHeights(); syncStructToggles();
-  refreshUI(); build(); frameCamera();
-  document.getElementById('editReturn').style.display='';
-  document.getElementById('modeRow').style.display='none';
-}
-function backToVenue(){
-  const it=venueItem(state.editId);
-  if(it){ it.w=state.w; it.d=state.d; it.h=state.h;
-    if(it.type==='stage'){ it.truss=state.truss; it.led=state.led; it.roof=state.roof; it.trussH=state.stageTrussH; }
-    else { it.walls=state.walls; it.gable=state.gable; } }
-  state.editId=null; state.mode='venue';
-  document.querySelectorAll('#modeSeg .chip').forEach(c=>c.setAttribute('aria-pressed', c.dataset.mode==='venue'?'true':'false'));
-  document.getElementById('editReturn').style.display='none';
-  document.getElementById('modeRow').style.display='';
-  refreshUI(); build(); frameCamera();
-}
-document.getElementById('v-edit').onclick=editStructure;
-document.getElementById('edit-back').onclick=backToVenue;
 document.querySelectorAll('#venuePalette .chip').forEach(c=> c.onclick=()=>addItem(c.dataset.add));
 document.getElementById('v-rotL').onclick=()=>rotateSel(-15);
 document.getElementById('v-rotR').onclick=()=>rotateSel(15);
-document.getElementById('v-smaller').onclick=()=>resizeSel(-1);
-document.getElementById('v-bigger').onclick=()=>resizeSel(1);
 document.getElementById('v-del').onclick=()=>deleteSel();
 document.getElementById('v-none').onclick=()=>{ state.sel=null; buildVenue(); renderVenueSel(); };
 
