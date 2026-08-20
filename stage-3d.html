@@ -1166,16 +1166,18 @@ function tileHasImagery(img){
 }
 async function loadSiteMap(lat,lng){
   const msg=document.getElementById('map-msg'); msg.textContent='Газрын зураг татаж байна…';
-  const N=4;
-  // хамгийн нарийвчилсан боломжит zoom-ыг ол (z18 байхгүй бол буурч)
+  // хамгийн нарийвчилсан боломжит zoom-ыг ол (z19-оос буурч; хотод z19 = 2× тод)
   let z=0, fx=0, fy=0;
-  for(let zz=18; zz>=13; zz--){
+  for(let zz=19; zz>=13; zz--){
     const t=lonLatToTile(lat,lng,zz);
     const ctile=await fetchTile(zz, Math.floor(t.x), Math.floor(t.y));
     if(tileHasImagery(ctile)){ z=zz; fx=t.x; fy=t.y; break; }
   }
   if(!z){ msg.textContent='Энэ байршилд хиймэл дагуулын зураг олдсонгүй (хэт алслагдсан).'; return; }
-  const startX=Math.floor(fx)-1, startY=Math.floor(fy)-1;
+  const mpp = 156543.03392 * Math.cos(lat*Math.PI/180) / Math.pow(2,z);
+  // ~340м талбайг бүрхэх тайлын тоо (3..7); өндөр zoom = илүү нягт текстур
+  const N = Math.max(3, Math.min(7, Math.round(340/(256*mpp))));
+  const startX=Math.round(fx-N/2), startY=Math.round(fy-N/2);
   const cvs=document.createElement('canvas'); cvs.width=N*256; cvs.height=N*256;
   const g2=cvs.getContext('2d'); g2.fillStyle='#39414d'; g2.fillRect(0,0,cvs.width,cvs.height);
   let ok=0;
@@ -1184,7 +1186,6 @@ async function loadSiteMap(lat,lng){
     if(im){ g2.drawImage(im,i*256,j*256); ok++; }
   })()))));
   if(!ok){ msg.textContent='Зураг татаж чадсангүй. Дараа дахин оролдоно уу.'; return; }
-  const mpp = 156543.03392 * Math.cos(lat*Math.PI/180) / Math.pow(2,z);
   const sizeM = N*256*mpp;
   const tex=new THREE.CanvasTexture(cvs); tex.colorSpace=THREE.SRGBColorSpace;
   try{ tex.anisotropy=renderer.capabilities.getMaxAnisotropy(); }catch(_){}
