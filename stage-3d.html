@@ -218,6 +218,7 @@
       <button class="chip" data-add="light">💡 Гэрлийн багана</button>
       <button class="chip" data-add="plant">🪴 Ургамал</button>
       <button class="chip" data-add="parasol">⛱ Шүхэр</button>
+      <button class="chip" data-add="person">🧍 Хүн</button>
     </div>
   </div>
   <div class="row" id="drawBar" style="display:none">
@@ -875,10 +876,10 @@ const VENUE_DEFAULTS = {
   tent:   { w:10, d:15, h:2.6, walls:false, gable:true },
   rtable: {}, ltable: {}, chair: {}, tree: {}, hill: { r:10, h:4 }, bell: { d:5 },
   booth: { w:5, d:2, h:4, lit:false, sides:{back:true,left:true,right:true,front:false} },
-  sofa:{}, arch:{}, dance:{}, speaker:{}, light:{}, plant:{}, bar:{}, parasol:{}
+  sofa:{}, arch:{}, dance:{}, speaker:{}, light:{}, plant:{}, bar:{}, parasol:{}, person:{}
 };
 const VENUE_LABEL = { stage:'Тайз', tent:'Асар', rtable:'Дугуй ширээ', ltable:'Урт ширээ', chair:'Сандал', tree:'Мод', hill:'Уул', river:'Гол', forest:'Ой', bell:'Bell майхан', booth:'Бүүд',
-  sofa:'Буйдан', arch:'Арк', dance:'Бүжгийн шал', speaker:'Чанга яригч', light:'Гэрлийн багана', plant:'Ургамал', bar:'Бар', parasol:'Шүхэр' };
+  sofa:'Буйдан', arch:'Арк', dance:'Бүжгийн шал', speaker:'Чанга яригч', light:'Гэрлийн багана', plant:'Ургамал', bar:'Бар', parasol:'Шүхэр', person:'Хүн' };
 // --- объект тус бүрийн Group үүсгэгчид (одоо байгаа геометрийн туслахуудыг дахин ашиглана) ---
 function objStage(p){
   const g=new THREE.Group();
@@ -1153,8 +1154,41 @@ function objBooth(it){
   });
   return g;
 }
+// Хүн (масштабын лавлагаа) — энгийн биет + царайд зураг тавина
+const _mannMat=new THREE.MeshStandardMaterial({color:0x9aa0ac, roughness:0.9});
+const _legMat=new THREE.MeshStandardMaterial({color:0x3a4250, roughness:0.9});
+const _faceTexCache=new Map();
+function faceTexture(src){
+  if(_faceTexCache.has(src)) return _faceTexCache.get(src);
+  const t=new THREE.Texture(); t.colorSpace=THREE.SRGBColorSpace; t.center.set(0.5,0.5); t.repeat.set(0.82,0.82);
+  const im=new Image(); if(!src.startsWith('data:')) im.crossOrigin='anonymous';
+  im.onload=()=>{ t.image=im; t.needsUpdate=true; }; im.src=src;
+  _faceTexCache.set(src,t); return t;
+}
+let _facePh=null;
+function faceePlaceholder(){
+  if(_facePh) return _facePh;
+  const c=document.createElement('canvas'); c.width=c.height=256; const x=c.getContext('2d');
+  x.fillStyle='#c7ccd6'; x.fillRect(0,0,256,256);
+  x.fillStyle='#7f8794'; x.beginPath(); x.arc(128,105,42,0,7); x.fill();
+  x.beginPath(); x.arc(128,250,80,Math.PI,0); x.fill();
+  _facePh=new THREE.CanvasTexture(c); _facePh.colorSpace=THREE.SRGBColorSpace; return _facePh;
+}
+function objPerson(it){
+  const g=new THREE.Group();
+  [-0.11,0.11].forEach(x=>{ const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.07,0.85,10),_legMat); leg.position.set(x,0.42,0); leg.castShadow=true; g.add(leg); });
+  const torso=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.16,0.64,12),_mannMat); torso.position.y=1.14; torso.castShadow=true; g.add(torso);
+  [-0.25,0.25].forEach(x=>{ const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.05,0.62,8),_mannMat); arm.position.set(x,1.12,0); arm.rotation.z=x>0?0.08:-0.08; arm.castShadow=true; g.add(arm); });
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.09,8),_mannMat); neck.position.y=1.49; g.add(neck);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.135,16,14),_mannMat); head.position.y=1.61; head.castShadow=true; g.add(head);
+  const tex=it.face?faceTexture(it.face):faceePlaceholder();
+  const face=new THREE.Mesh(new THREE.PlaneGeometry(0.23,0.26), new THREE.MeshBasicMaterial({map:tex}));
+  face.position.set(0,1.62,0.128); g.add(face);
+  return g;
+}
 function makeVenueObj(it){
   if(PROP_BUILDERS[it.type]) return PROP_BUILDERS[it.type]();
+  if(it.type==='person')  return objPerson(it);
   if(it.type==='booth')   return objBooth(it);
   if(it.type==='stage')   return objStage(it);
   if(it.type==='tent')    return objTent(it);
@@ -1175,7 +1209,8 @@ function itemRadius(it){
   if(it.type==='ltable') return 1.9; if(it.type==='rtable') return 1.6;
   if(it.type==='hill') return (it.r||10)+0.5;
   if(it.type==='bell') return (it.d||5)/2*1.4+0.3;
-  if(it.type==='tree') return 1.2; return 0.45;
+  if(it.type==='tree') return 1.2;
+  if(it.type==='person') return 0.5; return 0.45;
 }
 function selRing(it){
   const r=itemRadius(it); const geo=new THREE.RingGeometry(r, r+0.14, 56); geo.rotateX(-Math.PI/2);
@@ -1253,9 +1288,9 @@ function updateReadout(){
   const r = document.getElementById('readout');
   let feats;
   if(state.mode==='venue'){
-    const c={stage:0,tent:0,bell:0,booth:0,rtable:0,ltable:0,chair:0,tree:0,hill:0,river:0,forest:0}; let sum=0, props=0;
+    const c={stage:0,tent:0,bell:0,booth:0,rtable:0,ltable:0,chair:0,tree:0,hill:0,river:0,forest:0,person:0}; let sum=0, props=0;
     state.items.forEach(i=>{ c[i.type]=(c[i.type]||0)+1; if(PROP_BUILDERS[i.type]) props++; if(i.type==='stage'||i.type==='tent') sum+=Math.round((i.w||0)*(i.d||0))*PRICE.module; });
-    const parts=[]; if(c.stage)parts.push(c.stage+' тайз'); if(c.tent)parts.push(c.tent+' асар'); if(c.bell)parts.push(c.bell+' bell'); if(c.booth)parts.push(c.booth+' бүүд');
+    const parts=[]; if(c.stage)parts.push(c.stage+' тайз'); if(c.tent)parts.push(c.tent+' асар'); if(c.bell)parts.push(c.bell+' bell'); if(c.booth)parts.push(c.booth+' бүүд'); if(c.person)parts.push(c.person+' хүн');
     const tbl=c.rtable+c.ltable; if(tbl)parts.push(tbl+' ширээ'); if(c.chair)parts.push(c.chair+' сандал'); if(props)parts.push(props+' тавилга');
     if(c.tree)parts.push(c.tree+' мод'); if(c.hill)parts.push(c.hill+' уул'); if(c.river)parts.push(c.river+' гол'); if(c.forest)parts.push(c.forest+' ой');
     r.innerHTML = `<b>${state.items.length} объект</b> <span>· ${parts.join(' · ')||'хоосон талбай'}</span>`;
@@ -1381,7 +1416,13 @@ function renderStructCfg(it){
     const rb=()=>{ buildVenue(); renderVenueSel(); };
     box.querySelectorAll('[data-bh]').forEach(b=>b.onclick=()=>{ it.h=Math.max(1,(it.h||4)+Number(b.dataset.bh)); rb(); });
     const lit=box.querySelector('[data-blit]'); if(lit) lit.onchange=()=>{ it.lit=lit.checked; rb(); };
-    const up=box.querySelector('#booth-upload'); if(up) up.onclick=()=>{ _boothTarget=it; document.getElementById('booth-file').click(); };
+    const up=box.querySelector('#booth-upload'); if(up) up.onclick=()=>pickImage(it,'img');
+    return;
+  }
+  // Хүн — царайны зураг
+  if(it.type==='person'){
+    box.innerHTML=`<div class="row"><span class="lbl">Царай</span><button class="ghost" id="face-upload">📷 Царай оруулах</button>${it.face?'<span style="font-size:11px;color:var(--dim);margin-left:6px;">✓ орсон</span>':''}</div>`;
+    const up=box.querySelector('#face-upload'); if(up) up.onclick=()=>pickImage(it,'face');
     return;
   }
   // Bell майхан — диаметр
@@ -1450,11 +1491,12 @@ document.getElementById('v-rotL').onclick=()=>rotateSel(-15);
 document.getElementById('v-rotR').onclick=()=>rotateSel(15);
 document.getElementById('v-del').onclick=()=>deleteSel();
 document.getElementById('v-none').onclick=()=>{ state.sel=null; buildVenue(); renderVenueSel(); };
-// Бүүдийн хэвлэлийн зураг оруулах
-let _boothTarget=null;
+// Зураг оруулах (бүүдийн хэвлэл / хүний царай г.м.)
+let _imgTarget=null, _imgField='img';
+function pickImage(item, field){ _imgTarget=item; _imgField=field||'img'; document.getElementById('booth-file').click(); }
 document.getElementById('booth-file').onchange=e=>{
-  const f=e.target.files && e.target.files[0]; if(!f||!_boothTarget) return;
-  const r=new FileReader(); r.onload=()=>{ _boothTarget.img=r.result; buildVenue(); renderVenueSel(); }; r.readAsDataURL(f);
+  const f=e.target.files && e.target.files[0]; if(!f||!_imgTarget) return;
+  const r=new FileReader(); r.onload=()=>{ _imgTarget[_imgField]=r.result; buildVenue(); renderVenueSel(); }; r.readAsDataURL(f);
   e.target.value='';
 };
 
