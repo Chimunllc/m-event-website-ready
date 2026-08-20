@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>M-Event · Тайзны бүтэц 3D (Pro)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <style>
@@ -75,6 +76,11 @@
   .pl{font-size:11px;color:var(--mut);font-weight:600}
   .numv{font-size:12px;min-width:60px;text-align:center;color:var(--txt);font-variant-numeric:tabular-nums}
   .popup .chip{padding:6px 11px}
+  .txt-input{flex:1 1 100%;box-sizing:border-box;background:#1b2029;border:1px solid var(--line);border-radius:9px;
+    color:var(--txt);font-size:12.5px;padding:7px 10px;outline:none}
+  .txt-input:focus{border-color:var(--accent-soft)}
+  #map-credit{position:fixed;left:14px;bottom:10px;z-index:9;font-size:10px;color:var(--mut);
+    background:rgba(10,12,17,.6);border:1px solid var(--line);border-radius:6px;padding:3px 8px;backdrop-filter:blur(6px)}
   @media (max-width:600px){
     .dock{top:auto;bottom:0;left:0;right:0;width:auto;max-height:58vh;border-radius:16px 16px 0 0}
     .popup{top:auto;bottom:0;left:0;right:0;width:auto;max-height:72vh;border-radius:16px 16px 0 0}
@@ -117,6 +123,7 @@
 </div>
 <div class="readout" id="readout"></div>
 <div class="readout" id="price" style="top:102px;display:none;font-size:14px;"></div>
+<div id="map-credit" style="display:none;">Imagery © Esri, Maxar, Earthstar Geographics</div>
 <div class="hint">Чирж эргүүлнэ · 2 хуруу / дугуйгаар зумна</div>
 
 <div class="dock" id="dock">
@@ -130,6 +137,13 @@
     <div class="spacer"></div>
     <button class="ghost" id="ar-btn" style="border-color:var(--accent);color:var(--accent);font-weight:700;">📱 AR</button>
     <button class="ghost" id="reset">↺ Байрлал</button>
+  </div>
+  <div class="row" id="mapRow">
+    <span class="lbl">📍 Байршил</span>
+    <input id="map-input" class="txt-input" placeholder="Google Map линк эсвэл: өргөрөг, уртраг" autocomplete="off">
+    <button class="ghost" id="map-load">Газрын зураг оруулах</button>
+    <button class="ghost" id="map-clear" style="display:none;">✕ Арилгах</button>
+    <span id="map-msg" style="font-size:11px;color:var(--dim);flex-basis:100%;"></span>
   </div>
   <div class="row" id="stageModeRow">
     <span class="lbl">Загвар</span>
@@ -1098,6 +1112,77 @@ document.getElementById('v-rotL').onclick=()=>rotateSel(-15);
 document.getElementById('v-rotR').onclick=()=>rotateSel(15);
 document.getElementById('v-del').onclick=()=>deleteSel();
 document.getElementById('v-none').onclick=()=>{ state.sel=null; buildVenue(); renderVenueSel(); };
+
+// ---------- Газрын зураг (Google Map байршил → Esri хиймэл дагуулын зураг, бодит хэмжээ) ----------
+let mapPlane=null;
+function parseLatLng(str){
+  if(!str) return null; str=str.trim();
+  const m = str.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
+         || str.match(/[?&](?:q|ll|sll|daddr)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/)
+         || str.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
+         || str.match(/(-?\d{1,2}\.\d{3,}),\s*(-?\d{1,3}\.\d{3,})/);
+  if(!m) return null;
+  const lat=parseFloat(m[1]), lng=parseFloat(m[2]);
+  if(!isFinite(lat)||!isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180) return null;
+  return {lat,lng};
+}
+function lonLatToTile(lat,lng,z){
+  const n=Math.pow(2,z);
+  return { x:(lng+180)/360*n, y:(1 - Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*n };
+}
+async function loadSiteMap(lat,lng){
+  const msg=document.getElementById('map-msg'); msg.textContent='Газрын зураг татаж байна…';
+  const z=18, N=4;
+  const {x:fx,y:fy}=lonLatToTile(lat,lng,z);
+  const startX=Math.floor(fx)-1, startY=Math.floor(fy)-1;
+  const cvs=document.createElement('canvas'); cvs.width=N*256; cvs.height=N*256;
+  const g2=cvs.getContext('2d'); g2.fillStyle='#39414d'; g2.fillRect(0,0,cvs.width,cvs.height);
+  let ok=0;
+  await Promise.all([].concat(...Array.from({length:N},(_,i)=>Array.from({length:N},(_,j)=>new Promise(res=>{
+    const tx=startX+i, ty=startY+j;
+    const im=new Image(); im.crossOrigin='anonymous';
+    im.onload=()=>{ g2.drawImage(im,i*256,j*256); ok++; res(); };
+    im.onerror=()=>res();
+    im.src=`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${ty}/${tx}`;
+  })))));
+  if(!ok){ msg.textContent='Зураг татаж чадсангүй. Дараа дахин оролдоно уу.'; return; }
+  const mpp = 156543.03392 * Math.cos(lat*Math.PI/180) / Math.pow(2,z);
+  const sizeM = N*256*mpp;
+  const tex=new THREE.CanvasTexture(cvs); tex.colorSpace=THREE.SRGBColorSpace;
+  try{ tex.anisotropy=renderer.capabilities.getMaxAnisotropy(); }catch(_){}
+  if(mapPlane){ scene.remove(mapPlane); if(mapPlane.material.map) mapPlane.material.map.dispose(); mapPlane.material.dispose(); }
+  const geo=new THREE.PlaneGeometry(sizeM,sizeM); geo.rotateX(-Math.PI/2);
+  mapPlane=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({map:tex}));
+  // байршлыг талбайн голд (0,0) байрлуулна
+  const cpx=(fx-startX)*256, cpy=(fy-startY)*256;
+  mapPlane.position.set((cvs.width/2 - cpx)*mpp, 0.02, (cpy - cvs.height/2)*mpp);
+  scene.add(mapPlane);
+  ground.visible=false; grid.visible=false;
+  document.getElementById('map-credit').style.display='';
+  document.getElementById('map-clear').style.display='';
+  msg.textContent=`✓ ${lat.toFixed(5)}, ${lng.toFixed(5)} · ~${Math.round(sizeM)}м талбай`;
+}
+function clearSiteMap(){
+  if(mapPlane){ scene.remove(mapPlane); if(mapPlane.material.map) mapPlane.material.map.dispose(); mapPlane.material.dispose(); mapPlane=null; }
+  ground.visible=true; grid.visible=true;
+  document.getElementById('map-credit').style.display='none';
+  document.getElementById('map-clear').style.display='none';
+  document.getElementById('map-msg').textContent='';
+  document.getElementById('map-input').value='';
+}
+document.getElementById('map-load').onclick=()=>{
+  const v=document.getElementById('map-input').value;
+  const ll=parseLatLng(v);
+  const msg=document.getElementById('map-msg');
+  if(!ll){
+    if(/goo\.gl|maps\.app/.test(v)) msg.textContent='Богино холбоос дэмжигдэхгүй. Google Map дээр цэг дээр баруун товшоод координатыг (өргөрөг, уртраг) хуулж оруулна уу.';
+    else msg.textContent='Байршил танигдсангүй. Жишээ: 47.91542, 106.91760';
+    return;
+  }
+  loadSiteMap(ll.lat, ll.lng);
+};
+document.getElementById('map-clear').onclick=clearSiteMap;
+document.getElementById('map-input').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('map-load').click(); });
 
 document.getElementById('tgl-truss').onchange=e=>{ state.truss=e.target.checked; refreshUI(); build(); };
 document.getElementById('tgl-led').onchange=e=>{ state.led=e.target.checked; build(); };
