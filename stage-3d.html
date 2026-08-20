@@ -213,6 +213,7 @@
       <button class="chip" data-add="rtable">⭕ Дугуй ширээ</button>
       <button class="chip" data-add="ltable">▬ Урт ширээ</button>
       <button class="chip" data-add="chair">🪑 Сандал</button>
+      <button class="chip" data-add="tree">🌲 Мод</button>
     </div>
   </div>
   <div class="row" id="venueSel" style="display:none">
@@ -858,9 +859,9 @@ let _venueId = 0, _selRing = null;
 const VENUE_DEFAULTS = {
   stage:  { w:6, d:4, h:0.6, truss:true, trussH:4.5, led:false, roof:false },
   tent:   { w:10, d:15, h:2.6, walls:false, gable:true },
-  rtable: {}, ltable: {}, chair: {}
+  rtable: {}, ltable: {}, chair: {}, tree: {}
 };
-const VENUE_LABEL = { stage:'Тайз', tent:'Асар', rtable:'Дугуй ширээ', ltable:'Урт ширээ', chair:'Сандал' };
+const VENUE_LABEL = { stage:'Тайз', tent:'Асар', rtable:'Дугуй ширээ', ltable:'Урт ширээ', chair:'Сандал', tree:'Мод' };
 // --- объект тус бүрийн Group үүсгэгчид (одоо байгаа геометрийн туслахуудыг дахин ашиглана) ---
 function objStage(p){
   const g=new THREE.Group();
@@ -921,22 +922,40 @@ function objTent(p){
   return g;
 }
 function objChair(){ const g=new THREE.Group(); const c=new THREE.Mesh(chairGeo(),matChair); c.castShadow=true; g.add(c); return g; }
+const _leafMat=new THREE.MeshStandardMaterial({color:0x3f7d3a, roughness:1});
+const _barkMat=new THREE.MeshStandardMaterial({color:0x6b4b2a, roughness:1});
+function objTree(){
+  const g=new THREE.Group();
+  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.2,1.1,7),_barkMat); trunk.position.y=0.55; trunk.castShadow=true; g.add(trunk);
+  const c1=new THREE.Mesh(new THREE.ConeGeometry(1.15,1.8,9),_leafMat); c1.position.y=1.7; c1.castShadow=true; g.add(c1);
+  const c2=new THREE.Mesh(new THREE.ConeGeometry(0.9,1.4,9),_leafMat); c2.position.y=2.5; c2.castShadow=true; g.add(c2);
+  return g;
+}
 function makeVenueObj(it){
   if(it.type==='stage')   return objStage(it);
   if(it.type==='tent')    return objTent(it);
   if(it.type==='rtable')  return makeTableUnit('round', true);
   if(it.type==='ltable')  return makeTableUnit('long', true);
   if(it.type==='chair')   return objChair();
+  if(it.type==='tree')    return objTree();
   return new THREE.Group();
 }
 function itemRadius(it){
   if(it.type==='stage'||it.type==='tent') return Math.hypot(it.w,it.d)/2+0.4;
-  if(it.type==='ltable') return 1.9; if(it.type==='rtable') return 1.6; return 0.45;
+  if(it.type==='ltable') return 1.9; if(it.type==='rtable') return 1.6;
+  if(it.type==='tree') return 1.2; return 0.45;
 }
 function selRing(it){
   const r=itemRadius(it); const geo=new THREE.RingGeometry(r, r+0.14, 56); geo.rotateX(-Math.PI/2);
   const m=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:0xffb14d,transparent:true,opacity:0.95,side:THREE.DoubleSide}));
   m.position.set(it.x,0.03,it.z); m.renderOrder=2; return m;
+}
+const _downRay=new THREE.Raycaster();
+function terrainHeightAt(x,z){
+  if(!mapPlane) return 0;
+  _downRay.set(new THREE.Vector3(x,1000,z), new THREE.Vector3(0,-1,0));
+  const h=_downRay.intersectObject(mapPlane,false);
+  return h.length? h[0].point.y : 0;
 }
 function buildVenue(){
   if(stageGroup){ scene.remove(stageGroup); stageGroup=null; }
@@ -945,11 +964,11 @@ function buildVenue(){
   venueGroup=new THREE.Group(); venuePick.length=0; _selRing=null;
   state.items.forEach(it=>{
     const og=makeVenueObj(it);
-    og.position.set(it.x,0,it.z); og.rotation.y=it.rot||0;
+    og.position.set(it.x, terrainHeightAt(it.x,it.z), it.z); og.rotation.y=it.rot||0;
     og.userData.itemId=it.id;
     og.traverse(o=>{ if(o.isMesh) o.userData.itemId=it.id; });
     venueGroup.add(og); venuePick.push(og);
-    if(state.sel===it.id){ const rg=selRing(it); venueGroup.add(rg); _selRing=rg; }
+    if(state.sel===it.id){ const rg=selRing(it); rg.position.y+=terrainHeightAt(it.x,it.z); venueGroup.add(rg); _selRing=rg; }
   });
   scene.add(venueGroup);
   updateReadout();
@@ -986,10 +1005,10 @@ function updateReadout(){
   const r = document.getElementById('readout');
   let feats;
   if(state.mode==='venue'){
-    const c={stage:0,tent:0,rtable:0,ltable:0,chair:0}; let sum=0;
+    const c={stage:0,tent:0,rtable:0,ltable:0,chair:0,tree:0}; let sum=0;
     state.items.forEach(i=>{ c[i.type]=(c[i.type]||0)+1; if(i.type==='stage'||i.type==='tent') sum+=Math.round((i.w||0)*(i.d||0))*PRICE.module; });
     const parts=[]; if(c.stage)parts.push(c.stage+' тайз'); if(c.tent)parts.push(c.tent+' асар');
-    const tbl=c.rtable+c.ltable; if(tbl)parts.push(tbl+' ширээ'); if(c.chair)parts.push(c.chair+' сандал');
+    const tbl=c.rtable+c.ltable; if(tbl)parts.push(tbl+' ширээ'); if(c.chair)parts.push(c.chair+' сандал'); if(c.tree)parts.push(c.tree+' мод');
     r.innerHTML = `<b>${state.items.length} объект</b> <span>· ${parts.join(' · ')||'хоосон талбай'}</span>`;
     const pe=document.getElementById('price');
     if(pe){ if(sum>0){ pe.style.display=''; pe.innerHTML=`💰 <b>${moneyFmt(sum)}</b> <span style="font-size:10px;color:var(--dim)">тайз/асрын үнэ (ойролцоо)</span>`; } else pe.style.display='none'; }
@@ -1169,17 +1188,44 @@ async function loadSiteMap(lat,lng){
   const sizeM = N*256*mpp;
   const tex=new THREE.CanvasTexture(cvs); tex.colorSpace=THREE.SRGBColorSpace;
   try{ tex.anisotropy=renderer.capabilities.getMaxAnisotropy(); }catch(_){}
-  if(mapPlane){ scene.remove(mapPlane); if(mapPlane.material.map) mapPlane.material.map.dispose(); mapPlane.material.dispose(); }
-  const geo=new THREE.PlaneGeometry(sizeM,sizeM); geo.rotateX(-Math.PI/2);
-  mapPlane=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({map:tex}));
-  // байршлыг талбайн голд (0,0) байрлуулна
   const cpx=(fx-startX)*256, cpy=(fy-startY)*256;
+  // --- 3D товгор газар (өндрийн дата) — вершин бүрийн lat/lng-ийн өндрийг Open-Meteo-оос авна ---
+  msg.textContent='Газрын өндөр тооцож байна…';
+  const G=24, n2=Math.pow(2,z);
+  const geo=new THREE.PlaneGeometry(sizeM,sizeM,G-1,G-1);
+  const pos=geo.attributes.position, lats=[], lngs=[];
+  for(let k=0;k<pos.count;k++){
+    const u=pos.getX(k)/sizeM+0.5, v=pos.getY(k)/sizeM+0.5;
+    const gtx=startX+(u*cvs.width)/256, gty=startY+((1-v)*cvs.height)/256;
+    lngs.push(gtx/n2*360-180);
+    lats.push(Math.atan(Math.sinh(Math.PI*(1-2*gty/n2)))*180/Math.PI);
+  }
+  const elevs=await fetchElevations(lats,lngs);
+  const valid=elevs.filter(e=>typeof e==='number').sort((a,b)=>a-b);
+  const base=valid.length?valid[Math.floor(valid.length/2)]:0;
+  let relief=0;
+  for(let k=0;k<pos.count;k++){ const e=elevs[k]; const h=(typeof e==='number')?e-base:0; pos.setZ(k,h); relief=Math.max(relief,Math.abs(h)); }
+  geo.rotateX(-Math.PI/2); geo.computeVertexNormals();
+  if(mapPlane){ scene.remove(mapPlane); if(mapPlane.material.map) mapPlane.material.map.dispose(); mapPlane.material.dispose(); }
+  mapPlane=new THREE.Mesh(geo, new THREE.MeshStandardMaterial({map:tex, roughness:1, metalness:0}));
+  mapPlane.receiveShadow=true;
   mapPlane.position.set((cvs.width/2 - cpx)*mpp, 0.02, (cpy - cvs.height/2)*mpp);
   scene.add(mapPlane);
   ground.visible=false; grid.visible=false;
+  buildVenue();   // объектуудыг товгор газрын гадаргуу дээр суулгана
   document.getElementById('map-credit').style.display='';
   document.getElementById('map-clear').style.display='';
-  msg.textContent=`✓ ${lat.toFixed(5)}, ${lng.toFixed(5)} · ~${Math.round(sizeM)}м${z<18?' · бага нарийвчлал (алслагдсан)':''}`;
+  msg.textContent=`✓ ${lat.toFixed(5)}, ${lng.toFixed(5)} · ~${Math.round(sizeM)}м · өндөр ±${Math.round(relief)}м${z<18?' · бага нарийвчлал':''}`;
+}
+// вершин бүрийн өндрийг Open-Meteo Elevation-оос багцалж авна (100 цэг/хүсэлт)
+async function fetchElevations(lats,lngs){
+  const out=new Array(lats.length).fill(undefined), B=100;
+  for(let s=0;s<lats.length;s+=B){
+    const la=lats.slice(s,s+B).map(x=>x.toFixed(5)), lo=lngs.slice(s,s+B).map(x=>x.toFixed(5));
+    try{ const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${la.join(',')}&longitude=${lo.join(',')}`);
+      const j=await r.json(); (j.elevation||[]).forEach((e,i)=>out[s+i]=e); }catch(_){}
+  }
+  return out;
 }
 function clearSiteMap(){
   if(mapPlane){ scene.remove(mapPlane); if(mapPlane.material.map) mapPlane.material.map.dispose(); mapPlane.material.dispose(); mapPlane=null; }
@@ -1379,8 +1425,9 @@ renderer.domElement.addEventListener('pointermove', e=>{
   if(p){
     const nx=Math.round((p.x+_dragOff.x)*2)/2, nz=Math.round((p.z+_dragOff.z)*2)/2;
     draggingItem.x=nx; draggingItem.z=nz;
-    if(draggingGroup){ draggingGroup.position.x=nx; draggingGroup.position.z=nz; }
-    if(_selRing){ _selRing.position.x=nx; _selRing.position.z=nz; }
+    const ty=terrainHeightAt(nx,nz);
+    if(draggingGroup){ draggingGroup.position.x=nx; draggingGroup.position.z=nz; draggingGroup.position.y=ty; }
+    if(_selRing){ _selRing.position.x=nx; _selRing.position.z=nz; _selRing.position.y=0.03+ty; }
   }
 }, true);
 function endItemDrag(){ if(draggingItem){ draggingItem=null; draggingGroup=null; controls.enabled=true; updateReadout(); } }
