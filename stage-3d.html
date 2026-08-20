@@ -963,16 +963,21 @@ function pointInPoly(x,z,pts){
   }
   return inside;
 }
-// Ой / модны бүс — гараар зурсан талбайг модоор дүүргэнэ
-function objForest(it){
-  const g=new THREE.Group(); const pts=it.pts; if(!pts||pts.length<3) return g;
+// Ой / модны бүс — модны байрлалыг НЭГ УДАА тогтоож хадгална (build бүрт үсрэхээс сэргийлнэ)
+function genForest(it){
+  const pts=it.pts, trees=[]; if(!pts||pts.length<3){ it.trees=trees; return; }
   let minx=1e9,maxx=-1e9,minz=1e9,maxz=-1e9;
   pts.forEach(p=>{minx=Math.min(minx,p.x);maxx=Math.max(maxx,p.x);minz=Math.min(minz,p.z);maxz=Math.max(maxz,p.z);});
   const sp=it.spacing||6; let n=0;
   for(let x=minx;x<=maxx&&n<220;x+=sp) for(let z=minz;z<=maxz&&n<220;z+=sp){
     const jx=x+(Math.random()-0.5)*sp*0.7, jz=z+(Math.random()-0.5)*sp*0.7;
-    if(pointInPoly(jx,jz,pts)){ const t=objTree(0.7+Math.random()*0.5); t.position.set(jx,0,jz); t.rotation.y=Math.random()*6.283; g.add(t); n++; }
+    if(pointInPoly(jx,jz,pts)){ trees.push({x:jx,z:jz,s:0.7+Math.random()*0.5,rot:Math.random()*6.283}); n++; }
   }
+  it.trees=trees;
+}
+function objForest(it){
+  const g=new THREE.Group(); if(!it.trees) genForest(it);
+  it.trees.forEach(t=>{ const tr=objTree(t.s); tr.position.set(t.x,0,t.z); tr.rotation.y=t.rot; g.add(tr); });
   return g;
 }
 function makeVenueObj(it){
@@ -1185,7 +1190,7 @@ function renderStructCfg(it){
   // Ой — модны нягтрал (зай)
   if(it.type==='forest'){
     box.innerHTML=stepRow('Нягт (зай)', (it.spacing||6)+'м', 'data-fs="1"', 'data-fs="-1"');
-    box.querySelectorAll('[data-fs]').forEach(b=>b.onclick=()=>{ it.spacing=Math.max(3,Math.min(15,(it.spacing||6)+Number(b.dataset.fs))); buildVenue(); renderVenueSel(); });
+    box.querySelectorAll('[data-fs]').forEach(b=>b.onclick=()=>{ it.spacing=Math.max(3,Math.min(15,(it.spacing||6)+Number(b.dataset.fs))); genForest(it); buildVenue(); renderVenueSel(); });
     return;
   }
   // Уул — радиус/өндөр
