@@ -288,6 +288,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
 
 const CROSS = 0.30;           // трассын огтлол 30см
 const app = document.getElementById('app');
@@ -1154,37 +1156,42 @@ function objBooth(it){
   });
   return g;
 }
-// Хүн (масштабын лавлагаа) — энгийн биет + царайд зураг тавина
+// Хүн — жинхэнэ 3D загвар (Michelle.glb: иргэн, хувцастай, rigged). Ачаалагдтал mannequin түр
 const _mannMat=new THREE.MeshStandardMaterial({color:0x9aa0ac, roughness:0.9});
 const _legMat=new THREE.MeshStandardMaterial({color:0x3a4250, roughness:0.9});
-const _faceTexCache=new Map();
-function faceTexture(src){
-  if(_faceTexCache.has(src)) return _faceTexCache.get(src);
-  const t=new THREE.Texture(); t.colorSpace=THREE.SRGBColorSpace; t.center.set(0.5,0.5); t.repeat.set(0.82,0.82);
-  const im=new Image(); if(!src.startsWith('data:')) im.crossOrigin='anonymous';
-  im.onload=()=>{ t.image=im; t.needsUpdate=true; }; im.src=src;
-  _faceTexCache.set(src,t); return t;
+const PERSON_MODEL_URL='https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/models/gltf/Michelle.glb';
+let _personProto=null, _personScale=1, _personFeetY=0, _personLoading=false;
+function loadPersonModel(){     // зөвхөн хүн нэмэх үед ачаална (lazy)
+  if(_personProto||_personLoading) return; _personLoading=true;
+  new GLTFLoader().load(PERSON_MODEL_URL, gltf=>{
+    const s=gltf.scene;
+    const box=new THREE.Box3().setFromObject(s); const h=(box.max.y-box.min.y)||1.7;
+    _personScale=1.72/h; _personFeetY=box.min.y;
+    s.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.frustumCulled=false; } });
+    _personProto=s;
+    if(state.mode==='venue' && state.items.some(i=>i.type==='person')) build();
+  }, undefined, ()=>{ _personLoading=false; });
 }
-let _facePh=null;
-function faceePlaceholder(){
-  if(_facePh) return _facePh;
-  const c=document.createElement('canvas'); c.width=c.height=256; const x=c.getContext('2d');
-  x.fillStyle='#c7ccd6'; x.fillRect(0,0,256,256);
-  x.fillStyle='#7f8794'; x.beginPath(); x.arc(128,105,42,0,7); x.fill();
-  x.beginPath(); x.arc(128,250,80,Math.PI,0); x.fill();
-  _facePh=new THREE.CanvasTexture(c); _facePh.colorSpace=THREE.SRGBColorSpace; return _facePh;
-}
-function objPerson(it){
+function objMannequin(){
   const g=new THREE.Group();
   [-0.11,0.11].forEach(x=>{ const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.07,0.85,10),_legMat); leg.position.set(x,0.42,0); leg.castShadow=true; g.add(leg); });
   const torso=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.16,0.64,12),_mannMat); torso.position.y=1.14; torso.castShadow=true; g.add(torso);
   [-0.25,0.25].forEach(x=>{ const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.05,0.62,8),_mannMat); arm.position.set(x,1.12,0); arm.rotation.z=x>0?0.08:-0.08; arm.castShadow=true; g.add(arm); });
-  const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.09,8),_mannMat); neck.position.y=1.49; g.add(neck);
   const head=new THREE.Mesh(new THREE.SphereGeometry(0.135,16,14),_mannMat); head.position.y=1.61; head.castShadow=true; g.add(head);
-  const tex=it.face?faceTexture(it.face):faceePlaceholder();
-  const face=new THREE.Mesh(new THREE.PlaneGeometry(0.23,0.26), new THREE.MeshBasicMaterial({map:tex}));
-  face.position.set(0,1.62,0.128); g.add(face);
   return g;
+}
+function objPerson(it){
+  if(!_personProto){ loadPersonModel(); return objMannequin(); }
+  const g=new THREE.Group();
+  const m=skeletonClone(_personProto);
+  m.scale.setScalar(_personScale);
+  m.position.y=-_personFeetY*_personScale;
+  // T-позоос → байгалийн зогсоо (гарыг доош буулгана)
+  m.traverse(o=>{ if(o.isBone){
+    if(/LeftArm$/.test(o.name) || /RightArm$/.test(o.name)) o.rotation.z = 1.25;
+    if(/ForeArm$/.test(o.name)) o.rotation.z = 0.1;
+  }});
+  g.add(m); return g;
 }
 function makeVenueObj(it){
   if(PROP_BUILDERS[it.type]) return PROP_BUILDERS[it.type]();
@@ -1417,12 +1424,6 @@ function renderStructCfg(it){
     box.querySelectorAll('[data-bh]').forEach(b=>b.onclick=()=>{ it.h=Math.max(1,(it.h||4)+Number(b.dataset.bh)); rb(); });
     const lit=box.querySelector('[data-blit]'); if(lit) lit.onchange=()=>{ it.lit=lit.checked; rb(); };
     const up=box.querySelector('#booth-upload'); if(up) up.onclick=()=>pickImage(it,'img');
-    return;
-  }
-  // Хүн — царайны зураг
-  if(it.type==='person'){
-    box.innerHTML=`<div class="row"><span class="lbl">Царай</span><button class="ghost" id="face-upload">📷 Царай оруулах</button>${it.face?'<span style="font-size:11px;color:var(--dim);margin-left:6px;">✓ орсон</span>':''}</div>`;
-    const up=box.querySelector('#face-upload'); if(up) up.onclick=()=>pickImage(it,'face');
     return;
   }
   // Bell майхан — диаметр
