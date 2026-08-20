@@ -351,7 +351,7 @@ function placeTruss(group, len, axis, cx, cy, cz){
   const m = trussMesh(len);
   if(axis==='y') m.rotation.z = Math.PI/2;
   else if(axis==='z') m.rotation.y = Math.PI/2;
-  m.position.set(cx,cy,cz); group.add(m);
+  m.position.set(cx,cy,cz); group.add(m); return m;
 }
 // Дурын 2 цэгийн хооронд трасс (диагональ ч болно). Урт буцаана.
 function placeTrussBetween(group, p1, p2){
@@ -384,6 +384,7 @@ function cellsRect(W,D){ const s=new Set(); const i0=-Math.floor(W/2), j0=-Math.
   for(let i=0;i<W;i++) for(let j=0;j<D;j++) s.add((i0+i)+','+(j0+j)); return s; }
 function moneyFmt(n){ return (Math.round(n)||0).toLocaleString('en-US')+'₮'; }
 let _tableCount = 0, _trussMeters = 0;
+const _pickTruss = [];   // каркасын сегмент/блок mesh-ууд (дарж устгах)
 const draggableTables = [];   // ширээ+сандлын Group-ууд (userData.ti)
 // Нэг ширээний нэгж (ширээ + тойрон/хажуугийн сандал) — Group буцаана
 function makeTableUnit(){
@@ -542,16 +543,20 @@ function buildStageModular(){
   const legG=[]; corners.forEach(c=>{ const [x,z]=c.split(',').map(Number); const b=new THREE.BoxGeometry(0.09,H-thk,0.09); b.translate(x,(H-thk)/2,z); legG.push(b); });
   if(legG.length){ const legs=new THREE.Mesh(mergeGeometries(legG,false), matAlu); legs.castShadow=true; g.add(legs); }
   // --- КАРКАС (1 метрээр өрдөг лего: сегмент + блок) ---
-  _trussMeters = 0;
+  _trussMeters = 0; _pickTruss.length = 0;
   const segs = state.trussSegs || [], blocks = state.trussBlocks || [];
   segs.forEach(s=>{
-    if(s.dir==='x')      placeTruss(g,1,'x', s.x+0.5, s.y, s.z);
-    else if(s.dir==='z') placeTruss(g,1,'z', s.x, s.y, s.z+0.5);
-    else                 placeTruss(g,1,'y', s.x, s.y+0.5, s.z);   // босоо
+    let m;
+    if(s.dir==='x')      m=placeTruss(g,1,'x', s.x+0.5, s.y, s.z);
+    else if(s.dir==='z') m=placeTruss(g,1,'z', s.x, s.y, s.z+0.5);
+    else                 m=placeTruss(g,1,'y', s.x, s.y+0.5, s.z);   // босоо
+    m.userData={kind:'seg', ref:s}; _pickTruss.push(m);
     _trussMeters += 1;
   });
-  if(blocks.length){ const cubeG=blocks.map(b=>cubeConnAt(b.x,b.y,b.z));
-    const cubes=new THREE.Mesh(mergeGeometries(cubeG,false), matAlu); cubes.castShadow=true; g.add(cubes); }
+  blocks.forEach(b=>{
+    const bm=new THREE.Mesh(cubeConnGeo(), matAlu); bm.position.set(b.x,b.y,b.z); bm.castShadow=true;
+    bm.userData={kind:'block', ref:b}; g.add(bm); _pickTruss.push(bm);
+  });
   // идэвхтэй цэг (tip) — дараагийн хэсэг залгах газар
   if(state.buildTarget==='truss' && state.trussTip){
     const t=state.trussTip;
@@ -760,7 +765,7 @@ document.querySelectorAll('#buildTargetSeg .chip').forEach(c=> c.onclick=()=>{
   document.querySelectorAll('#buildTargetSeg .chip').forEach(x=>x.setAttribute('aria-pressed', x===c?'true':'false'));
   document.getElementById('trussPad').style.display = state.buildTarget==='truss'?'':'none';
   document.getElementById('buildTip').textContent = state.buildTarget==='truss'
-    ? 'Шалан дээр товшиж эхлэл тавь → сум товчоор 1м өр, 🔲 блокоор эргэлт гарга'
+    ? 'Шалан дээр товшиж эхлэл тавь → сумаар 1м өр · 🔲 блок · хэсэг дээр дарж устгана'
     : 'Шалан дээр товшиж хавтан нэм/хас';
   build();
 });
@@ -857,7 +862,15 @@ renderer.domElement.addEventListener('pointerup', e=>{
   const tapPlane=new THREE.Plane(new THREE.Vector3(0,1,0), -state.h);
   const p=new THREE.Vector3();
   if(!ray.ray.intersectPlane(tapPlane,p)) return;
-  if(state.buildTarget==='truss'){                        // каркас = эхлэлийн цэг (tip) шалан дээр
+  if(state.buildTarget==='truss'){
+    // 1) одоо байгаа каркас/блок дээр дарсан бол — ТУХАЙН нэгийг устгана
+    const hit=ray.intersectObjects(_pickTruss,false);
+    if(hit.length){ const o=hit[0].object, ref=o.userData.ref;
+      const arr = o.userData.kind==='seg' ? state.trussSegs : state.trussBlocks;
+      const idx = arr.indexOf(ref); if(idx>=0) arr.splice(idx,1);
+      build(); return;
+    }
+    // 2) эс бол шалан дээр эхлэлийн цэг (tip) тавина
     const x=Math.round(p.x), z=Math.round(p.z);
     if(Math.abs(x)>25||Math.abs(z)>25) return;
     state.trussTip={x, y:0, z};
