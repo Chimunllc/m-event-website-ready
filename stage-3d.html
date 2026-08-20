@@ -197,7 +197,7 @@
       <button class="chip" data-add="stage">🎤 Тайз</button>
       <button class="chip" data-add="tent">⛺ Асар</button>
       <button class="chip" data-add="bell">🏕 Bell майхан</button>
-      <button class="chip" data-add="booth">🏬 Бүүд</button>
+      <button class="chip" data-draw="booth">🏬 Бүүд зурах</button>
       <button class="chip" data-add="rtable">⭕ Дугуй ширээ</button>
       <button class="chip" data-add="ltable">▬ Урт ширээ</button>
       <button class="chip" data-add="chair">🪑 Сандал</button>
@@ -329,7 +329,10 @@ function frameCamera(){
     let span=14, cx=0, cz=0;
     if(state.items.length){
       let minx=1e9,maxx=-1e9,minz=1e9,maxz=-1e9;
-      state.items.forEach(i=>{ const r=itemRadius(i); minx=Math.min(minx,i.x-r); maxx=Math.max(maxx,i.x+r); minz=Math.min(minz,i.z-r); maxz=Math.max(maxz,i.z+r); });
+      state.items.forEach(i=>{
+        if(i.pts){ i.pts.forEach(p=>{ minx=Math.min(minx,p.x); maxx=Math.max(maxx,p.x); minz=Math.min(minz,p.z); maxz=Math.max(maxz,p.z); }); return; }
+        const r=itemRadius(i); minx=Math.min(minx,i.x-r); maxx=Math.max(maxx,i.x+r); minz=Math.min(minz,i.z-r); maxz=Math.max(maxz,i.z+r);
+      });
       cx=(minx+maxx)/2; cz=(minz+maxz)/2; span=Math.max(maxx-minx, maxz-minz, 10);
     }
     controls.target.set(cx, 1.2, cz);
@@ -1115,27 +1118,39 @@ function boothPlaceholderTex(){
   _boothPh=new THREE.CanvasTexture(c); _boothPh.colorSpace=THREE.SRGBColorSpace; return _boothPh;
 }
 function boothTexture(it){ return it.img ? imageTexture(it.img) : boothPlaceholderTex(); }
+// Бүүд = гараар зурсан ханын зам; гадна тал хэвлэл, дотор тал модон хүрээ
 function objBooth(it){
   const g=new THREE.Group();
-  const W=it.w||5, D=it.d||2, H=it.h||4, post=0.1;
-  const cxs=[W/2,-W/2], czs=[D/2,-D/2];
-  cxs.forEach(x=>czs.forEach(z=>{ const p=new THREE.Mesh(new THREE.BoxGeometry(post,H,post),_boothWood); p.position.set(x,H/2,z); p.castShadow=true; g.add(p); }));
-  function rail(y){
-    const a=new THREE.Mesh(new THREE.BoxGeometry(W,post,post),_boothWood); a.position.set(0,y,D/2); g.add(a);
-    const b=a.clone(); b.position.z=-D/2; g.add(b);
-    const c=new THREE.Mesh(new THREE.BoxGeometry(post,post,D),_boothWood); c.position.set(W/2,y,0); g.add(c);
-    const d2=c.clone(); d2.position.x=-W/2; g.add(d2);
-  }
-  rail(H-post/2); rail(post/2); if(H>=3) rail(H/2);
+  const pts=it.pts; if(!pts||pts.length<2) return g;
+  const H=it.h||4, post=0.1;
+  let cx=0,cz=0; pts.forEach(p=>{cx+=p.x;cz+=p.z;}); cx/=pts.length; cz/=pts.length;  // төв (дотор/гадна талыг тодорхойлно)
   const tex=boothTexture(it);
   const mat = it.lit
     ? new THREE.MeshStandardMaterial({map:tex, emissive:0xffffff, emissiveMap:tex, emissiveIntensity:1.15, roughness:0.5, side:THREE.DoubleSide})
     : new THREE.MeshStandardMaterial({map:tex, roughness:0.9, metalness:0, side:THREE.DoubleSide});
-  const sd=it.sides||{back:true,left:true,right:true,front:false};
-  if(sd.back){ const m=new THREE.Mesh(new THREE.PlaneGeometry(W-post,H-post),mat); m.position.set(0,H/2,-D/2+0.012); m.rotation.y=Math.PI; g.add(m); }
-  if(sd.front){ const m=new THREE.Mesh(new THREE.PlaneGeometry(W-post,H-post),mat); m.position.set(0,H/2,D/2-0.012); g.add(m); }
-  if(sd.left){ const m=new THREE.Mesh(new THREE.PlaneGeometry(D-post,H-post),mat); m.position.set(-W/2+0.012,H/2,0); m.rotation.y=-Math.PI/2; g.add(m); }
-  if(sd.right){ const m=new THREE.Mesh(new THREE.PlaneGeometry(D-post,H-post),mat); m.position.set(W/2-0.012,H/2,0); m.rotation.y=Math.PI/2; g.add(m); }
+  // хана бүр (сегмент): гадна талд хэвлэл, дотор талд хэвлээ (rail)
+  for(let i=0;i<pts.length-1;i++){
+    const a=pts[i], b=pts[i+1];
+    let dx=b.x-a.x, dz=b.z-a.z; const len=Math.hypot(dx,dz); if(len<0.3) continue; dx/=len; dz/=len;
+    const mx=(a.x+b.x)/2, mz=(a.z+b.z)/2;
+    let nx=-dz, nz=dx;                                   // хананы нормаль
+    if((mx-cx)*nx+(mz-cz)*nz < 0){ nx=-nx; nz=-nz; }     // төвөөс ГАДАШ харуулна
+    const rot=Math.atan2(nx,nz);
+    // хэвлэлийн панель (гадна тал)
+    const panel=new THREE.Mesh(new THREE.PlaneGeometry(len,H), mat);
+    panel.position.set(mx+nx*0.03, H/2, mz+nz*0.03); panel.rotation.y=rot; g.add(panel);
+    // хэвлээ (дотор талд, модон)
+    [H-post/2, post/2].concat(H>=3?[H/2]:[]).forEach(y=>{
+      const rail=new THREE.Mesh(new THREE.BoxGeometry(len,post,post),_boothWood);
+      rail.position.set(mx-nx*post*0.6, y, mz-nz*post*0.6); rail.rotation.y=rot; rail.castShadow=true; g.add(rail);
+    });
+  }
+  // босоо багана — цэг бүрт, дотор талд
+  pts.forEach(p=>{
+    let ix=cx-p.x, iz=cz-p.z; const l=Math.hypot(ix,iz)||1; ix/=l; iz/=l;
+    const pole=new THREE.Mesh(new THREE.BoxGeometry(post,H,post),_boothWood);
+    pole.position.set(p.x+ix*post*0.6, H/2, p.z+iz*post*0.6); pole.castShadow=true; g.add(pole);
+  });
   return g;
 }
 function makeVenueObj(it){
@@ -1156,7 +1171,7 @@ function makeVenueObj(it){
 const PROP_RADIUS={ sofa:1.4, arch:1.5, dance:4.4, speaker:0.7, light:1.1, plant:0.7, bar:1.6, parasol:1.9 };
 function itemRadius(it){
   if(PROP_RADIUS[it.type]) return PROP_RADIUS[it.type];
-  if(it.type==='stage'||it.type==='tent'||it.type==='booth') return Math.hypot(it.w,it.d)/2+0.4;
+  if(it.type==='stage'||it.type==='tent') return Math.hypot(it.w,it.d)/2+0.4;
   if(it.type==='ltable') return 1.9; if(it.type==='rtable') return 1.6;
   if(it.type==='hill') return (it.r||10)+0.5;
   if(it.type==='bell') return (it.d||5)/2*1.4+0.3;
@@ -1180,7 +1195,7 @@ function buildVenue(){
   lampLights.forEach(l=>scene.remove(l)); lampLights.length=0;
   if(venueGroup) scene.remove(venueGroup);
   venueGroup=new THREE.Group(); venuePick.length=0; _selRing=null;
-  const pathType=it=>(it.type==='river'||it.type==='forest');
+  const pathType=it=>(it.type==='river'||it.type==='forest'||it.type==='booth');
   state.items.forEach(it=>{
     const og=makeVenueObj(it);
     if(pathType(it)){ og.position.set(0,0,0); }               // гол/ой = үнэмлэхүй цэгтэй
@@ -1357,25 +1372,14 @@ function renderStructCfg(it){
     box.querySelectorAll('[data-fs]').forEach(b=>b.onclick=()=>{ it.spacing=Math.max(3,Math.min(15,(it.spacing||6)+Number(b.dataset.fs))); genForest(it); buildVenue(); renderVenueSel(); });
     return;
   }
-  // Бүүд — урт/зузаан/өндөр, хэвлэлтэй талууд, гэрэлтдэг, зураг
+  // Бүүд (зурсан) — өндөр, гэрэлтдэг, хэвлэлийн зураг
   if(it.type==='booth'){
-    const sd=it.sides||{back:true,left:true,right:true,front:false};
     box.innerHTML =
-      stepRow('Урт', (it.w||5)+'м', 'data-bw="-1"','data-bw="1"') +
-      stepRow('Зузаан', (it.d||2)+'м', 'data-bdp="-1"','data-bdp="1"') +
       stepRow('Өндөр', (it.h||4)+'м', 'data-bh="-1"','data-bh="1"') +
-      `<div class="row"><span class="lbl">Хэвлэл тал</span>`+
-        `<label class="tgl"><input type="checkbox" data-bs="back" ${sd.back?'checked':''}><span class="sw"></span>Ард</label>`+
-        `<label class="tgl"><input type="checkbox" data-bs="front" ${sd.front?'checked':''}><span class="sw"></span>Урд</label>`+
-        `<label class="tgl"><input type="checkbox" data-bs="left" ${sd.left?'checked':''}><span class="sw"></span>Зүүн</label>`+
-        `<label class="tgl"><input type="checkbox" data-bs="right" ${sd.right?'checked':''}><span class="sw"></span>Баруун</label></div>`+
       `<div class="row"><label class="tgl"><input type="checkbox" data-blit ${it.lit?'checked':''}><span class="sw"></span>💡 Гэрэлтдэг</label>`+
         `<div class="spacer"></div><button class="ghost" id="booth-upload">📷 Зураг оруулах</button></div>`;
     const rb=()=>{ buildVenue(); renderVenueSel(); };
-    box.querySelectorAll('[data-bw]').forEach(b=>b.onclick=()=>{ it.w=Math.max(1,(it.w||5)+Number(b.dataset.bw)); rb(); });
-    box.querySelectorAll('[data-bdp]').forEach(b=>b.onclick=()=>{ it.d=Math.max(1,(it.d||2)+Number(b.dataset.bdp)); rb(); });
     box.querySelectorAll('[data-bh]').forEach(b=>b.onclick=()=>{ it.h=Math.max(1,(it.h||4)+Number(b.dataset.bh)); rb(); });
-    box.querySelectorAll('[data-bs]').forEach(c=>c.onchange=()=>{ it.sides=Object.assign({back:true,left:true,right:true,front:false}, it.sides); it.sides[c.dataset.bs]=c.checked; rb(); });
     const lit=box.querySelector('[data-blit]'); if(lit) lit.onchange=()=>{ it.lit=lit.checked; rb(); };
     const up=box.querySelector('#booth-upload'); if(up) up.onclick=()=>{ _boothTarget=it; document.getElementById('booth-file').click(); };
     return;
@@ -1420,18 +1424,20 @@ document.querySelectorAll('#venuePalette .chip, #venueProps .chip').forEach(c=> 
 function startDraw(type){
   state.draw={ type, pts:[] }; state.sel=null; renderVenueSel();
   document.getElementById('drawBar').style.display='';
-  document.getElementById('drawLbl').textContent = type==='river'?'🌊 Гол':'🌳 Ой';
+  document.getElementById('drawLbl').textContent = type==='river'?'🌊 Гол':type==='forest'?'🌳 Ой':'🏬 Бүүд';
   document.getElementById('drawTip').textContent = type==='river'
     ? 'Голын дагуу цэг дараалан дарж зур → Дуусгах (өргөнийг дараа тохируулна)'
-    : 'Ойн захын цэгүүдийг дарж бүс зур → Дуусгах';
+    : type==='forest'
+    ? 'Ойн захын цэгүүдийг дарж бүс зур → Дуусгах'
+    : 'Бүүдний ханын шугамыг цэгээр зур → Дуусгах (өндөр/зураг дараа тохируулна)';
   buildVenue();
 }
 function finishDraw(){
   const d=state.draw; if(!d){ return; }
-  const need = d.type==='river'?2:3;
+  const need = d.type==='forest'?3:2;
   if(d.pts.length>=need){
     const it={ id:++_venueId, type:d.type, pts:d.pts };
-    if(d.type==='river') it.width=3; else it.spacing=6;
+    if(d.type==='river') it.width=3; else if(d.type==='forest') it.spacing=6; else if(d.type==='booth'){ it.h=4; it.lit=false; }
     state.items.push(it); state.sel=it.id;
   }
   state.draw=null; document.getElementById('drawBar').style.display='none';
@@ -1618,7 +1624,7 @@ renderer.domElement.addEventListener('pointerdown', e=>{
     const changed = state.sel!==id; state.sel=id; renderVenueSel();
     if(changed) buildVenue();   // сонголтын цагираг зурах (venuePick шинэчлэгдэнэ)
     const it=venueItem(id);
-    draggingItem=(it && it.type!=='river' && it.type!=='forest') ? it : null;   // гол/ой чирэгдэхгүй
+    draggingItem=(it && it.type!=='river' && it.type!=='forest' && it.type!=='booth') ? it : null;   // зурсан төрөл чирэгдэхгүй
     draggingGroup=draggingItem ? venuePick.find(g=>g.userData.itemId===id) : null;
     if(draggingItem){ const gh=groundHit(e); _dragOff = gh ? {x:draggingItem.x-gh.x, z:draggingItem.z-gh.z} : {x:0,z:0}; }
     controls.enabled=false; e.stopPropagation(); e.stopImmediatePropagation();
