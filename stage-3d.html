@@ -129,6 +129,7 @@
       <button class="chip" data-td="right" title="Баруун 1м">▶</button>
       <button class="chip" id="truss-block" title="Холбогч блок">🔲 Блок</button>
       <button class="chip" id="truss-undo" title="Буцаах">↩</button>
+      <button class="chip" id="truss-del" title="Устгах горим — асаагаад хэсэг дээр дарна">🗑</button>
     </div>
     <span id="buildTip" style="font-size:11px;color:var(--dim);">Шалан дээр товшиж нэмнэ/хасна</span>
   </div>
@@ -377,7 +378,7 @@ let stageGroup = null;
 const state = { mode:'stage', w:8, d:4, h:1.0, truss:true, led:false, roof:false, walls:false, gable:true,
   tables:false, tablePos:null, tableType:'round', chairs:true, stageInTent:false,
   build:false, cells:null, buildTarget:'deck',
-  trussSegs:[], trussBlocks:[], trussTip:null };
+  trussSegs:[], trussBlocks:[], trussTip:null, trussDel:false };
 // ₮ түрээсийн үнэ (нэг арга хэмжээнд): 1×1м хавтан 25,000 · 1м каркас 25,000
 const PRICE = { module:25000, trussM:25000 };
 function cellsRect(W,D){ const s=new Set(); const i0=-Math.floor(W/2), j0=-Math.floor(D/2);
@@ -765,7 +766,7 @@ document.querySelectorAll('#buildTargetSeg .chip').forEach(c=> c.onclick=()=>{
   document.querySelectorAll('#buildTargetSeg .chip').forEach(x=>x.setAttribute('aria-pressed', x===c?'true':'false'));
   document.getElementById('trussPad').style.display = state.buildTarget==='truss'?'':'none';
   document.getElementById('buildTip').textContent = state.buildTarget==='truss'
-    ? 'Шалан дээр товшиж эхлэл тавь → сумаар 1м өр · 🔲 блок · хэсэг дээр дарж устгана'
+    ? 'Шалан дээр товшиж эхлэл тавь → сумаар 1м өр · 🔲 блок · хэсэг дээр дарж tip зөө · 🗑 устга'
     : 'Шалан дээр товшиж хавтан нэм/хас';
   build();
 });
@@ -799,6 +800,14 @@ document.querySelectorAll('#trussPad [data-td]').forEach(b=> b.onclick=()=>truss
 document.getElementById('truss-block').onclick=()=>{ if(!state.trussTip){ showTipHint(); return; } const t=state.trussTip;
   if(!state.trussBlocks.some(x=>x.x===t.x&&x.y===t.y&&x.z===t.z)) state.trussBlocks.push({x:t.x,y:t.y,z:t.z}); build(); };
 document.getElementById('truss-undo').onclick=()=>{ if(state.trussSegs.length){ const s=state.trussSegs.pop(); if(s.prev) state.trussTip=s.prev; build(); } };
+document.getElementById('truss-del').onclick=(e)=>{
+  state.trussDel=!state.trussDel;
+  e.currentTarget.setAttribute('aria-pressed', state.trussDel?'true':'false');
+  const tip=document.getElementById('buildTip');
+  if(tip) tip.textContent = state.trussDel
+    ? '🗑 Устгах горим — устгах хэсэг дээрээ дар (дахин дарж унтраа)'
+    : 'Хэсэг дээр дарж tip-ээ тэнд зөө → сумаар үргэлжлүүл · шинэ цэг = хоосон шалан';
+};
 document.getElementById('tgl-gable').onchange=e=>{ state.gable=e.target.checked; build(); };
 document.getElementById('tgl-walls').onchange=e=>{ state.walls=e.target.checked; build(); };
 document.getElementById('tgl-tables').onchange=e=>{ state.tables=e.target.checked; build(); };
@@ -863,14 +872,24 @@ renderer.domElement.addEventListener('pointerup', e=>{
   const p=new THREE.Vector3();
   if(!ray.ray.intersectPlane(tapPlane,p)) return;
   if(state.buildTarget==='truss'){
-    // 1) одоо байгаа каркас/блок дээр дарсан бол — ТУХАЙН нэгийг устгана
     const hit=ray.intersectObjects(_pickTruss,false);
     if(hit.length){ const o=hit[0].object, ref=o.userData.ref;
-      const arr = o.userData.kind==='seg' ? state.trussSegs : state.trussBlocks;
-      const idx = arr.indexOf(ref); if(idx>=0) arr.splice(idx,1);
-      build(); return;
+      if(state.trussDel){                                  // УСТГАХ горим → тухайн нэгийг устгана
+        const arr = o.userData.kind==='seg' ? state.trussSegs : state.trussBlocks;
+        const idx = arr.indexOf(ref); if(idx>=0) arr.splice(idx,1);
+        build(); return;
+      }
+      // эс бол tip-ийг тухайн хэсгийн ойрын зангилаа руу ЗӨӨНӨ (тэндээс үргэлжлүүлнэ)
+      let node;
+      if(o.userData.kind==='block') node={x:ref.x,y:ref.y,z:ref.z};
+      else{ const a={x:ref.x,y:ref.y,z:ref.z},
+              b={x:ref.x+(ref.dir==='x'?1:0), y:ref.y+(ref.dir==='y'?1:0), z:ref.z+(ref.dir==='z'?1:0)};
+            const hp=hit[0].point;
+            const da=(hp.x-a.x)**2+(hp.y-a.y)**2+(hp.z-a.z)**2, db=(hp.x-b.x)**2+(hp.y-b.y)**2+(hp.z-b.z)**2;
+            node = da<=db?a:b; }
+      state.trussTip=node; build(); return;
     }
-    // 2) эс бол шалан дээр эхлэлийн цэг (tip) тавина
+    // хоосон шалан → эхлэлийн цэг (tip) тавина
     const x=Math.round(p.x), z=Math.round(p.z);
     if(Math.abs(x)>25||Math.abs(z)>25) return;
     state.trussTip={x, y:0, z};
