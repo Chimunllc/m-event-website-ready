@@ -1159,18 +1159,31 @@ function objBooth(it){
 // Хүн — жинхэнэ 3D загвар (Michelle.glb: иргэн, хувцастай, rigged). Ачаалагдтал mannequin түр
 const _mannMat=new THREE.MeshStandardMaterial({color:0x9aa0ac, roughness:0.9});
 const _legMat=new THREE.MeshStandardMaterial({color:0x3a4250, roughness:0.9});
-const PERSON_MODEL_URL='https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/models/gltf/Michelle.glb';
-let _personProto=null, _personScale=1, _personFeetY=0, _personLoading=false;
+// Алхлах хүн — Soldier.glb (rigged, өөрийн Walk анимацитай, гар/хөл зөв алхана)
+const PERSON_MODEL_URL='https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/models/gltf/Soldier.glb';
+let _personProto=null, _personScale=1, _personFeetY=0, _personLoading=false, _walkClip=null;
+const _personAnims=[];   // {mixer, g, item, t} — алхаж хөдөлдөг хүмүүс
+const _clock=new THREE.Clock();
 function loadPersonModel(){     // зөвхөн хүн нэмэх үед ачаална (lazy)
   if(_personProto||_personLoading) return; _personLoading=true;
   new GLTFLoader().load(PERSON_MODEL_URL, gltf=>{
     const s=gltf.scene;
     const box=new THREE.Box3().setFromObject(s); const h=(box.max.y-box.min.y)||1.7;
-    _personScale=1.72/h; _personFeetY=box.min.y;
+    _personScale=1.7/h; _personFeetY=box.min.y;
     s.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.frustumCulled=false; } });
     _personProto=s;
+    _walkClip = (gltf.animations||[]).find(a=>/walk/i.test(a.name)) || (gltf.animations||[])[1] || (gltf.animations||[])[0] || null;
     if(state.mode==='venue' && state.items.some(i=>i.type==='person')) build();
   }, undefined, ()=>{ _personLoading=false; });
+}
+function updatePeople(dt){
+  for(const pa of _personAnims){
+    pa.mixer.update(dt); pa.t += dt;
+    const R=1.4, w=0.45, ang=pa.t*w;                 // байрлалынхаа эргэн тойронд удаан алхана
+    const cx=pa.item.x||0, cz=pa.item.z||0;
+    pa.g.position.set(cx+Math.cos(ang)*R, pa.g.position.y, cz+Math.sin(ang)*R);
+    pa.g.rotation.y = Math.atan2(-Math.sin(ang), Math.cos(ang));   // хөдөлгөөний чиг рүү харна
+  }
 }
 function objMannequin(){
   const g=new THREE.Group();
@@ -1186,12 +1199,13 @@ function objPerson(it){
   const m=skeletonClone(_personProto);
   m.scale.setScalar(_personScale);
   m.position.y=-_personFeetY*_personScale;
-  // T-позоос → байгалийн зогсоо (гарыг доош буулгана)
-  m.traverse(o=>{ if(o.isBone){
-    if(/LeftArm$/.test(o.name) || /RightArm$/.test(o.name)) o.rotation.z = 1.25;
-    if(/ForeArm$/.test(o.name)) o.rotation.z = 0.1;
-  }});
-  g.add(m); return g;
+  g.add(m);
+  if(_walkClip){
+    const mixer=new THREE.AnimationMixer(m);
+    mixer.clipAction(_walkClip).play();
+    _personAnims.push({ mixer, g, item:it, t: Math.random()*12 });
+  }
+  return g;
 }
 function makeVenueObj(it){
   if(PROP_BUILDERS[it.type]) return PROP_BUILDERS[it.type]();
@@ -1236,7 +1250,7 @@ function buildVenue(){
   if(stageGroup){ scene.remove(stageGroup); stageGroup=null; }
   lampLights.forEach(l=>scene.remove(l)); lampLights.length=0;
   if(venueGroup) scene.remove(venueGroup);
-  venueGroup=new THREE.Group(); venuePick.length=0; _selRing=null;
+  venueGroup=new THREE.Group(); venuePick.length=0; _selRing=null; _personAnims.length=0;
   const pathType=it=>(it.type==='river'||it.type==='forest'||it.type==='booth');
   state.items.forEach(it=>{
     const og=makeVenueObj(it);
@@ -1809,6 +1823,8 @@ function animate(){
   // амбер гэрлийн бага зэрэг анивчих
   const t=performance.now()*0.001;
   lampLights.forEach((l,i)=> l.intensity = 5.2 + Math.sin(t*2+i)*0.7);
+  const dt=_clock.getDelta();
+  if(_personAnims.length) updatePeople(dt);
   controls.update();
   renderer.render(scene,camera);
 }
