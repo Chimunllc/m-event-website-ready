@@ -307,6 +307,15 @@
   .modal-prices > div small { font-size: 11px; color: var(--muted); display: block; margin-bottom: 2px; }
   .modal-prices > div b { font-family: var(--font-display); font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .modal-desc { font-size: 13px; color: var(--text); line-height: 1.6; margin-bottom: 22px; max-height: 200px; overflow-y: auto; }
+  .modal-media { margin-bottom: 22px; }
+  .m-media-title { font-size: 12.5px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .m-yt { position: relative; width: 100%; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; cursor: pointer; background: #000; }
+  .m-yt img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .m-yt-play { position: absolute; inset: 0; margin: auto; width: 58px; height: 58px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.55); color: #fff; border-radius: 50%; font-size: 22px; padding-left: 4px; transition: background .15s; }
+  .m-yt:hover .m-yt-play { background: #FF6A00; }
+  .m-yt-frame { position: relative; width: 100%; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; background: #000; }
+  .m-yt-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .btn-media { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; padding: 10px 16px; border-radius: 10px; background: var(--text); color: #fff; font-size: 13px; font-weight: 600; }
   .qty-row {
     display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
   }
@@ -654,6 +663,7 @@
           <div><small>Барьцаа</small><b id="m-deposit"></b></div>
         </div>
         <div class="modal-desc" id="m-desc"></div>
+        <div class="modal-media" id="m-media" style="display:none;"></div>
         <div class="qty-row">
           <label>Тоо ширхэг:</label>
           <div class="qty-ctrl">
@@ -1111,6 +1121,7 @@ function fillModal(p, setName) {
     if (parts.length) mDesc = '📦 Багтсан: ' + parts.join(', ') + (p.description ? '\n\n' + p.description : '');
   }
   document.getElementById('m-desc').textContent = mDesc;
+  fillModalMedia(p);
   const img = document.getElementById('m-img');
   const imgs = (Array.isArray(p.photos) && p.photos.length) ? p.photos.filter(Boolean) : (p.photo ? [p.photo] : []);
   if (imgs.length) {
@@ -1141,8 +1152,27 @@ function fillModal(p, setName) {
     addBtn.style.cursor = 'pointer';
   }
 }
+function ytId(u) { const m = String(u || '').match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/); return m ? m[1] : null; }
+function fillModalMedia(p) {
+  const box = document.getElementById('m-media'); if (!box) return;
+  const url = (p && p.media_url || '').trim();
+  if (!/^https?:\/\//.test(url)) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+  const yt = ytId(url);
+  if (yt) {
+    box.innerHTML = `<div class="m-media-title">🎬 Бүтээгдэхүүний бичлэг</div>`
+      + `<div class="m-yt" role="button" tabindex="0" aria-label="Бичлэг тоглуулах"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" alt="Бичлэг" loading="lazy" onerror="this.style.display='none'"><span class="m-yt-play">▶</span></div>`;
+    const cell = box.querySelector('.m-yt');
+    const play = () => { box.innerHTML = `<div class="m-media-title">🎬 Бүтээгдэхүүний бичлэг</div><div class="m-yt-frame"><iframe src="https://www.youtube.com/embed/${yt}?autoplay=1&rel=0&playsinline=1" title="Бичлэг" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>`; };
+    cell.onclick = play;
+    cell.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); play(); } };
+  } else {
+    box.innerHTML = `<div class="m-media-title">🎬 Бүтээгдэхүүний бичлэг / зураг</div><a class="btn-media" href="${escapeHtml(url)}" target="_blank" rel="noopener">▶ Бичлэг / зураг үзэх ↗</a>`;
+  }
+}
 function closeProduct() {
   document.getElementById('product-modal').classList.remove('open');
+  const mm = document.getElementById('m-media'); if (mm) { mm.innerHTML = ''; mm.style.display = 'none'; }   // iframe зогсооно
   state.currentProduct = null;
 }
 // Захиалгат асар — өргөн тогтмол, урт сонгож үнэ бодно
@@ -1162,6 +1192,7 @@ function openTentConfig(p) {
   });
   const img = document.getElementById('m-img');
   img.innerHTML = p.photo ? `<img src="${escapeHtml(p.photo)}" alt="${escapeHtml(p.name)}">` : '';
+  fillModalMedia(p);
   document.getElementById('m-deposit').textContent = 'Барьцаагүй';
   const q = document.getElementById('m-qty'); q.value = 1; q.max = 20;
   const addBtn = document.getElementById('m-add');
