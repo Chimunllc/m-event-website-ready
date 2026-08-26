@@ -752,7 +752,10 @@
 const CONFIG = {
   // Бараа — ҮНДСЭН: өөрийн VPS Postgres (PostgREST, n8n.nomaadcamp.com/db). Supabase cloud-аас
   // гарсан (2026-06-28). Унавал n8n webhook, дараа нь products.json.
-  SUPABASE_PRODUCTS_URL: 'https://n8n.nomaadcamp.com/db/rest/v1/products?select=*&archived=eq.false&order=name.asc',
+  SUPABASE_DB_BASE: 'https://n8n.nomaadcamp.com/db/rest/v1',
+  // ЗӨВ хурд: анхны ачаалалд ХҮНД `photos` (олон зураг, base64) талбарыг ТАТАХГҮЙ (11MB→2.2MB).
+  // Галерейн олон зургийг барааны дэлгэрэнгүй нээх үед lazy татна (loadProductPhotos).
+  SUPABASE_PRODUCTS_URL: 'https://n8n.nomaadcamp.com/db/rest/v1/products?select=sku,id,name,category,all_categories,type,price,deposit,stock,photo,description,archived,bundle_items,broken,maintenance,qty_mevent,qty_nomaad,variant_group&archived=eq.false&order=name.asc',
   // Идэвхтэй түрээс (нөөц эзэлж буй) — availability бодоход. Буцаж ирсэн (stopped/archived)/ноорог/цуцлах орохгүй.
   SUPABASE_ORDERS_URL: 'https://n8n.nomaadcamp.com/db/rest/v1/app_orders?select=number,status,starts_at,stops_at,items&status=in.(reserved,preparation,cleaning,started)',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.Brx7AjnPrzfv--KLb-J-FK-7DmdRusxUF2jaFgKzd1s',
@@ -1114,6 +1117,36 @@ function openProduct(p) {
   document.getElementById('product-modal').classList.add('open');
 }
 // Modal-ийн үнэ/зураг/нөөц/тоо/товчийг сонгосон бараа(хувилбар)-аар дүүргэнэ
+// Барааны зургийн галерейг рендерлэнэ (нэг зураг эсвэл олон зурагтай thumbnails).
+function renderGallery(p) {
+  const img = document.getElementById('m-img');
+  if (!img) return;
+  const imgs = (Array.isArray(p.photos) && p.photos.length) ? p.photos.filter(Boolean) : (p.photo ? [p.photo] : []);
+  if (!imgs.length) { img.innerHTML = ''; return; }
+  img.innerHTML = `<img id="m-img-main" src="${escapeHtml(imgs[0])}" alt="${escapeHtml(p.name)}">`
+    + (imgs.length > 1 ? `<div class="m-thumbs">${imgs.map((u, i) => `<img class="m-thumb${i === 0 ? ' on' : ''}" data-src="${escapeHtml(u)}" src="${escapeHtml(u)}" alt="">`).join('')}</div>` : '');
+  img.querySelectorAll('.m-thumb').forEach(t => t.onclick = () => {
+    const main = document.getElementById('m-img-main'); if (main) main.src = t.dataset.src;
+    img.querySelectorAll('.m-thumb').forEach(x => x.classList.remove('on'));
+    t.classList.add('on');
+  });
+}
+// Олон зургийг (photos) зөвхөн дэлгэрэнгүй нээх үед lazy татна — анхны grid ачааллыг хөнгөлнө.
+async function loadProductPhotos(p) {
+  if (!p || p._photosTried || !p.id) return;
+  p._photosTried = true;
+  try {
+    const r = await fetch(CONFIG.SUPABASE_DB_BASE + '/products?id=eq.' + encodeURIComponent(p.id) + '&select=photos',
+      { headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + CONFIG.SUPABASE_ANON_KEY } });
+    if (!r.ok) return;
+    const rows = await r.json();
+    const photos = (rows[0] && Array.isArray(rows[0].photos)) ? rows[0].photos.filter(Boolean) : [];
+    if (photos.length > 1) {
+      p.photos = photos;
+      if (state.currentProduct === p) renderGallery(p);   // энэ бараа одоо ч нээлттэй бол галерейг сайжруулна
+    }
+  } catch (e) { /* чимээгүй — нэг зураг хэвээр үлдэнэ */ }
+}
 function fillModal(p, setName) {
   state.currentProduct = p;
   if (setName) document.getElementById('m-name').textContent = p.name;
@@ -1128,17 +1161,8 @@ function fillModal(p, setName) {
   }
   document.getElementById('m-desc').textContent = mDesc;
   fillModalMedia(p);
-  const img = document.getElementById('m-img');
-  const imgs = (Array.isArray(p.photos) && p.photos.length) ? p.photos.filter(Boolean) : (p.photo ? [p.photo] : []);
-  if (imgs.length) {
-    img.innerHTML = `<img id="m-img-main" src="${escapeHtml(imgs[0])}" alt="${escapeHtml(p.name)}">`
-      + (imgs.length > 1 ? `<div class="m-thumbs">${imgs.map((u, i) => `<img class="m-thumb${i === 0 ? ' on' : ''}" data-src="${escapeHtml(u)}" src="${escapeHtml(u)}" alt="">`).join('')}</div>` : '');
-    img.querySelectorAll('.m-thumb').forEach(t => t.onclick = () => {
-      const main = document.getElementById('m-img-main'); if (main) main.src = t.dataset.src;
-      img.querySelectorAll('.m-thumb').forEach(x => x.classList.remove('on'));
-      t.classList.add('on');
-    });
-  } else { img.innerHTML = ''; }
+  renderGallery(p);
+  loadProductPhotos(p);   // олон зургийг (галерей) энэ бараа нээгдэх үед lazy татна
   const existing = state.cart.find(x => x.id === p.id);
   const qInput = document.getElementById('m-qty');
   qInput.value = existing ? existing.qty : 1;
