@@ -206,6 +206,35 @@
   .cat-item .count { font-size: 11px; color: #A6A6AE; font-variant-numeric: tabular-nums; }
   .cat-item.active .count { color: var(--brand); }
 
+  /* Том бүлэг (эвхэгддэг) → дэд категори dropdown */
+  .cat-group {
+    padding: 10px 14px; border-radius: 10px; cursor: pointer; margin-bottom: 1px;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    color: var(--text); font-size: 13.5px; font-weight: 600;
+    transition: background .15s;
+  }
+  .cat-group:hover { background: #fff; }
+  .cat-group.has-active { color: var(--brand); }
+  .cat-grp-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cat-grp-r { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .cat-grp-r .count { font-size: 11px; color: #A6A6AE; font-variant-numeric: tabular-nums; }
+  .cat-chev { color: #A6A6AE; transition: transform .2s ease; }
+  .cat-group.open .cat-chev { transform: rotate(180deg); }
+  .cat-sub {
+    padding: 8px 14px 8px 26px; border-radius: 10px; cursor: pointer; margin-bottom: 1px;
+    display: flex; justify-content: space-between; align-items: center;
+    color: var(--muted); font-size: 13px; font-weight: 500;
+    position: relative; transition: color .15s, background .15s;
+  }
+  .cat-sub:hover { background: #fff; color: var(--text); }
+  .cat-sub.active { color: var(--text); font-weight: 700; }
+  .cat-sub.active::before {
+    content: ""; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 15px; border-radius: 3px; background: var(--brand);
+  }
+  .cat-sub .count { font-size: 11px; color: #A6A6AE; font-variant-numeric: tabular-nums; }
+  .cat-sub.active .count { color: var(--brand); }
+
   /* PRODUCTS GRID */
   .grid-head {
     display: flex; justify-content: space-between; align-items: baseline;
@@ -917,41 +946,80 @@ function render() {
   renderCart();
   renderDuration();
 }
+// Ангиллын шатлал: том бүлэг → дэд категори. Дэд категори = барааны бодит `category` утга.
+// Бүлэгт ороогүй категори standalone (эвхэгдэхгүй) харагдана.
+const CAT_GROUPS = [
+  { name: 'Тайз, хөгжим, гэрэлтүүлэг', subs: ['Тайз', 'Хөгжим', 'Гэрэлтүүлэг', 'Эффект'] },
+  { name: 'Ширээ, тавилга', subs: ['Ширээ, сандал, бүтээлэг', 'Засал, тохижилт'] },
+  { name: 'Асар, майхан', subs: ['Асар', 'Майхан'] },
+  { name: 'Хоол, гал тогоо', subs: ['Ресторан хэрэгсэл', 'Гал тогоо'] },
+  { name: 'Техник, тоног төхөөрөмж', subs: ['Эрчим хүч, цахилгаан', 'Багаж, тоног төхөөрөмж', 'Халаалт, агааржуулалт', 'Цэвэрлэгээ', 'Тээврийн хэрэгсэл'] },
+];
+function catGroupOf(cat) { const g = CAT_GROUPS.find(x => x.subs.includes(cat)); return g ? g.name : null; }
+function setCategory(c) {
+  state.category = c;
+  const g = catGroupOf(c);
+  if (g) { state.openGroups = state.openGroups || new Set(); state.openGroups.add(g); }   // дэд категори сонгоход бүлгийг нээнэ
+  render();
+}
+
 function renderCategories() {
   const counts = {};
   state.products.forEach(p => { counts[p.category] = (counts[p.category]||0)+1; });
-  const cats = Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+  const inGroup = new Set(); CAT_GROUPS.forEach(g => g.subs.forEach(s => inGroup.add(s)));
+  if (!state.openGroups) state.openGroups = new Set();
 
   const list = document.getElementById('cat-list');
   list.innerHTML = '';
 
+  // Бүх бараа
   const all = document.createElement('li');
   all.className = 'cat-item' + (state.category==='all' ? ' active':'');
   all.innerHTML = `<span>Бүх бараа</span><span class="count">${state.products.length}</span>`;
-  all.onclick = () => { state.category = 'all'; render(); };
+  all.onclick = () => setCategory('all');
   list.appendChild(all);
 
-  cats.forEach(c => {
+  // Том бүлгүүд (эвхэгддэг)
+  CAT_GROUPS.forEach(g => {
+    const subs = g.subs.filter(s => counts[s]);              // байгаа дэд категори
+    if (!subs.length) return;
+    const total = subs.reduce((n,s)=>n+counts[s],0);
+    const open = state.openGroups.has(g.name);
+    const activeInside = subs.includes(state.category);
+    const head = document.createElement('li');
+    head.className = 'cat-group' + (open?' open':'') + (activeInside?' has-active':'');
+    head.innerHTML = `<span class="cat-grp-name">${escapeHtml(g.name)}</span><span class="cat-grp-r"><span class="count">${total}</span><svg class="cat-chev" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`;
+    head.onclick = () => { if (state.openGroups.has(g.name)) state.openGroups.delete(g.name); else state.openGroups.add(g.name); renderCategories(); };
+    list.appendChild(head);
+    if (open) subs.forEach(s => {
+      const li = document.createElement('li');
+      li.className = 'cat-sub' + (state.category===s ? ' active':'');
+      li.innerHTML = `<span>${escapeHtml(s)}</span><span class="count">${counts[s]}</span>`;
+      li.onclick = () => setCategory(s);
+      list.appendChild(li);
+    });
+  });
+
+  // Бүлэгт ороогүй категориуд (standalone) — тоогоор
+  const standalone = Object.keys(counts).filter(c => !inGroup.has(c)).sort((a,b)=>counts[b]-counts[a]);
+  standalone.forEach(c => {
     const li = document.createElement('li');
     li.className = 'cat-item' + (state.category===c ? ' active':'');
     li.innerHTML = `<span>${escapeHtml(c)}</span><span class="count">${counts[c]}</span>`;
-    li.onclick = () => { state.category = c; render(); };
+    li.onclick = () => setCategory(c);
     list.appendChild(li);
   });
 
-  // Утсан дээрх хэвтээ ангиллын чип (sidebar нуугдмал үед)
+  // Утсан дээрх хэвтээ чип — дэд категори тэгшилж (бүлгийн дараалал → standalone)
   const chips = document.getElementById('cat-chips');
   if (chips) {
-    const mk = (key, label) => {
-      const b = document.createElement('button');
-      b.className = 'cat-chip' + (state.category === key ? ' active' : '');
-      b.textContent = label;
-      b.onclick = () => { state.category = key; render(); };
-      return b;
-    };
+    const mk = (key, label) => { const b = document.createElement('button'); b.className = 'cat-chip' + (state.category === key ? ' active' : ''); b.textContent = label; b.onclick = () => setCategory(key); return b; };
     chips.innerHTML = '';
     chips.appendChild(mk('all', 'Бүх бараа'));
-    cats.forEach(c => chips.appendChild(mk(c, c)));
+    const leaves = [];
+    CAT_GROUPS.forEach(g => g.subs.filter(s => counts[s]).forEach(s => leaves.push(s)));
+    standalone.forEach(c => leaves.push(c));
+    leaves.forEach(c => chips.appendChild(mk(c, c)));
   }
 }
 function filteredProducts() {
