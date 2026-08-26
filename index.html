@@ -314,8 +314,11 @@
   .m-yt-play { position: absolute; inset: 0; margin: auto; width: 58px; height: 58px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.55); color: #fff; border-radius: 50%; font-size: 22px; padding-left: 4px; transition: background .15s; }
   .m-yt:hover .m-yt-play { background: #FF6A00; }
   .m-yt-frame { position: relative; width: 100%; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; background: #000; }
-  /* iframe-ийг томсгож захын YouTube гарчиг/лого/удирдлагыг тайрна — цэвэр видео preview */
-  .m-yt-frame iframe { position: absolute; left: -20%; top: -20%; width: 140%; height: 140%; border: 0; pointer-events: none; }
+  /* iframe-ийг бага зэрэг томсгож, дээд/доод хар туузаар YouTube гарчиг/лого/удирдлагыг халхлана */
+  .m-yt-frame iframe { position: absolute; left: -8%; top: -8%; width: 116%; height: 116%; border: 0; pointer-events: none; }
+  .m-yt-frame::before, .m-yt-frame::after { content: ''; position: absolute; left: 0; right: 0; background: #000; z-index: 2; pointer-events: none; }
+  .m-yt-frame::before { top: 0; height: 15%; }
+  .m-yt-frame::after { bottom: 0; height: 14%; }
   .btn-media { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; padding: 10px 16px; border-radius: 10px; background: var(--text); color: #fff; font-size: 13px; font-weight: 600; }
   .qty-row {
     display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
