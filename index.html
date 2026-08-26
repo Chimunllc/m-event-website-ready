@@ -272,13 +272,13 @@
   .card-img img { width: 100%; height: 100%; object-fit: contain; transition: transform .35s ease; }
   .card-video-badge {
     position: absolute; top: 12px; right: 12px; z-index: 2;
-    display: inline-flex; align-items: center; gap: 5px;
-    background: rgba(255,255,255,.92); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    color: #0B1F3A; font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-    padding: 5px 10px 5px 6px; border-radius: 100px;
-    border: 1px solid rgba(11,31,58,.06); box-shadow: 0 3px 10px rgba(11,31,58,.12);
+    width: 30px; height: 30px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #FF6A00; box-shadow: 0 3px 10px rgba(255,106,0,.35);
+    transition: transform .2s ease;
   }
-  .card-video-badge svg { width: 15px; height: 15px; display: block; flex-shrink: 0; }
+  .card:hover .card-video-badge { transform: scale(1.08); }
+  .card-video-badge svg { width: 13px; height: 13px; display: block; margin-left: 1px; }
   .card:hover .card-img img { transform: scale(1.04); }
   .card-img.placeholder::after {
     content: ""; position: absolute; inset: 0;
@@ -1104,16 +1104,15 @@ function renderGrid() {
 }
 function stockBadgeHtml(p) {
   if (p.type === 'service') return '';                       // үйлчилгээнд stock хэрэггүй
-  const s = availStock(p);   // сонгосон огнооны СУЛ нөөц (идэвхтэй түрээс хассан)
+  const s = availStock(p);   // сонгосон огнооны боломжит нөөц (идэвхтэй түрээс хассан)
   if (s === 0) return '<span class="stock-badge out">Дууссан</span>';
-  if (s <= 5)  return `<span class="stock-badge low">Зөвхөн ${s}ш</span>`;
-  return `<span class="stock-badge">✓ ${s}ш сул</span>`;
+  return `<span class="stock-badge">${s}ш боломжтой</span>`;   // боломжтой бүх төлөвт НЭГ ижил үг (тоо + "боломжтой")
 }
 function cardHtml(p) {
   const isGroup = !!p._variantGroup;
   const inCart = !isGroup && state.cart.find(x => x.id === p.id);
   const photo = p.photo ? `<img src="${escapeHtml(p.photo)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.style.display='none'">` : '';
-  const videoBadge = /^https?:\/\//.test((p && p.media_url) || '') ? '<span class="card-video-badge"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#FF6A00"/><path d="M10 8.4v7.2l6-3.6-6-3.6z" fill="#fff"/></svg>Бичлэг</span>' : '';
+  const videoBadge = /^https?:\/\//.test((p && p.media_url) || '') ? '<span class="card-video-badge" title="Бичлэгтэй"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M8 6.3v11.4l9-5.7-9-5.7z"/></svg></span>' : '';
   const outOfStock = p.type !== 'service' && availStock(p) === 0;
   const variantHint = isGroup ? `<span class="variant-hint">🎨 ${p.variants.length} хувилбар</span>` : '';
   const addBtn = isGroup ? '→' : (outOfStock ? '×' : (inCart ? '✓' : '+'));
