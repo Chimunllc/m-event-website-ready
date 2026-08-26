@@ -314,7 +314,8 @@
   .m-yt-play { position: absolute; inset: 0; margin: auto; width: 58px; height: 58px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.55); color: #fff; border-radius: 50%; font-size: 22px; padding-left: 4px; transition: background .15s; }
   .m-yt:hover .m-yt-play { background: #FF6A00; }
   .m-yt-frame { position: relative; width: 100%; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; background: #000; }
-  .m-yt-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  /* iframe-ийг томсгож захын YouTube гарчиг/лого/удирдлагыг тайрна — цэвэр видео preview */
+  .m-yt-frame iframe { position: absolute; left: -20%; top: -20%; width: 140%; height: 140%; border: 0; pointer-events: none; }
   .btn-media { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; padding: 10px 16px; border-radius: 10px; background: var(--text); color: #fff; font-size: 13px; font-weight: 600; }
   .qty-row {
     display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
@@ -828,48 +829,58 @@ function injectTentConfig() {
 }
 
 /* ==================== DATA LOAD ==================== */
-async function loadProducts() {
-  // Эх сурвалж дараалал: 1) Supabase Postgres (үндсэн). 2) n8n Sheet. 3) products.json (cache).
-  const sources = [];
-  if (CONFIG.SUPABASE_PRODUCTS_URL) sources.push({ url: CONFIG.SUPABASE_PRODUCTS_URL, headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + CONFIG.SUPABASE_ANON_KEY } });
-  if (CONFIG.PRODUCTS_URL) sources.push({ url: CONFIG.PRODUCTS_URL });
-  sources.push({ url: 'products.json' });
-  for (const src of sources) {
-    try {
-      const r = await fetch(src.url, { cache: 'no-store', headers: src.headers || {} });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const data = await r.json();
-      const list = Array.isArray(data) ? data : (data.products || []);
-      if (list.length) {
-        // M-Event сайт → ЗӨВХӨН M-EVENT салбарын бараа/нөөц (qty_mevent).
-        //  - Чимун ХХК-ийн дотоод хөрөнгө (asset) харагдахгүй.
-        //  - M-Event нөөцгүй (qty_mevent=0, бүгд NOMAAD/Чимунд байгаа) бараа харагдахгүй.
-        //  - Нөөц = M-Event салбарын тоо − эвдэрсэн − засварт. Үйлчилгээ/багц үргэлж.
-        state.products = list
-          .filter(p => {
-            if (p.type === 'service' || p.type === 'package') return true;
-            if (p.qty_mevent == null) return String(p.type || 'rental') !== 'asset';  // хуучин дата (json fallback) — type-аар
-            // M-Event ЭСВЭЛ NOMAAD-д байвал харагдана (Чимун дотоод хөрөнгө л үгүй).
-            // NOMAAD-only бол доорх map-д нөөц = 0 болно (каталогт харагдах ч боломжгүй).
-            return Number(p.qty_mevent) > 0 || Number(p.qty_nomaad) > 0;
-          })
-          .map(p => {
-            if (p.type !== 'package') {
-              const mev = (p.qty_mevent != null) ? (Number(p.qty_mevent) || 0) : (Number(p.stock) || 0);
-              p.stock = Math.max(0, mev - (Number(p.broken) || 0) - (Number(p.maintenance) || 0));
-            }
-            return p;
-          });
-        injectTentConfig();
-        return;
+// Барааны түүхий жагсаалтыг шүүж/газарлаж state.products болгоно (эх сурвалж бүрд ижил).
+//  - Чимун ХХК-ийн дотоод хөрөнгө (asset) харагдахгүй.
+//  - Нөөц = M-Event салбарын тоо − эвдэрсэн − засварт. Үйлчилгээ/багц үргэлж.
+function applyProductList(list) {
+  state.products = list
+    .filter(p => {
+      if (p.type === 'service' || p.type === 'package') return true;
+      if (p.qty_mevent == null) return String(p.type || 'rental') !== 'asset';  // хуучин дата (json) — type-аар
+      return Number(p.qty_mevent) > 0 || Number(p.qty_nomaad) > 0;
+    })
+    .map(p => {
+      if (p.type !== 'package') {
+        const mev = (p.qty_mevent != null) ? (Number(p.qty_mevent) || 0) : (Number(p.stock) || 0);
+        p.stock = Math.max(0, mev - (Number(p.broken) || 0) - (Number(p.maintenance) || 0));
       }
-      throw new Error('хоосон');
-    } catch(e) {
-      console.warn('Бараа эх сурвалж амжилтгүй:', src.url, e.message);
+      return p;
+    });
+  injectTentConfig();
+}
+async function fetchProductList(src) {
+  const r = await fetch(src.url, src.opts || {});
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const data = await r.json();
+  const list = Array.isArray(data) ? data : (data.products || []);
+  if (!list.length) throw new Error('хоосон');
+  return list;
+}
+async function loadProducts() {
+  // Stale-while-revalidate: эхлээд ХУРДАН статик products.json (GitHub CDN)-оор ШУУД үзүүлээд,
+  // амьд эх сурвалжийг (VPS Postgres → n8n) арын талд татаж, ирмэгц шинэ нөөц/үнээр дахин рендерлэнэ.
+  let shown = false;
+  try { applyProductList(await fetchProductList({ url: 'products.json', opts: { cache: 'force-cache' } })); shown = true; }
+  catch (e) { console.warn('products.json cache fail', e.message); }
+
+  const live = [];
+  if (CONFIG.SUPABASE_PRODUCTS_URL) live.push({ url: CONFIG.SUPABASE_PRODUCTS_URL, opts: { cache: 'no-store', headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + CONFIG.SUPABASE_ANON_KEY } } });
+  if (CONFIG.PRODUCTS_URL) live.push({ url: CONFIG.PRODUCTS_URL, opts: { cache: 'no-store' } });
+  // Амьд refresh-ийг НЭ await хийхгүй (render-ийг блоклохгүй) — ирмэгц дахин рендер.
+  (async () => {
+    for (const src of live) {
+      try { applyProductList(await fetchProductList(src)); return true; }
+      catch (e) { console.warn('амьд бараа амжилтгүй:', src.url, e.message); }
     }
-  }
-  state.products = [];
-  document.getElementById('grid').innerHTML = '<div class="empty">Бараа татаж чадсангүй. Сүлжээгээ шалгана уу.</div>';
+    return false;
+  })().then(ok => {
+    if (ok || !shown) render();   // амьд ирсэн → шинэчлэх; json унасан ч амьд ирсэн → анхны рендер
+    if (!ok && !shown) {
+      state.products = [];
+      const g = document.getElementById('grid');
+      if (g) g.innerHTML = '<div class="empty">Бараа татаж чадсангүй. Сүлжээгээ шалгана уу.</div>';
+    }
+  });
 }
 
 // Идэвхтэй түрээсийг татна (нөөц эзэлж буй захиалга). Унавал availability-гүй (бүтэн нөөц).
@@ -1162,7 +1173,7 @@ function fillModalMedia(p) {
   if (yt) {
     // Шууд тоглоно (муут autoplay + давталт) — thumbnail/линк алхамгүй
     box.innerHTML = `<div class="m-media-title">🎬 Бүтээгдэхүүний бичлэг</div>`
-      + `<div class="m-yt-frame"><iframe src="https://www.youtube-nocookie.com/embed/${yt}?autoplay=1&mute=1&loop=1&playlist=${yt}&rel=0&playsinline=1&modestbranding=1" title="Бичлэг" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>`;
+      + `<div class="m-yt-frame"><iframe src="https://www.youtube.com/embed/${yt}?autoplay=1&mute=1&loop=1&playlist=${yt}&controls=0&rel=0&playsinline=1&modestbranding=1&iv_load_policy=3&fs=0&disablekb=1" title="Бичлэг" allow="autoplay; encrypted-media"></iframe></div>`;
   } else {
     box.innerHTML = `<div class="m-media-title">🎬 Бүтээгдэхүүний бичлэг / зураг</div><a class="btn-media" href="${escapeHtml(url)}" target="_blank" rel="noopener">▶ Бичлэг / зураг үзэх ↗</a>`;
   }
