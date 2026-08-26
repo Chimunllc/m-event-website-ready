@@ -948,13 +948,24 @@ function render() {
 }
 // Ангиллын шатлал: том бүлэг → дэд категори. Дэд категори = барааны бодит `category` утга.
 // Бүлэгт ороогүй категори standalone (эвхэгдэхгүй) харагдана.
-const CAT_GROUPS = [
+// Ангиллын бүлгүүд — DB-ээс (app_config, аппаас засагдана) татна. Доорх нь зөвхөн default/fallback.
+let CAT_GROUPS = [
   { name: 'Тайз, хөгжим, гэрэлтүүлэг', subs: ['Тайз', 'Хөгжим', 'Гэрэлтүүлэг', 'Эффект'] },
   { name: 'Ширээ, тавилга', subs: ['Ширээ, сандал, бүтээлэг', 'Засал, тохижилт'] },
   { name: 'Асар, майхан', subs: ['Асар', 'Майхан'] },
   { name: 'Хоол, гал тогоо', subs: ['Ресторан хэрэгсэл', 'Гал тогоо'] },
   { name: 'Техник, тоног төхөөрөмж', subs: ['Эрчим хүч, цахилгаан', 'Багаж, тоног төхөөрөмж', 'Халаалт, агааржуулалт', 'Цэвэрлэгээ', 'Тээврийн хэрэгсэл'] },
 ];
+async function loadCategoryGroups() {
+  try {
+    const r = await fetch(CONFIG.SUPABASE_DB_BASE + '/app_config?key=eq.mevent_category_groups&select=value',
+      { headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + CONFIG.SUPABASE_ANON_KEY } });
+    if (!r.ok) return;
+    const rows = await r.json();
+    const v = rows[0] && rows[0].value;
+    if (Array.isArray(v) && v.length && v.every(g => g && g.name && Array.isArray(g.subs))) CAT_GROUPS = v;
+  } catch (e) { /* default хэвээр */ }
+}
 function catGroupOf(cat) { const g = CAT_GROUPS.find(x => x.subs.includes(cat)); return g ? g.name : null; }
 function setCategory(c) {
   state.category = c;
@@ -1732,7 +1743,7 @@ function enterCards() {
   document.documentElement.classList.add('reveal-on');
   initEvents();
   observeReveals();                                        // статик брэнд хэсгүүд
-  await Promise.all([loadProducts(), loadActiveOrders()]);   // бараа + идэвхтэй түрээс (availability)
+  await Promise.all([loadProducts(), loadActiveOrders(), loadCategoryGroups()]);   // бараа + түрээс + ангиллын бүлэг
   render();
   enterCards();
   setTimeout(revealAllRemaining, 2200);                    // fail-safe: юу ч нуугдаж үлдэхгүй
