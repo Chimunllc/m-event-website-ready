@@ -271,10 +271,14 @@
   .card:hover .card-img { box-shadow: var(--shadow-md); border-color: var(--border-strong); }
   .card-img img { width: 100%; height: 100%; object-fit: contain; transition: transform .35s ease; }
   .card-video-badge {
-    position: absolute; top: 10px; left: 10px; z-index: 2;
-    background: rgba(11,31,58,.9); color: #fff; font-size: 10.5px; font-weight: 700;
-    padding: 4px 9px; border-radius: 100px; letter-spacing: .02em; backdrop-filter: blur(2px);
+    position: absolute; top: 12px; right: 12px; z-index: 2;
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(255,255,255,.92); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    color: #0B1F3A; font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    padding: 5px 10px 5px 6px; border-radius: 100px;
+    border: 1px solid rgba(11,31,58,.06); box-shadow: 0 3px 10px rgba(11,31,58,.12);
   }
+  .card-video-badge svg { width: 15px; height: 15px; display: block; flex-shrink: 0; }
   .card:hover .card-img img { transform: scale(1.04); }
   .card-img.placeholder::after {
     content: ""; position: absolute; inset: 0;
@@ -1109,7 +1113,7 @@ function cardHtml(p) {
   const isGroup = !!p._variantGroup;
   const inCart = !isGroup && state.cart.find(x => x.id === p.id);
   const photo = p.photo ? `<img src="${escapeHtml(p.photo)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.style.display='none'">` : '';
-  const videoBadge = /^https?:\/\//.test((p && p.media_url) || '') ? '<span class="card-video-badge">▶ Бичлэгтэй</span>' : '';
+  const videoBadge = /^https?:\/\//.test((p && p.media_url) || '') ? '<span class="card-video-badge"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#FF6A00"/><path d="M10 8.4v7.2l6-3.6-6-3.6z" fill="#fff"/></svg>Бичлэг</span>' : '';
   const outOfStock = p.type !== 'service' && availStock(p) === 0;
   const variantHint = isGroup ? `<span class="variant-hint">🎨 ${p.variants.length} хувилбар</span>` : '';
   const addBtn = isGroup ? '→' : (outOfStock ? '×' : (inCart ? '✓' : '+'));
