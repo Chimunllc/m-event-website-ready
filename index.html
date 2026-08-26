@@ -1169,7 +1169,9 @@ function openProduct(p) {
     document.getElementById('m-name').textContent = p._variantGroup;
     const cur = p.variants.find(v => Number(v.stock || 0) > 0) || p.variants[0];   // эхний сул хувилбар
     vEl.style.display = '';
-    vEl.innerHTML = p.variants.map(v => {
+    vEl.innerHTML = p.variants.slice()
+      .sort((a, b) => String(a.variant_label || a.name).localeCompare(String(b.variant_label || b.name), 'mn', { numeric: true }))   // размерээр эрэмбэ
+      .map(v => {
       const out = Number(v.stock || 0) === 0;
       return `<button class="variant-chip${v.id === cur.id ? ' on' : ''}${out ? ' out' : ''}" data-vid="${escapeHtml(String(v.id))}">${escapeHtml(v.variant_label || v.name)}</button>`;
     }).join('');
