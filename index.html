@@ -940,6 +940,7 @@
       <div class="modal-img" id="m-img"></div>
       <div class="modal-content">
         <h2 id="m-name"></h2>
+        <div id="m-code" style="font-size:13px;font-weight:700;color:#0B1F3A;letter-spacing:.03em;margin:-2px 0 7px;"></div>
         <div class="modal-cat" id="m-cat"></div>
         <div class="modal-variants" id="m-variants" style="display:none;"></div>
         <div class="modal-prices">
@@ -1538,7 +1539,8 @@ function fillModal(p, setName) {
   state.currentProduct = p;
   if (setName) document.getElementById('m-name').textContent = p.name;
   // Modal cat-н хажууд stock badge нэмэх
-  document.getElementById('m-cat').innerHTML = escapeHtml(p.category) + (p.code ? ' &nbsp;·&nbsp; <b style="color:#0B1F3A;">Код ' + escapeHtml(p.code) + '</b>' : '') + ' &nbsp; ' + stockBadgeHtml(p);
+  document.getElementById('m-cat').innerHTML = escapeHtml(p.category) + ' &nbsp; ' + stockBadgeHtml(p);
+  { const mc = document.getElementById('m-code'); if (mc) mc.textContent = p.code || ''; }
   document.getElementById('m-price').textContent = fmt(p.price);
   let mDesc = p.description || 'Дэлгэрэнгүй мэдээлэл утсаар асуугаарай: ' + CONFIG.PHONE;
   if (p.type === 'package' && Array.isArray(p.bundle_items) && p.bundle_items.length) {
