@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Хуудас олдсонгүй — M-Event</title>
+<meta name="robots" content="noindex, follow" />
+<style>
+  body { margin:0; font-family:"Manrope","Inter",-apple-system,sans-serif; background:#FBFAF7; color:#0B1F3A;
+    display:flex; min-height:100vh; align-items:center; justify-content:center; text-align:center; padding:24px; }
+  .box { max-width:420px; }
+  h1 { font-size:22px; margin:0 0 8px; }
+  p { color:#5C5C63; font-size:15px; line-height:1.6; margin:0 0 20px; }
+  a.btn { display:inline-block; background:#E95400; color:#fff; padding:13px 26px; border-radius:11px;
+    font-weight:700; text-decoration:none; font-size:14px; }
+</style>
+<script>
+/* GitHub Pages нь байхгүй бүх зам дээр энэ хуудсыг өгдөг.
+   Хуучин /products/<slug> (Google-д индекслэгдсэн) → нүүр хуудасны хайлт руу зөөнө. */
+(function () {
+  try {
+    var path = decodeURIComponent(location.pathname || '');
+    var m = path.match(/\/products?\/([^\/?#]+)/i);
+    var slug = m ? m[1].replace(/[-_]+/g, ' ').replace(/\.html?$/i, '').trim() : '';
+    var dest = slug ? ('/?q=' + encodeURIComponent(slug)) : '/';
+    location.replace(dest);
+  } catch (e) { location.replace('/'); }
+})();
+</script>
+</head>
+<body>
+  <div class="box">
+    <h1>Хайж буй хуудас олдсонгүй</h1>
+    <p>Сайт шинэчлэгдсэн тул хаяг өөрчлөгдсөн байж магадгүй. Таныг бараа руу шилжүүлж байна…</p>
+    <a class="btn" href="/">Нүүр хуудас руу очих</a>
+  </div>
+</body>
+</html>
