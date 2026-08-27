@@ -105,6 +105,14 @@
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='black' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath stroke-linecap='round' d='m20 20-3.2-3.2'/%3E%3C/svg%3E") center/contain no-repeat;
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='black' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath stroke-linecap='round' d='m20 20-3.2-3.2'/%3E%3C/svg%3E") center/contain no-repeat;
   }
+  /* Мобайл хайлтын мөр (main дотор, зөвхөн утсан дээр — header-ийн хайлт нуугдсан үед) */
+  .m-search { display: none; position: relative; margin: 2px 0 10px; }
+  .m-search input { width: 100%; padding: 12px 16px 12px 42px; border: 1px solid var(--border-strong); border-radius: 100px; background: #fff; color: var(--text); font-size: 15px; }
+  .m-search input::placeholder { color: #A6A6AE; }
+  .m-search input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 4px var(--brand-soft); }
+  .m-search::before { content: ""; position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; opacity: .5; background: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='black' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath stroke-linecap='round' d='m20 20-3.2-3.2'/%3E%3C/svg%3E") center/contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='black' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath stroke-linecap='round' d='m20 20-3.2-3.2'/%3E%3C/svg%3E") center/contain no-repeat; }
   .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
   .btn-3d { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700;
     color: var(--brand); background: var(--brand-soft); padding: 8px 14px; border-radius: 100px;
@@ -560,12 +568,14 @@
     .modal-img { aspect-ratio: 16 / 10; }
     .header-row { padding: 12px 16px; gap: 12px; }
     .search-box { display: none; }
+    .m-search { display: block; }
     .date-bar { top: 66px; }
     .date-row { padding: 11px 16px; gap: 12px; }
     .form-grid { grid-template-columns: 1fr; }
   }
   @media (max-width: 720px) and (min-width: 481px) {
     .search-box { display: block; max-width: none; }
+    .m-search { display: none; }
   }
 </style>
 </head>
@@ -616,6 +626,7 @@
   </aside>
 
   <main>
+    <div class="m-search"><input type="text" id="search-m" placeholder="Бараа хайх..." autocomplete="off" /></div>
     <div class="cat-chips" id="cat-chips"></div>
     <div class="grid-head">
       <h1 id="grid-title">Бүх бараа</h1>
@@ -1623,8 +1634,10 @@ async function submitOrder() {
 
 /* ==================== INIT ==================== */
 function initEvents() {
-  // search
-  document.getElementById('search').oninput = (e) => { state.search = e.target.value; renderGrid(); };
+  // search (desktop header + мобайл main дахь хайлт — хоёулаа state.search-д залгана)
+  document.getElementById('search').oninput = (e) => { state.search = e.target.value; const m=document.getElementById('search-m'); if(m&&m!==e.target)m.value=e.target.value; renderGrid(); };
+  const _msearch = document.getElementById('search-m');
+  if (_msearch) _msearch.oninput = (e) => { state.search = e.target.value; const d=document.getElementById('search'); if(d)d.value=e.target.value; renderGrid(); };
   // dates — захиалгат календарь (native input-гүй). Анхдагч: өнөөдөр → маргааш
   const _today = new Date(); _today.setHours(0, 0, 0, 0);
   const _tmrw = new Date(_today.getTime() + 86400000);
