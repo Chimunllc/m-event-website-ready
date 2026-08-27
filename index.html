@@ -401,7 +401,7 @@
   .modal-media { margin-bottom: 22px; }
   .m-media-title { font-size: 12.5px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
   .m-yt-frame { position: relative; width: 100%; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; background: #000; }
-  .m-yt-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .m-yt-frame iframe, .m-yt-frame video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; object-fit: contain; }
   /* Цэвэр thumbnail + play товч (дартал YouTube iframe ачаалахгүй — эмх цэгцтэй, хурдан) */
   .m-yt-facade { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; padding: 0; margin: 0; cursor: pointer; background: #000; display: block; }
   .m-yt-facade img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -1589,6 +1589,12 @@ function fillModalMedia(p) {
   const url = (p && p.media_url || '').trim();
   if (!/^https?:\/\//.test(url)) { box.style.display = 'none'; box.innerHTML = ''; return; }
   box.style.display = '';
+  // (1) Шууд видео файл (mp4/webm/mov...) → HTML5 native тоглуулагч. YouTube огт БАЙХГҮЙ — өөрсдийн бичлэг шиг.
+  if (/\.(mp4|webm|ogg|ogv|mov|m4v)(\?|#|$)/i.test(url)) {
+    box.innerHTML = `<div class="m-media-title">🎬 Бүтээгдэхүүний бичлэг</div>`
+      + `<div class="m-yt-frame"><video src="${escapeHtml(url)}" controls playsinline preload="metadata" ${/^https?:\/\//.test(p.photo || '') ? `poster="${escapeHtml(p.photo)}"` : ''}></video></div>`;
+    return;
+  }
   const yt = ytId(url);
   if (yt) {
     // Цэвэр thumbnail + play товч. Дартал л YouTube iframe ачаална (эмх цэгцтэй, хурдан, чимээгүй).
