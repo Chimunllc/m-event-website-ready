@@ -199,6 +199,10 @@
   }
   /* Ангилал — утсан дээрх хэвтээ чип (sidebar нуугдмал үед) */
   .cat-chips { display: none; }
+  /* Мобайл ангиллын товч + bottom-sheet (desktop-д нуугдмал) */
+  .cat-menu-btn { display: none; }
+  .cat-backdrop { display: none; }
+  .cat-sheet-close { display: none; }
   /* SIDEBAR */
   .sidebar { position: sticky; top: 96px; align-self: start; max-height: calc(100vh - 120px); overflow-y: auto; }
   .cat-title {
@@ -569,6 +573,26 @@
     .header-row { padding: 12px 16px; gap: 12px; }
     .search-box { display: none; }
     .m-search { display: block; }
+    /* Ангиллын хэвтээ чипийг ангиллын товч+sheet-ээр солино */
+    .cat-chips { display: none; }
+    .cat-menu-btn { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 12px 15px; margin-bottom: 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: #fff; color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; }
+    .cat-menu-btn .cmb-l { display: inline-flex; align-items: center; gap: 9px; min-width: 0; }
+    .cat-menu-btn .cmb-l > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cat-menu-btn svg { color: var(--brand); flex: 0 0 auto; }
+    .cat-menu-btn .cmb-chev { color: var(--muted); }
+    .cat-backdrop { display: block; position: fixed; inset: 0; background: rgba(23,23,27,.45); z-index: 190; opacity: 0; pointer-events: none; transition: opacity .22s; }
+    body.cat-open { overflow: hidden; }
+    body.cat-open .cat-backdrop { opacity: 1; pointer-events: auto; }
+    body.cat-open .sidebar {
+      display: block; position: fixed; left: 0; right: 0; bottom: 0; top: auto;
+      max-height: 78vh; overflow-y: auto; margin: 0; z-index: 200;
+      background: var(--panel); border-radius: 20px 20px 0 0;
+      padding: 0 18px calc(16px + env(safe-area-inset-bottom));
+      box-shadow: 0 -12px 40px rgba(0,0,0,.22); animation: sheetUp .24s ease;
+    }
+    @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    body.cat-open .sidebar .cat-title { position: sticky; top: 0; background: var(--panel); z-index: 1; margin: 0; padding: 16px 0 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+    .cat-sheet-close { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: none; background: var(--brand-soft); color: var(--brand); border-radius: 50%; font-size: 16px; cursor: pointer; }
     .date-bar { top: 66px; }
     .date-row { padding: 11px 16px; gap: 12px; }
     .form-grid { grid-template-columns: 1fr; }
@@ -621,12 +645,14 @@
 <!-- LAYOUT -->
 <div class="layout">
   <aside class="sidebar">
-    <div class="cat-title">Ангилал</div>
+    <div class="cat-title">Ангилал<button class="cat-sheet-close" id="cat-sheet-close" aria-label="Хаах">✕</button></div>
     <ul class="cat-list" id="cat-list"></ul>
   </aside>
+  <div class="cat-backdrop" id="cat-backdrop"></div>
 
   <main>
     <div class="m-search"><input type="text" id="search-m" placeholder="Бараа хайх..." autocomplete="off" /></div>
+    <button class="cat-menu-btn" id="cat-menu-btn"><span class="cmb-l"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="14" y2="17"/></svg><span id="cat-menu-label">Бүх ангилал</span></span><svg class="cmb-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
     <div class="cat-chips" id="cat-chips"></div>
     <div class="grid-head">
       <h1 id="grid-title">Бүх бараа</h1>
@@ -982,6 +1008,7 @@ function setCategory(c) {
   state.category = c;
   const g = catGroupOf(c);
   if (g) { state.openGroups = state.openGroups || new Set(); state.openGroups.add(g); }   // дэд категори сонгоход бүлгийг нээнэ
+  document.body.classList.remove('cat-open');   // мобайл ангиллын sheet-ийг хаах
   render();
 }
 
@@ -1043,6 +1070,9 @@ function renderCategories() {
     standalone.forEach(c => leaves.push(c));
     leaves.forEach(c => chips.appendChild(mk(c, c)));
   }
+  // Мобайл ангиллын товчны шошго (одоогийн ангилал)
+  const cml = document.getElementById('cat-menu-label');
+  if (cml) cml.textContent = state.category === 'all' ? 'Бүх ангилал' : state.category;
 }
 function filteredProducts() {
   let list = state.products;
@@ -1637,6 +1667,10 @@ function initEvents() {
   document.getElementById('search').oninput = (e) => { state.search = e.target.value; const m=document.getElementById('search-m'); if(m&&m!==e.target)m.value=e.target.value; renderGrid(); };
   const _msearch = document.getElementById('search-m');
   if (_msearch) _msearch.oninput = (e) => { state.search = e.target.value; const d=document.getElementById('search'); if(d)d.value=e.target.value; renderGrid(); };
+  // Ангиллын sheet (мобайл) нээх/хаах
+  const _catBtn = document.getElementById('cat-menu-btn'); if (_catBtn) _catBtn.onclick = () => document.body.classList.add('cat-open');
+  const _catBd = document.getElementById('cat-backdrop'); if (_catBd) _catBd.onclick = () => document.body.classList.remove('cat-open');
+  const _catClose = document.getElementById('cat-sheet-close'); if (_catClose) _catClose.onclick = () => document.body.classList.remove('cat-open');
   // dates — захиалгат календарь (native input-гүй). Анхдагч: өнөөдөр → маргааш
   const _today = new Date(); _today.setHours(0, 0, 0, 0);
   const _tmrw = new Date(_today.getTime() + 86400000);
