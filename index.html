@@ -297,12 +297,12 @@
   .card-body { padding: 11px 4px 4px; flex: 1; display: flex; flex-direction: column; }
   .card-name {
     font-size: 14px; font-weight: 600; line-height: 1.38; color: var(--text);
-    margin-bottom: 7px;
+    margin-bottom: 4px;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  .card-cat { font-size: 10.5px; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .card-cat > span:first-child { text-transform: uppercase; letter-spacing: .08em; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-cat { margin-bottom: 8px; display: flex; }
+  .card-meta { font-size: 11.5px; color: var(--brand); font-weight: 600; margin-bottom: 4px; }
   .stock-badge {
     font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 100px; white-space: nowrap;
     background: var(--brand-soft); color: var(--brand);
@@ -1124,17 +1124,16 @@ function cardHtml(p) {
   const photo = p.photo ? `<img src="${escapeHtml(p.photo)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.style.display='none'">` : '';
   const videoBadge = /^https?:\/\//.test((p && p.media_url) || '') ? '<span class="card-video-badge" title="Бичлэгтэй"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M8 6.3v11.4l9-5.7-9-5.7z"/></svg></span>' : '';
   const outOfStock = p.type !== 'service' && availStock(p) === 0;
-  const variantHint = isGroup ? `<span class="variant-hint">🎨 ${p.variants.length} хувилбар</span>` : '';
+  const variantHint = isGroup ? `🎨 ${p.variants.length} хувилбар` : '';
+  const _sb = stockBadgeHtml(p);
   const addBtn = isGroup ? '→' : (outOfStock ? '×' : (inCart ? '✓' : '+'));
   return `
     <div class="card${inCart?' in-cart':''}${outOfStock?' out-of-stock':''}">
       <div class="card-img${photo?'':' placeholder'}">${photo}${videoBadge}</div>
       <div class="card-body">
-        <div class="card-cat">
-          <span>${escapeHtml(p.category)}</span>
-          ${stockBadgeHtml(p)}
-        </div>
-        <div class="card-name">${escapeHtml(p.name)}${variantHint}</div>
+        ${_sb ? `<div class="card-cat">${_sb}</div>` : ''}
+        <div class="card-name">${escapeHtml(p.name)}</div>
+        ${variantHint ? `<div class="card-meta">${variantHint}</div>` : ''}
         <div class="card-price-row">
           <div class="card-price">${fmt(p.price)}<small>${isGroup?'-с эхлэн':'хугацаанд'}</small></div>
           <button class="card-add" title="${isGroup?'Өнгө сонгох':(outOfStock?'Нөөц дууссан':'Сагсанд нэмэх')}">${addBtn}</button>
