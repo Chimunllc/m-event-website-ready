@@ -200,6 +200,7 @@
   /* Ангилал — утсан дээрх хэвтээ чип (sidebar нуугдмал үед) */
   .cat-chips { display: none; }
   /* Мобайл ангиллын товч + bottom-sheet (desktop-д нуугдмал) */
+  .cat-menu-wrap { display: none; }
   .cat-menu-btn { display: none; }
   .cat-backdrop { display: none; }
   .cat-sheet-close { display: none; }
@@ -575,7 +576,8 @@
     .m-search { display: block; }
     /* Ангиллын хэвтээ чипийг ангиллын товч+sheet-ээр солино */
     .cat-chips { display: none; }
-    .cat-menu-btn { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 12px 15px; margin-bottom: 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: #fff; color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; }
+    .cat-menu-wrap { display: block; position: sticky; top: 63px; z-index: 40; background: var(--bg); margin: 0 -16px 12px; padding: 8px 16px; border-bottom: 1px solid var(--border); }
+    .cat-menu-btn { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 12px 15px; margin: 0; border: 1px solid var(--border-strong); border-radius: 12px; background: #fff; color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; }
     .cat-menu-btn .cmb-l { display: inline-flex; align-items: center; gap: 9px; min-width: 0; }
     .cat-menu-btn .cmb-l > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .cat-menu-btn svg { color: var(--brand); flex: 0 0 auto; }
@@ -652,7 +654,7 @@
 
   <main>
     <div class="m-search"><input type="text" id="search-m" placeholder="Бараа хайх..." autocomplete="off" /></div>
-    <button class="cat-menu-btn" id="cat-menu-btn"><span class="cmb-l"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="14" y2="17"/></svg><span id="cat-menu-label">Бүх ангилал</span></span><svg class="cmb-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <div class="cat-menu-wrap"><button class="cat-menu-btn" id="cat-menu-btn"><span class="cmb-l"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="14" y2="17"/></svg><span id="cat-menu-label">Бүх ангилал</span></span><svg class="cmb-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button></div>
     <div class="cat-chips" id="cat-chips"></div>
     <div class="grid-head">
       <h1 id="grid-title">Бүх бараа</h1>
