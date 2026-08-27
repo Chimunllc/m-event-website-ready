@@ -1056,7 +1056,7 @@ const CONFIG = {
   SUPABASE_DB_BASE: 'https://n8n.nomaadcamp.com/db/rest/v1',
   // ЗӨВ хурд: анхны ачаалалд ХҮНД `photos` (олон зураг, base64) талбарыг ТАТАХГҮЙ (11MB→2.2MB).
   // Галерейн олон зургийг барааны дэлгэрэнгүй нээх үед lazy татна (loadProductPhotos).
-  SUPABASE_PRODUCTS_URL: 'https://n8n.nomaadcamp.com/db/rest/v1/products?select=sku,id,name,category,all_categories,type,price,deposit,stock,photo,description,archived,bundle_items,broken,maintenance,qty_mevent,qty_nomaad,variant_group,media_url&archived=eq.false&order=name.asc',
+  SUPABASE_PRODUCTS_URL: 'https://n8n.nomaadcamp.com/db/rest/v1/products?select=sku,id,code,name,category,all_categories,type,price,deposit,stock,photo,description,archived,bundle_items,broken,maintenance,qty_mevent,qty_nomaad,variant_group,media_url&archived=eq.false&order=name.asc',
   // Идэвхтэй түрээс (нөөц эзэлж буй) — availability бодоход. Буцаж ирсэн (stopped/archived)/ноорог/цуцлах орохгүй.
   SUPABASE_ORDERS_URL: 'https://n8n.nomaadcamp.com/db/rest/v1/app_orders?select=number,status,starts_at,stops_at,items&status=in.(reserved,preparation,cleaning,started)',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.Brx7AjnPrzfv--KLb-J-FK-7DmdRusxUF2jaFgKzd1s',
@@ -1329,7 +1329,7 @@ function filteredProducts() {
   if (state.category !== 'all') list = list.filter(p => p.category === state.category);
   if (state.search) {
     const q = state.search.toLowerCase();
-    list = list.filter(p => p.name.toLowerCase().includes(q) || (p.description||'').toLowerCase().includes(q));
+    list = list.filter(p => p.name.toLowerCase().includes(q) || (p.description||'').toLowerCase().includes(q) || (p.code||'').toLowerCase().includes(q) || (p.code||'').replace(/-/g,'').toLowerCase().includes(q));
   }
   return list;
 }
@@ -1538,7 +1538,7 @@ function fillModal(p, setName) {
   state.currentProduct = p;
   if (setName) document.getElementById('m-name').textContent = p.name;
   // Modal cat-н хажууд stock badge нэмэх
-  document.getElementById('m-cat').innerHTML = escapeHtml(p.category) + ' &nbsp; ' + stockBadgeHtml(p);
+  document.getElementById('m-cat').innerHTML = escapeHtml(p.category) + (p.code ? ' &nbsp;·&nbsp; <b style="color:#0B1F3A;">Код ' + escapeHtml(p.code) + '</b>' : '') + ' &nbsp; ' + stockBadgeHtml(p);
   document.getElementById('m-price').textContent = fmt(p.price);
   let mDesc = p.description || 'Дэлгэрэнгүй мэдээлэл утсаар асуугаарай: ' + CONFIG.PHONE;
   if (p.type === 'package' && Array.isArray(p.bundle_items) && p.bundle_items.length) {
