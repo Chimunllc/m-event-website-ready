@@ -831,7 +831,8 @@
         <button class="gt-date" id="gt-date" aria-label="Огноо сонгох"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg><b id="gt-date-label">Огноо</b></button>
         <label class="gt-avail"><input type="checkbox" id="only-avail"> Зөвхөн боломжтой</label>
         <select class="gt-sort" id="sort-sel" aria-label="Эрэмбэлэх">
-          <option value="default">Эрэмбэ: Нэрээр</option>
+          <option value="default">🔥 Их түрээслэгддэг</option>
+          <option value="name">Нэрээр (А-Я)</option>
           <option value="price-asc">Үнэ: Багаас их</option>
           <option value="price-desc">Үнэ: Ихээс бага</option>
           <option value="avail">Нөөцтэй эхэнд</option>
@@ -1231,6 +1232,23 @@ async function loadCategoryGroups() {
     if (Array.isArray(v) && v.length && v.every(g => g && g.name && Array.isArray(g.subs))) CAT_GROUPS = v;
   } catch (e) { /* default хэвээр */ }
 }
+// Түрээсийн давтамж (sku → түрээслэгдсэн захиалгын тоо) — app_config-оос. Захиалгын түүхээс тооцож бэлдсэн.
+let POP = {};
+async function loadPopularity() {
+  try {
+    const r = await fetch(CONFIG.SUPABASE_DB_BASE + '/app_config?key=eq.mevent_popularity&select=value',
+      { headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + CONFIG.SUPABASE_ANON_KEY } });
+    if (!r.ok) return;
+    const rows = await r.json();
+    const v = rows[0] && rows[0].value;
+    if (v && typeof v === 'object' && !Array.isArray(v)) POP = v;
+  } catch (e) { /* хоосон хэвээр — эрэмбэ нэр рүү унана */ }
+}
+// Барааны/бүлгийн түрээсийн давтамж (бүлэг = гишүүдийн хамгийн их нь).
+function popOf(p) {
+  if (p._variantGroup && Array.isArray(p.variants)) return p.variants.reduce((m, v) => Math.max(m, POP[v.sku] || 0), 0);
+  return POP[p.sku] || 0;
+}
 function catGroupOf(cat) { const g = CAT_GROUPS.find(x => x.subs.includes(cat)); return g ? g.name : null; }
 function setCategory(c) {
   state.category = c;
@@ -1363,7 +1381,9 @@ function sortList(list) {
   if (state.sort === 'price-asc') arr.sort((a, b) => { const pa = pr(a), pb = pr(b); if (!pa && pb) return 1; if (pa && !pb) return -1; return pa - pb; });   // 0₮ (үйлчилгээ) сүүлд
   else if (state.sort === 'price-desc') arr.sort((a, b) => pr(b) - pr(a));
   else if (state.sort === 'avail') arr.sort((a, b) => availStock(b) - availStock(a));
-  else arr.sort((a, b) => String(a.name).localeCompare(String(b.name), 'mn'));
+  else if (state.sort === 'name') arr.sort((a, b) => String(a.name).localeCompare(String(b.name), 'mn'));
+  // default = 🔥 их түрээслэгддэг (захиалгын тоогоор), тэнцвэл нэрээр
+  else arr.sort((a, b) => { const d = popOf(b) - popOf(a); return d !== 0 ? d : String(a.name).localeCompare(String(b.name), 'mn'); });
   return arr;
 }
 function renderGrid() {
@@ -1582,7 +1602,9 @@ function fillModalMedia(p) {
     const fac = box.querySelector('.m-yt-facade');
     if (fac) fac.onclick = () => {
       const id = fac.dataset.yt;
-      fac.parentElement.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&color=white" title="Бүтээгдэхүүний бичлэг" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`;
+      // controls=0 → next/prev/тохиргоо/CC товчны мөрийг бүтэн нуух; loop → төгсгөлд санал болгох бичлэгийн сүлжээ гарахгүй.
+      // nocookie домэйн + modestbranding. Хэрэглэгч дарсан тул дуутай (mute=0) тоглоно; хаах=модал хаах/дахин дарж зогсооно.
+      fac.parentElement.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=0&controls=0&loop=1&playlist=${id}&rel=0&modestbranding=1&iv_load_policy=3&disablekb=1&fs=0&playsinline=1" title="Бүтээгдэхүүний бичлэг" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
     };
   } else {
     box.innerHTML = `<div class="m-media-title">🎬 Бүтээгдэхүүний бичлэг / зураг</div><a class="btn-media" href="${escapeHtml(url)}" target="_blank" rel="noopener">▶ Бичлэг / зураг үзэх ↗</a>`;
@@ -2145,7 +2167,7 @@ function applyUrlParams() {
   document.documentElement.classList.add('reveal-on');
   initEvents();
   observeReveals();                                        // статик брэнд хэсгүүд
-  await Promise.all([loadProducts(), loadActiveOrders(), loadCategoryGroups()]);   // бараа + түрээс + ангиллын бүлэг
+  await Promise.all([loadProducts(), loadActiveOrders(), loadCategoryGroups(), loadPopularity()]);   // бараа + түрээс + ангиллын бүлэг + давтамж
   applyUrlParams();                                        // ?q= / ?cat= (хуучин Google линк сэргээх)
   render();
   enterCards();
