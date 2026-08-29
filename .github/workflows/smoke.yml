@@ -1,0 +1,35 @@
+name: Smoke
+
+# mevent.mn сайт эвдрээгүй эсэхийг автомат шалгана — бараа ачаалагдаж, JS алдаагүй эсэх.
+# Push бүрт (index.html өөрчлөгдвөл) + өдөр бүр (API/дата эвдрэлийг барих) + гараар.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'products.json'
+      - 'test/**'
+      - '.github/workflows/smoke.yml'
+  schedule:
+    - cron: '0 1 * * *'   # өдөр бүр 01:00 UTC (09:00 УБ)
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright (chromium)
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm i playwright@1.48 >/dev/null 2>&1
+          npx playwright install --with-deps chromium
+
+      - name: Smoke test (mevent.mn)
+        run: node test/smoke.mjs
