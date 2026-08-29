@@ -218,7 +218,6 @@
       <button class="chip" data-add="light">💡 Гэрлийн багана</button>
       <button class="chip" data-add="plant">🪴 Ургамал</button>
       <button class="chip" data-add="parasol">⛱ Шүхэр</button>
-      <button class="chip" data-add="person">🧍 Хүн</button>
     </div>
   </div>
   <div class="row" id="drawBar" style="display:none">
@@ -288,8 +287,6 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
 
 const CROSS = 0.30;           // трассын огтлол 30см
 const app = document.getElementById('app');
@@ -878,10 +875,10 @@ const VENUE_DEFAULTS = {
   tent:   { w:10, d:15, h:2.6, walls:false, gable:true },
   rtable: {}, ltable: {}, chair: {}, tree: {}, hill: { r:10, h:4 }, bell: { d:5 },
   booth: { w:5, d:2, h:4, lit:false, sides:{back:true,left:true,right:true,front:false} },
-  sofa:{}, arch:{}, dance:{}, speaker:{}, light:{}, plant:{}, bar:{}, parasol:{}, person:{}
+  sofa:{}, arch:{}, dance:{}, speaker:{}, light:{}, plant:{}, bar:{}, parasol:{}
 };
 const VENUE_LABEL = { stage:'Тайз', tent:'Асар', rtable:'Дугуй ширээ', ltable:'Урт ширээ', chair:'Сандал', tree:'Мод', hill:'Уул', river:'Гол', forest:'Ой', bell:'Bell майхан', booth:'Бүүд',
-  sofa:'Буйдан', arch:'Арк', dance:'Бүжгийн шал', speaker:'Чанга яригч', light:'Гэрлийн багана', plant:'Ургамал', bar:'Бар', parasol:'Шүхэр', person:'Хүн' };
+  sofa:'Буйдан', arch:'Арк', dance:'Бүжгийн шал', speaker:'Чанга яригч', light:'Гэрлийн багана', plant:'Ургамал', bar:'Бар', parasol:'Шүхэр' };
 // --- объект тус бүрийн Group үүсгэгчид (одоо байгаа геометрийн туслахуудыг дахин ашиглана) ---
 function objStage(p){
   const g=new THREE.Group();
@@ -1156,60 +1153,8 @@ function objBooth(it){
   });
   return g;
 }
-// Хүн — жинхэнэ 3D загвар (Michelle.glb: иргэн, хувцастай, rigged). Ачаалагдтал mannequin түр
-const _mannMat=new THREE.MeshStandardMaterial({color:0x9aa0ac, roughness:0.9});
-const _legMat=new THREE.MeshStandardMaterial({color:0x3a4250, roughness:0.9});
-// Алхлах хүн — Soldier.glb (rigged, өөрийн Walk анимацитай, гар/хөл зөв алхана)
-const PERSON_MODEL_URL='https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/models/gltf/Soldier.glb';
-let _personProto=null, _personScale=1, _personFeetY=0, _personLoading=false, _walkClip=null;
-const _personAnims=[];   // {mixer, g, item, t} — алхаж хөдөлдөг хүмүүс
-const _clock=new THREE.Clock();
-function loadPersonModel(){     // зөвхөн хүн нэмэх үед ачаална (lazy)
-  if(_personProto||_personLoading) return; _personLoading=true;
-  new GLTFLoader().load(PERSON_MODEL_URL, gltf=>{
-    const s=gltf.scene;
-    const box=new THREE.Box3().setFromObject(s); const h=(box.max.y-box.min.y)||1.7;
-    _personScale=1.7/h; _personFeetY=box.min.y;
-    s.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.frustumCulled=false; } });
-    _personProto=s;
-    _walkClip = (gltf.animations||[]).find(a=>/walk/i.test(a.name)) || (gltf.animations||[])[1] || (gltf.animations||[])[0] || null;
-    if(state.mode==='venue' && state.items.some(i=>i.type==='person')) build();
-  }, undefined, ()=>{ _personLoading=false; });
-}
-function updatePeople(dt){
-  for(const pa of _personAnims){
-    pa.mixer.update(dt); pa.t += dt;
-    const R=1.4, w=0.45, ang=pa.t*w;                 // байрлалынхаа эргэн тойронд удаан алхана
-    const cx=pa.item.x||0, cz=pa.item.z||0;
-    pa.g.position.set(cx+Math.cos(ang)*R, pa.g.position.y, cz+Math.sin(ang)*R);
-    pa.g.rotation.y = Math.atan2(-Math.sin(ang), Math.cos(ang));   // хөдөлгөөний чиг рүү харна
-  }
-}
-function objMannequin(){
-  const g=new THREE.Group();
-  [-0.11,0.11].forEach(x=>{ const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.07,0.85,10),_legMat); leg.position.set(x,0.42,0); leg.castShadow=true; g.add(leg); });
-  const torso=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.16,0.64,12),_mannMat); torso.position.y=1.14; torso.castShadow=true; g.add(torso);
-  [-0.25,0.25].forEach(x=>{ const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.05,0.62,8),_mannMat); arm.position.set(x,1.12,0); arm.rotation.z=x>0?0.08:-0.08; arm.castShadow=true; g.add(arm); });
-  const head=new THREE.Mesh(new THREE.SphereGeometry(0.135,16,14),_mannMat); head.position.y=1.61; head.castShadow=true; g.add(head);
-  return g;
-}
-function objPerson(it){
-  if(!_personProto){ loadPersonModel(); return objMannequin(); }
-  const g=new THREE.Group();
-  const m=skeletonClone(_personProto);
-  m.scale.setScalar(_personScale);
-  m.position.y=-_personFeetY*_personScale;
-  g.add(m);
-  if(_walkClip){
-    const mixer=new THREE.AnimationMixer(m);
-    mixer.clipAction(_walkClip).play();
-    _personAnims.push({ mixer, g, item:it, t: Math.random()*12 });
-  }
-  return g;
-}
 function makeVenueObj(it){
   if(PROP_BUILDERS[it.type]) return PROP_BUILDERS[it.type]();
-  if(it.type==='person')  return objPerson(it);
   if(it.type==='booth')   return objBooth(it);
   if(it.type==='stage')   return objStage(it);
   if(it.type==='tent')    return objTent(it);
@@ -1231,7 +1176,7 @@ function itemRadius(it){
   if(it.type==='hill') return (it.r||10)+0.5;
   if(it.type==='bell') return (it.d||5)/2*1.4+0.3;
   if(it.type==='tree') return 1.2;
-  if(it.type==='person') return 0.5; return 0.45;
+  return 0.45;
 }
 function selRing(it){
   const r=itemRadius(it); const geo=new THREE.RingGeometry(r, r+0.14, 56); geo.rotateX(-Math.PI/2);
@@ -1250,7 +1195,7 @@ function buildVenue(){
   if(stageGroup){ scene.remove(stageGroup); stageGroup=null; }
   lampLights.forEach(l=>scene.remove(l)); lampLights.length=0;
   if(venueGroup) scene.remove(venueGroup);
-  venueGroup=new THREE.Group(); venuePick.length=0; _selRing=null; _personAnims.length=0;
+  venueGroup=new THREE.Group(); venuePick.length=0; _selRing=null;
   const pathType=it=>(it.type==='river'||it.type==='forest'||it.type==='booth');
   state.items.forEach(it=>{
     const og=makeVenueObj(it);
@@ -1309,9 +1254,9 @@ function updateReadout(){
   const r = document.getElementById('readout');
   let feats;
   if(state.mode==='venue'){
-    const c={stage:0,tent:0,bell:0,booth:0,rtable:0,ltable:0,chair:0,tree:0,hill:0,river:0,forest:0,person:0}; let sum=0, props=0;
+    const c={stage:0,tent:0,bell:0,booth:0,rtable:0,ltable:0,chair:0,tree:0,hill:0,river:0,forest:0}; let sum=0, props=0;
     state.items.forEach(i=>{ c[i.type]=(c[i.type]||0)+1; if(PROP_BUILDERS[i.type]) props++; if(i.type==='stage'||i.type==='tent') sum+=Math.round((i.w||0)*(i.d||0))*PRICE.module; });
-    const parts=[]; if(c.stage)parts.push(c.stage+' тайз'); if(c.tent)parts.push(c.tent+' асар'); if(c.bell)parts.push(c.bell+' bell'); if(c.booth)parts.push(c.booth+' бүүд'); if(c.person)parts.push(c.person+' хүн');
+    const parts=[]; if(c.stage)parts.push(c.stage+' тайз'); if(c.tent)parts.push(c.tent+' асар'); if(c.bell)parts.push(c.bell+' bell'); if(c.booth)parts.push(c.booth+' бүүд');
     const tbl=c.rtable+c.ltable; if(tbl)parts.push(tbl+' ширээ'); if(c.chair)parts.push(c.chair+' сандал'); if(props)parts.push(props+' тавилга');
     if(c.tree)parts.push(c.tree+' мод'); if(c.hill)parts.push(c.hill+' уул'); if(c.river)parts.push(c.river+' гол'); if(c.forest)parts.push(c.forest+' ой');
     r.innerHTML = `<b>${state.items.length} объект</b> <span>· ${parts.join(' · ')||'хоосон талбай'}</span>`;
@@ -1823,8 +1768,6 @@ function animate(){
   // амбер гэрлийн бага зэрэг анивчих
   const t=performance.now()*0.001;
   lampLights.forEach((l,i)=> l.intensity = 5.2 + Math.sin(t*2+i)*0.7);
-  const dt=_clock.getDelta();
-  if(_personAnims.length) updatePeople(dt);
   controls.update();
   renderer.render(scene,camera);
 }
