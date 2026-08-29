@@ -383,15 +383,20 @@
   .modal-bg.open { display: flex; }
   .modal {
     background: #fff; border-radius: 20px; max-width: 720px; width: 100%; max-height: 90vh;
-    overflow-y: auto; box-shadow: var(--shadow-lg);
+    overflow-y: auto; overflow-x: hidden; box-shadow: var(--shadow-lg);
   }
   .modal-grid { display: grid; grid-template-columns: 320px 1fr; gap: 0; }
-  .modal-img { background: #FAF9F5; aspect-ratio: 1 / 1; position: relative; padding: 22px; }
-  .modal-img > img { width: 100%; height: 100%; object-fit: contain; }
+  /* Grid item-ийн анхдагч min-width:auto нь баганыг ДОТООД агуулгын (барааны зургийн жинхэнэ
+     өргөн) хэрээр тэлдэг. iOS WebKit үүнийг хэрэгжүүлдэг тул модалын багана 353px-ийн оронд
+     450px+ болж, нэр/үнэ/тайлбар хүрээнээс гараад тасарч байсан. 0 болгосноор багана үргэлж
+     модалын өргөнд багтана (Chromium-д ч ялгаагүй ажиллана). */
+  .modal-grid > * { min-width: 0; }
+  .modal-img { background: #FAF9F5; aspect-ratio: 1 / 1; position: relative; padding: 22px; overflow: hidden; }
+  .modal-img > img { width: 100%; height: 100%; max-width: 100%; object-fit: contain; }
   .m-thumbs { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 5px; padding: 8px; overflow-x: auto; background: linear-gradient(transparent, rgba(0,0,0,.45)); }
   .m-thumb { width: 46px; height: 46px; flex: 0 0 auto; object-fit: cover; border-radius: 6px; border: 2px solid transparent; cursor: pointer; opacity: .75; }
   .m-thumb.on { border-color: #fff; opacity: 1; }
-  .modal-content { padding: 24px; }
+  .modal-content { padding: 24px; min-width: 0; overflow-wrap: break-word; }
   .modal-content h2 { font-family: var(--font-display); font-size: 22px; font-weight: 800; letter-spacing: -.02em; margin-bottom: 6px; line-height: 1.25; }
   .modal-cat { font-size: 11px; color: var(--muted); margin-bottom: 18px; text-transform: uppercase; letter-spacing: .1em; font-weight: 600; }
   .modal-prices { display: flex; gap: 24px; margin-bottom: 18px; padding: 16px 18px; background: var(--bg); border-radius: 12px; border: 1px solid var(--border); }
