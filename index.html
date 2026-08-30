@@ -1056,15 +1056,17 @@
 <script>
 /* ==================== CONFIG ==================== */
 const CONFIG = {
-  // Бараа — ҮНДСЭН: өөрийн VPS Postgres (PostgREST, n8n.nomaadcamp.com/db). Supabase cloud-аас
-  // гарсан (2026-06-28). Унавал n8n webhook, дараа нь products.json.
-  SUPABASE_DB_BASE: 'https://n8n.nomaadcamp.com/db/rest/v1',
+  // Бараа — ҮНДСЭН: өөрийн VPS Postgres (PostgREST, n8n.nomaadcamp.com/db).
+  // Унавал n8n webhook, дараа нь products.json.
+  // ⚠ Нэршил: эдгээр түлхүүр урьд нь SUPABASE_* нэртэй байсан ч Supabase cloud-той ямар ч
+  // хамааралгүй (2026-06-28-нд VPS рүү шилжсэн). Төөрөгдүүлдэг тул DB_* болгов (2026-08-30).
+  DB_BASE: 'https://n8n.nomaadcamp.com/db/rest/v1',
   // ЗӨВ хурд: анхны ачаалалд ХҮНД `photos` (олон зураг, base64) талбарыг ТАТАХГҮЙ (11MB→2.2MB).
   // Галерейн олон зургийг барааны дэлгэрэнгүй нээх үед lazy татна (loadProductPhotos).
-  SUPABASE_PRODUCTS_URL: 'https://n8n.nomaadcamp.com/db/rest/v1/products?select=sku,id,code,name,category,all_categories,type,price,deposit,stock,photo,description,archived,bundle_items,broken,maintenance,qty_mevent,qty_nomaad,variant_group,media_url&archived=eq.false&order=name.asc',
+  DB_PRODUCTS_URL: 'https://n8n.nomaadcamp.com/db/rest/v1/products?select=sku,id,code,name,category,all_categories,type,price,deposit,stock,photo,description,archived,bundle_items,broken,maintenance,qty_mevent,qty_nomaad,variant_group,media_url&archived=eq.false&order=name.asc',
   // Идэвхтэй түрээс (нөөц эзэлж буй) — availability бодоход. Буцаж ирсэн (stopped/archived)/ноорог/цуцлах орохгүй.
-  SUPABASE_ORDERS_URL: 'https://n8n.nomaadcamp.com/db/rest/v1/app_orders?select=number,status,starts_at,stops_at,items&status=in.(reserved,preparation,cleaning,started)',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.Brx7AjnPrzfv--KLb-J-FK-7DmdRusxUF2jaFgKzd1s',
+  DB_ORDERS_URL: 'https://n8n.nomaadcamp.com/db/rest/v1/app_orders?select=number,status,starts_at,stops_at,items&status=in.(reserved,preparation,cleaning,started)',
+  DB_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.Brx7AjnPrzfv--KLb-J-FK-7DmdRusxUF2jaFgKzd1s',
   PRODUCTS_URL: 'https://n8n.nomaadcamp.com/webhook/mevent-products?key=1YP4RCfL_DMiBhDfkCkX6AesQHd5p2lZ',
   ORDER_URL: 'https://n8n.nomaadcamp.com/webhook/m-event-site-order?key=1YP4RCfL_DMiBhDfkCkX6AesQHd5p2lZ',
   PHONE: '+976 7755-1010',
@@ -1162,7 +1164,7 @@ async function loadProducts() {
   catch (e) { console.warn('products.json cache fail', e.message); }
 
   const live = [];
-  if (CONFIG.SUPABASE_PRODUCTS_URL) live.push({ url: CONFIG.SUPABASE_PRODUCTS_URL, opts: { cache: 'no-store', headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + CONFIG.SUPABASE_ANON_KEY } } });
+  if (CONFIG.DB_PRODUCTS_URL) live.push({ url: CONFIG.DB_PRODUCTS_URL, opts: { cache: 'no-store', headers: { apikey: CONFIG.DB_ANON_KEY, Authorization: 'Bearer ' + CONFIG.DB_ANON_KEY } } });
   if (CONFIG.PRODUCTS_URL) live.push({ url: CONFIG.PRODUCTS_URL, opts: { cache: 'no-store' } });
   // Амьд refresh-ийг НЭ await хийхгүй (render-ийг блоклохгүй) — ирмэгц дахин рендер.
   (async () => {
@@ -1183,9 +1185,9 @@ async function loadProducts() {
 
 // Идэвхтэй түрээсийг татна (нөөц эзэлж буй захиалга). Унавал availability-гүй (бүтэн нөөц).
 async function loadActiveOrders() {
-  if (!CONFIG.SUPABASE_ORDERS_URL) return;
+  if (!CONFIG.DB_ORDERS_URL) return;
   try {
-    const r = await fetch(CONFIG.SUPABASE_ORDERS_URL, { cache: 'no-store', headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + CONFIG.SUPABASE_ANON_KEY } });
+    const r = await fetch(CONFIG.DB_ORDERS_URL, { cache: 'no-store', headers: { apikey: CONFIG.DB_ANON_KEY, Authorization: 'Bearer ' + CONFIG.DB_ANON_KEY } });
     if (r.ok) state.orders = await r.json();
   } catch (e) { console.warn('Идэвхтэй захиалга татаж чадсангүй:', e.message); }
 }
@@ -1229,8 +1231,8 @@ let CAT_GROUPS = [
 ];
 async function loadCategoryGroups() {
   try {
-    const r = await fetch(CONFIG.SUPABASE_DB_BASE + '/app_config?key=eq.mevent_category_groups&select=value',
-      { headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + CONFIG.SUPABASE_ANON_KEY } });
+    const r = await fetch(CONFIG.DB_BASE + '/app_config?key=eq.mevent_category_groups&select=value',
+      { headers: { apikey: CONFIG.DB_ANON_KEY, Authorization: 'Bearer ' + CONFIG.DB_ANON_KEY } });
     if (!r.ok) return;
     const rows = await r.json();
     const v = rows[0] && rows[0].value;
@@ -1241,8 +1243,8 @@ async function loadCategoryGroups() {
 let POP = {};
 async function loadPopularity() {
   try {
-    const r = await fetch(CONFIG.SUPABASE_DB_BASE + '/app_config?key=eq.mevent_popularity&select=value',
-      { headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + CONFIG.SUPABASE_ANON_KEY } });
+    const r = await fetch(CONFIG.DB_BASE + '/app_config?key=eq.mevent_popularity&select=value',
+      { headers: { apikey: CONFIG.DB_ANON_KEY, Authorization: 'Bearer ' + CONFIG.DB_ANON_KEY } });
     if (!r.ok) return;
     const rows = await r.json();
     const v = rows[0] && rows[0].value;
@@ -1528,8 +1530,8 @@ async function loadProductPhotos(p) {
   if (!p || p._photosTried || !p.id) return;
   p._photosTried = true;
   try {
-    const r = await fetch(CONFIG.SUPABASE_DB_BASE + '/products?id=eq.' + encodeURIComponent(p.id) + '&select=photos',
-      { headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + CONFIG.SUPABASE_ANON_KEY } });
+    const r = await fetch(CONFIG.DB_BASE + '/products?id=eq.' + encodeURIComponent(p.id) + '&select=photos',
+      { headers: { apikey: CONFIG.DB_ANON_KEY, Authorization: 'Bearer ' + CONFIG.DB_ANON_KEY } });
     if (!r.ok) return;
     const rows = await r.json();
     const photos = (rows[0] && Array.isArray(rows[0].photos)) ? rows[0].photos.filter(Boolean) : [];
