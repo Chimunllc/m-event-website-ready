@@ -125,6 +125,14 @@
     <button class="hbtn" id="dock-collapse" title="Хумих/дэлгэх">▾</button>
   </div>
   <div class="panel-body">
+  <div class="row" id="topModeRow">
+    <span class="lbl">Горим</span>
+    <div class="sizes" id="modeSeg">
+      <button class="chip" data-mode="venue" aria-pressed="true">🗺 Талбай</button>
+      <button class="chip" data-mode="stage" aria-pressed="false">🎤 Тайз угсрах</button>
+      <button class="chip" data-mode="tent" aria-pressed="false">⛺ Асар</button>
+    </div>
+  </div>
   <div class="row" id="modeRow">
     <label class="tgl"><input type="checkbox" id="tgl-spin"><span class="sw"></span>Эргэлт</label>
     <div class="spacer"></div>
@@ -1246,7 +1254,11 @@ function rotateSel(deg){ const it=venueItem(state.sel); if(!it) return; it.rot=(
 function resizeSel(f){ const it=venueItem(state.sel); if(!it||(it.type!=='stage'&&it.type!=='tent')) return;
   it.w=Math.max(2,Math.round((it.w+f)*2)/2); it.d=Math.max(2,Math.round((it.d+f*1.4)*2)/2); buildVenue(); renderVenueSel(); }
 
-function build(){ state.mode='venue'; setEnv(); buildVenue();
+function build(){ setEnv();
+  if(state.mode==='venue') buildVenue();
+  else if(state.mode==='tent') buildTent();
+  else if(state.build) buildStageModular();   // 🧩 Өөрөө угсрах — 1×1м хавтан
+  else buildStage();                          // 📐 Бэлэн тайз
   if(typeof scheduleAR==='function') scheduleAR();
 }
 
@@ -1471,6 +1483,18 @@ function setStageMode(on){
   refreshUI(); build(); frameCamera();
 }
 document.querySelectorAll('#stageModeSeg .chip').forEach(c=> c.onclick=()=>setStageMode(c.dataset.sm==='build'));
+// Дээд горим сонгогч: 🗺 Талбай / 🎤 Тайз угсрах / ⛺ Асар (6cbdf25-д хассаныг сэргээв — 1×1м угсрагчид дахин хүрнэ)
+function applyMode(mode){
+  state.mode = mode;
+  document.querySelectorAll('#modeSeg .chip').forEach(c=>c.setAttribute('aria-pressed', c.dataset.mode===mode?'true':'false'));
+  if(mode!=='venue'){
+    const def = PRESETS[mode];
+    if(def){ state.w = def.sizes[1].w; state.d = def.sizes[1].d; state.h = def.heights[1]; state.tablePos = null;
+      renderSizes(); renderHeights(); renderTrussHeights(); }
+  }
+  refreshUI(); build(); frameCamera();
+}
+document.querySelectorAll('#modeSeg .chip').forEach(c=> c.onclick=()=>applyMode(c.dataset.mode));
 document.getElementById('clear-cells').onclick=()=>{
   if(state.buildTarget==='truss'){ state.trussSegs=[]; state.trussBlocks=[]; state.trussTip=null; }
   else state.cells=new Set();
