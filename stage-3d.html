@@ -226,6 +226,7 @@
       <button class="chip" data-add="light">💡 Гэрлийн багана</button>
       <button class="chip" data-add="plant">🪴 Ургамал</button>
       <button class="chip" data-add="parasol">⛱ Шүхэр</button>
+      <button class="chip" data-add="person" title="Хэмжээ харьцуулах лавлагаа — яг 1.80 м">🧍 Хүн 1.8м</button>
     </div>
   </div>
   <div class="row" id="drawBar" style="display:none">
@@ -883,10 +884,10 @@ const VENUE_DEFAULTS = {
   tent:   { w:10, d:15, h:2.6, walls:false, gable:true },
   rtable: {}, ltable: {}, chair: {}, tree: {}, hill: { r:10, h:4 }, bell: { d:5 },
   booth: { w:5, d:2, h:4, lit:false, sides:{back:true,left:true,right:true,front:false} },
-  sofa:{}, arch:{}, dance:{}, speaker:{}, light:{}, plant:{}, bar:{}, parasol:{}
+  sofa:{}, arch:{}, dance:{}, speaker:{}, light:{}, plant:{}, bar:{}, parasol:{}, person:{}
 };
 const VENUE_LABEL = { stage:'Тайз', tent:'Асар', rtable:'Дугуй ширээ', ltable:'Урт ширээ', chair:'Сандал', tree:'Мод', hill:'Уул', river:'Гол', forest:'Ой', bell:'Bell майхан', booth:'Бүүд',
-  sofa:'Буйдан', arch:'Арк', dance:'Бүжгийн шал', speaker:'Чанга яригч', light:'Гэрлийн багана', plant:'Ургамал', bar:'Бар', parasol:'Шүхэр' };
+  sofa:'Буйдан', arch:'Арк', dance:'Бүжгийн шал', speaker:'Чанга яригч', light:'Гэрлийн багана', plant:'Ургамал', bar:'Бар', parasol:'Шүхэр', person:'Хүн 1.8м' };
 // --- объект тус бүрийн Group үүсгэгчид (одоо байгаа геометрийн туслахуудыг дахин ашиглана) ---
 function objStage(p){
   const g=new THREE.Group();
@@ -1104,6 +1105,44 @@ function objParasol(){
   const canopy=new THREE.Mesh(new THREE.ConeGeometry(1.8,0.7,8),new THREE.MeshStandardMaterial({color:0xd8b48a,roughness:0.9,side:THREE.DoubleSide})); canopy.position.y=2.55; canopy.castShadow=true; g.add(canopy);
   return g;
 }
+// ===== Хүн — ЯГ 1.80 м, хэмжээ харьцуулах лавлагаа =====
+// Гадны GLB татдаггүй (сүлжээний хамааралгүй, шууд гарч ирнэ, анимацгүй тул
+// кадр бүрд mixer ажиллуулахгүй). Пропорц нь 180 см насанд хүрэгчийн
+// антропометрээр: мөр 1.47 · ташаа 0.95 · эрүү 1.57 · толгойн орой 1.80.
+const _pSkin =new THREE.MeshStandardMaterial({color:0xc9a888, roughness:0.85});
+const _pShirt=new THREE.MeshStandardMaterial({color:0x8fa0b8, roughness:0.9});
+const _pPants=new THREE.MeshStandardMaterial({color:0x4a5364, roughness:0.9});
+const _pShoe =new THREE.MeshStandardMaterial({color:0x2f343d, roughness:0.8});
+function objPerson(){
+  const H=1.80;                 // ← НИЙТ ӨНДӨР. Энэ ганц тоог солиход бүхэлдээ масштаблана.
+  const hHalf=0.0667*H;         // толгойн хагас өндөр (0.12 м @ 1.80) — орой нь ЯГ H дээр тулна
+  const shoulder=0.818*H, hip=0.53*H, chin=0.87*H, wrist=0.485*H;
+  const g=new THREE.Group();
+  const add=(mesh,x,y,z)=>{ mesh.position.set(x||0,y||0,z||0); mesh.castShadow=true; g.add(mesh); return mesh; };
+  // Хөл: ул (0) → ташаа
+  [-0.056*H,0.056*H].forEach(x=>{
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.047*H,0.031*H,hip,12),_pPants), x, hip/2);
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.056*H,0.033*H,0.145*H),_pShoe), x, 0.017*H, 0.028*H);
+  });
+  // Аарц
+  add(new THREE.Mesh(new THREE.CylinderGeometry(0.094*H,0.086*H,0.089*H,14),_pPants), 0, hip+0.038*H);
+  // Их бие: аарцнаас мөр хүртэл
+  add(new THREE.Mesh(new THREE.CylinderGeometry(0.111*H,0.086*H,shoulder-hip-0.02*H,14),_pShirt), 0, (hip+shoulder)/2+0.01*H);
+  // Мөр — бөөрөнхийлж зөөлрүүлнэ
+  [-0.111*H,0.111*H].forEach(x=> add(new THREE.Mesh(new THREE.SphereGeometry(0.042*H,12,10),_pShirt), x, shoulder-0.012*H));
+  // Гар: мөрнөөс бугуй хүртэл, гадагш бага зэрэг налуу
+  [-1,1].forEach(sx=>{
+    const arm=add(new THREE.Mesh(new THREE.CylinderGeometry(0.031*H,0.023*H,shoulder-wrist,10),_pShirt), sx*0.131*H, (shoulder+wrist)/2);
+    arm.rotation.z=-sx*0.06;
+  });
+  // Хүзүү: мөрнөөс эрүү хүртэл
+  add(new THREE.Mesh(new THREE.CylinderGeometry(0.029*H,0.032*H,chin-shoulder,10),_pSkin), 0, (shoulder+chin)/2);
+  // Толгой — орой нь ЯГ H дээр
+  const r=0.058*H;
+  const head=add(new THREE.Mesh(new THREE.SphereGeometry(r,16,14),_pSkin), 0, H-hHalf);
+  head.scale.set(0.92, hHalf/r, 1);
+  return g;
+}
 const PROP_BUILDERS={ sofa:objSofa, arch:objArch, dance:objDance, speaker:objSpeaker, light:objLight, plant:objPlant, bar:objBar, parasol:objParasol };
 // ===== Бүүд (booth / үзэсгэлэнгийн стенд) — прус модон каркас + хэвлэлтэй талууд =====
 const _boothWood=new THREE.MeshStandardMaterial({color:0xc9a06a, roughness:0.82});
@@ -1162,6 +1201,7 @@ function objBooth(it){
   return g;
 }
 function makeVenueObj(it){
+  if(it.type==='person')  return objPerson();
   if(PROP_BUILDERS[it.type]) return PROP_BUILDERS[it.type]();
   if(it.type==='booth')   return objBooth(it);
   if(it.type==='stage')   return objStage(it);
@@ -1184,6 +1224,7 @@ function itemRadius(it){
   if(it.type==='hill') return (it.r||10)+0.5;
   if(it.type==='bell') return (it.d||5)/2*1.4+0.3;
   if(it.type==='tree') return 1.2;
+  if(it.type==='person') return 0.5;
   return 0.45;
 }
 function selRing(it){
@@ -1266,9 +1307,9 @@ function updateReadout(){
   const r = document.getElementById('readout');
   let feats;
   if(state.mode==='venue'){
-    const c={stage:0,tent:0,bell:0,booth:0,rtable:0,ltable:0,chair:0,tree:0,hill:0,river:0,forest:0}; let sum=0, props=0;
+    const c={stage:0,tent:0,bell:0,booth:0,rtable:0,ltable:0,chair:0,tree:0,hill:0,river:0,forest:0,person:0}; let sum=0, props=0;
     state.items.forEach(i=>{ c[i.type]=(c[i.type]||0)+1; if(PROP_BUILDERS[i.type]) props++; if(i.type==='stage'||i.type==='tent') sum+=Math.round((i.w||0)*(i.d||0))*PRICE.module; });
-    const parts=[]; if(c.stage)parts.push(c.stage+' тайз'); if(c.tent)parts.push(c.tent+' асар'); if(c.bell)parts.push(c.bell+' bell'); if(c.booth)parts.push(c.booth+' бүүд');
+    const parts=[]; if(c.stage)parts.push(c.stage+' тайз'); if(c.tent)parts.push(c.tent+' асар'); if(c.bell)parts.push(c.bell+' bell'); if(c.booth)parts.push(c.booth+' бүүд'); if(c.person)parts.push(c.person+' хүн');
     const tbl=c.rtable+c.ltable; if(tbl)parts.push(tbl+' ширээ'); if(c.chair)parts.push(c.chair+' сандал'); if(props)parts.push(props+' тавилга');
     if(c.tree)parts.push(c.tree+' мод'); if(c.hill)parts.push(c.hill+' уул'); if(c.river)parts.push(c.river+' гол'); if(c.forest)parts.push(c.forest+' ой');
     r.innerHTML = `<b>${state.items.length} объект</b> <span>· ${parts.join(' · ')||'хоосон талбай'}</span>`;
