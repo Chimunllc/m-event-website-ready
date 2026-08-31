@@ -1860,6 +1860,9 @@ function hideDrawer(fromPop) {
   if (_lastFocus && _lastFocus.focus) { try { _lastFocus.focus(); } catch (e) {} _lastFocus = null; }
 }
 function goStep(s) {
+  // Хамгаалалт: алхмын нэр буруу ирвэл (жишээ нь onclick-ээс Event объект дамжвал)
+  // бүх алхам нуугдаж сагс хоосон харагддаг байсан — 'cart' руу буулгана.
+  if (typeof s !== 'string' || !document.getElementById('step-' + s)) s = 'cart';
   state.step = s;
   document.querySelectorAll('.checkout-step').forEach(el => el.classList.remove('active'));
   document.getElementById('step-' + s).classList.add('active');
@@ -2082,7 +2085,7 @@ function initEvents() {
   localStorage.setItem('d-start', state.dates.start); localStorage.setItem('d-end', state.dates.end);
 
   // cart
-  document.getElementById('cart-btn').onclick = showDrawer;
+  document.getElementById('cart-btn').onclick = () => showDrawer('cart');
   document.getElementById('drawer-close').onclick = hideDrawer;
   document.getElementById('drawer-bg').onclick = hideDrawer;
 
