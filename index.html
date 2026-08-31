@@ -999,7 +999,7 @@
         <div class="form-group"><label for="f-name">Нэр <span class="req">*</span></label><input id="f-name" autocomplete="name" placeholder="Овог Нэр"></div>
         <div class="form-group"><label for="f-phone">Утас <span class="req">*</span></label><input id="f-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="9911____"></div>
       </div>
-      <div class="form-group"><label for="f-email">Email</label><input id="f-email" type="email" inputmode="email" autocomplete="email" placeholder="example@gmail.com"></div>
+      <div class="form-group"><label for="f-email">Email <span class="req">*</span></label><input id="f-email" type="email" inputmode="email" autocomplete="email" placeholder="example@gmail.com"><small style="color:var(--muted);">Үнийн санал, баталгаажуулалтыг энэ хаяг руу илгээнэ</small></div>
       <div class="form-group"><label for="f-delivzone">Хүргэлт <span class="req">*</span></label>
         <select id="f-delivzone">
           <option value="pickup">🏬 Өөрөө авах (хүргэлтгүй)</option>
@@ -1918,14 +1918,17 @@ async function submitOrder() {
   const isDeliv = dlv.zone === 'city' || dlv.zone === 'out';
   const address = document.getElementById('f-address').value.trim();
   if (!name) { alert('Нэрээ оруулна уу'); return; }
-  if (!phone || phone.length < 8) { alert('Утасны дугаар буруу'); return; }
+  if (!phone || phone.replace(/\D/g, '').length < 8) { alert('Утасны дугаар буруу'); return; }
+  const email = document.getElementById('f-email').value.trim();
+  if (!email) { alert('Email хаягаа оруулна уу — үнийн санал, баталгаажуулалтыг тэр хаяг руу илгээнэ'); document.getElementById('f-email').focus(); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { alert('Email буруу байна'); document.getElementById('f-email').focus(); return; }
   if (isDeliv && !address) { alert('Хүргэлтийн хаяг шаардлагатай'); return; }
   if (dlv.zone === 'out' && !dlv.km) { alert('Хотоос гадна: зайг км-ээр оруулна уу'); return; }
 
   const order = {
     customer: {
       name, phone, address: isDeliv ? address : '',
-      email: document.getElementById('f-email').value.trim(),
+      email,
       company: document.getElementById('f-company').value.trim(),
       register: document.getElementById('f-register').value.trim(),
     },
