@@ -2255,6 +2255,19 @@ function applyUrlParams() {
   } catch (e) {}
 }
 
+// Эхний зочинд түрээсийн хугацааг ЭХЭЛЖ асууна (хаалт биш — хааж болно).
+// ⚠ ?q= / ?cat=-тай ирсэн зочинд асуухгүй: тэд Google-ийн хайлтаас статик барааны
+// хуудсаар дамжин ирдэг ба тэнд модал нээх нь intrusive interstitial болж
+// мобайл хайлтын эрэмбэд сөргөөр нөлөөлнө. Тэд сагсанд нэмэх үедээ асуулгана.
+function maybeAskDates() {
+  if (state.datesChosen) return;
+  try {
+    const p = new URLSearchParams(location.search);
+    if (p.get('q') || p.get('cat')) return;
+  } catch (e) {}
+  showDrawer('dates');
+}
+
 (async function start() {
   document.documentElement.classList.add('reveal-on');
   initEvents();
@@ -2264,6 +2277,7 @@ function applyUrlParams() {
   render();
   enterCards();
   setTimeout(revealAllRemaining, 2200);                    // fail-safe: юу ч нуугдаж үлдэхгүй
+  maybeAskDates();                                         // эхний зочинд түрээсийн хугацааг эхэлж асууна
 })();
 </script>
 </body>
