@@ -605,6 +605,47 @@
   .gt-date:hover { border-color: var(--brand); }
   .gt-date svg { width: 15px; height: 15px; color: var(--brand); }
   .gt-date b { font-weight: 700; font-variant-numeric: tabular-nums; }
+  /* Түрээсийн хугацааны тууз — толгойн доор, каталогийн дээр (sticky) */
+  .datebar {
+    position: sticky; top: 62px; z-index: 30;
+    background: #fff; border-bottom: 1px solid var(--border);
+    padding: 10px 24px;
+  }
+  .datebar-in {
+    max-width: 1400px; margin: 0 auto;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .datebar .db-ico { width: 17px; height: 17px; color: var(--brand); flex: 0 0 auto; }
+  .datebar .db-lbl { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+  .datebar .db-val { font-size: 13.5px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+  .datebar .db-edit {
+    margin-left: auto; padding: 7px 15px; border: 1px solid var(--border-strong);
+    border-radius: 100px; background: #fff; font-size: 12.5px; font-weight: 700;
+    color: var(--text); cursor: pointer; white-space: nowrap; transition: border-color .15s, background .15s;
+  }
+  .datebar .db-edit:hover { border-color: var(--brand); background: var(--brand-soft); }
+  .datebar .db-hint { display: none; font-size: 12.5px; color: var(--brand); font-weight: 600; }
+  /* Хэрэглэгч огноогоо ухамсартай сонгоогүй үе — анхаарал татна, гэхдээ хаахгүй */
+  .datebar.db-unset { background: var(--brand-soft); border-bottom-color: var(--brand); }
+  .datebar.db-unset .db-hint { display: inline; }
+  .datebar.db-unset .db-edit { border-color: var(--brand); color: var(--brand); }
+  .datebar .db-short {
+    display: none; font-size: 12px; font-weight: 700; color: #7A560F;
+    background: #FBF0DC; border: 1px solid #E6C878; border-radius: 100px; padding: 5px 12px;
+  }
+  .datebar.db-has-short .db-short { display: inline-block; }
+  .datebar .db-val-sm { display: none; }
+  @media (max-width: 900px) {
+    .datebar { top: 0; padding: 8px 16px; }
+    .datebar-in { gap: 8px; }
+    .datebar .db-lbl { display: none; }
+    .datebar .db-val { display: none; }
+    .datebar .db-val-sm { display: inline; flex: 1 1 auto; min-width: 0; font-size: 12.5px; }
+    .datebar .db-edit { margin-left: 0; flex: 0 0 auto; padding: 6px 12px; font-size: 12px; }
+    .datebar .db-short { order: 9; flex: 1 0 100%; }
+    .datebar .db-hint { order: 10; flex: 1 0 100%; font-size: 12px; }
+    .datebar .db-hint-long { display: none; }
+  }
   .gt-avail { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; color: var(--text); cursor: pointer; user-select: none; white-space: nowrap; }
   .gt-avail input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
   .gt-sort {
@@ -802,6 +843,18 @@
 </section>
 -->
 
+<!-- ТҮРЭЭСИЙН ХУГАЦАА — үргэлж харагдах тууз -->
+<div class="datebar" id="datebar">
+  <div class="datebar-in">
+    <svg class="db-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
+    <span class="db-lbl">Түрээсийн хугацаа:</span>
+    <span class="db-val" id="db-val">—</span><span class="db-val db-val-sm" id="db-val-sm">—</span>
+    <span class="db-hint">← Огноогоо сонгоно уу<span class="db-hint-long">, боломжтой барааг үнэн зөв харуулна</span></span>
+    <span class="db-short" id="db-short"></span>
+    <button class="db-edit" id="db-edit">Өөрчлөх</button>
+  </div>
+</div>
+
 <!-- LAYOUT -->
 <div class="layout">
   <aside class="sidebar">
@@ -833,7 +886,6 @@
         <div class="meta" id="grid-meta"></div>
       </div>
       <div class="grid-tools">
-        <button class="gt-date" id="gt-date" aria-label="Огноо сонгох"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg><b id="gt-date-label">Огноо</b></button>
         <label class="gt-avail"><input type="checkbox" id="only-avail"> Зөвхөн боломжтой</label>
         <select class="gt-sort" id="sort-sel" aria-label="Эрэмбэлэх">
           <option value="default">🔥 Их түрээслэгддэг</option>
@@ -1641,6 +1693,8 @@ function addToCart(p, qty, openDrawer) {
   saveCart();
   renderCart();
   renderGrid();
+  // Худалдан авалт эхлэхэд огноог заавал асууна (үзэх урсгалыг хаахгүй, зөвхөн энд).
+  if (!state.datesChosen) { showDrawer('dates'); return; }
   if (openDrawer) showDrawer();
 }
 function setCartQty(id, qty) {
@@ -1796,6 +1850,10 @@ function pickDay(iso) {
   else { state.dates.end = iso; }                                     // хожуу/ижил → буцах
   localStorage.setItem('d-start', state.dates.start || '');
   localStorage.setItem('d-end', state.dates.end || '');
+  if (state.dates.start && state.dates.end) {
+    state.datesChosen = true;
+    try { localStorage.setItem('d-chosen', '1'); } catch (_) {}
+  }
   renderDatePicker(); renderDateSummary(); renderDuration(); updateAvailWarn(); renderGrid(); renderCart(); updateDateLabels();
 }
 function renderDateSummary() {
@@ -2009,6 +2067,32 @@ function updateDateLabels() {
   const s = state.dates.start, e = state.dates.end;
   const txt = (s && e) ? (formatShort(s) + ' – ' + formatShort(e)) : 'Огноо';
   const g = document.getElementById('gt-date-label'); if (g) g.textContent = txt;
+  // Түрээсийн хугацааны тууз
+  const bar = document.getElementById('datebar');
+  const val = document.getElementById('db-val');
+  if (val) {
+    val.textContent = (s && e)
+      ? `${formatMnDate(s)} ${state.dates.timeStart} → ${formatMnDate(e)} ${state.dates.timeEnd}`
+      : 'Сонгогдоогүй';
+  }
+  const valSm = document.getElementById('db-val-sm');
+  if (valSm) {
+    valSm.textContent = (s && e)
+      ? `${formatShort(s)} ${state.dates.timeStart} → ${formatShort(e)} ${state.dates.timeEnd}`
+      : 'Огноо сонгогдоогүй';
+  }
+  if (bar) {
+    bar.classList.toggle('db-unset', !state.datesChosen);
+    // Огноо солиход сагсны зөрчлийг тууз дээр шууд харуулна
+    const sh = (state.cart && state.cart.length) ? cartShortages() : [];
+    const sb = document.getElementById('db-short');
+    bar.classList.toggle('db-has-short', sh.length > 0);
+    if (sb && sh.length) {
+      sb.textContent = sh.length === 1
+        ? `⚠ ${sh[0].name} — ${sh[0].avail}ш боломжтой`
+        : `⚠ ${sh.length} бараа энэ өдрүүдэд хүрэлцэхгүй`;
+    }
+  }
 }
 function formatShort(iso) { const d = parseYmd(iso); return (d.getMonth() + 1) + '/' + d.getDate(); }
 // Хайлтын цэвэрлэх × товчийг харуулах/нуух (утга байгаа эсэхээр)
@@ -2083,6 +2167,9 @@ function initEvents() {
   if (!state.dates.timeEnd) state.dates.timeEnd = '17:00';
   state.pickerMonth = ymd(new Date(parseYmd(state.dates.start).getFullYear(), parseYmd(state.dates.start).getMonth(), 1));
   localStorage.setItem('d-start', state.dates.start); localStorage.setItem('d-end', state.dates.end);
+  try { state.datesChosen = localStorage.getItem('d-chosen') === '1'; } catch (_) { state.datesChosen = false; }
+  const _dbEdit = document.getElementById('db-edit'); if (_dbEdit) _dbEdit.onclick = () => showDrawer('dates');
+  updateDateLabels();
 
   // cart
   document.getElementById('cart-btn').onclick = () => showDrawer('cart');
