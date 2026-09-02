@@ -537,6 +537,10 @@
     width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 6px; background: #fff;
   }
   .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--primary); }
+  .pickup-box { border: 1px solid var(--line, #e5e7eb); border-radius: 12px; padding: 12px 14px; background: rgba(0,0,0,.02); }
+  .pickup-h { font-weight: 700; font-size: 13px; margin-bottom: 5px; }
+  .pickup-a { font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .pickup-map { display: inline-block; margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--primary); text-decoration: underline; }
   .form-group textarea { min-height: 70px; resize: vertical; font-family: inherit; }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .checkout-summary {
@@ -1047,6 +1051,12 @@
     <!-- Step 3: Customer info -->
     <div class="checkout-step" id="step-info">
       <div class="checkout-summary" id="step-info-summary"></div>
+      <div class="form-group"><label for="f-custtype">Захиалагч <span class="req">*</span></label>
+        <select id="f-custtype">
+          <option value="person">👤 Хувь хүн</option>
+          <option value="org">🏢 Байгууллага</option>
+        </select>
+      </div>
       <div class="form-grid">
         <div class="form-group"><label for="f-name">Нэр <span class="req">*</span></label><input id="f-name" autocomplete="name" placeholder="Овог Нэр"></div>
         <div class="form-group"><label for="f-phone">Утас <span class="req">*</span></label><input id="f-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="9911____"></div>
@@ -1061,9 +1071,17 @@
       </div>
       <div class="form-group" id="f-delivkm-wrap" style="display:none;"><label for="f-delivkm">Хотоос гадна — нэг талын зай (км)</label><input id="f-delivkm" type="number" inputmode="numeric" min="0" placeholder="Жишээ: 100"><small style="color:var(--muted);">Очих+буцах = км × 2 × 5,000₮</small></div>
       <div class="form-group" id="f-address-wrap" style="display:none;"><label for="f-address">Хүргэлтийн хаяг <span class="req">*</span></label><input id="f-address" autocomplete="street-address" placeholder="Дүүрэг, хороо, байр, давхар"></div>
-      <div class="form-grid">
-        <div class="form-group"><label for="f-company">Байгууллага (НӨАТ-тэй бол)</label><input id="f-company" placeholder="ХХК-ийн нэр"></div>
-        <div class="form-group"><label for="f-register">Регистр</label><input id="f-register" type="text" inputmode="numeric" placeholder="1234567"></div>
+      <div class="form-group" id="f-maps-wrap" style="display:none;"><label for="f-maps">📍 Байршлын линк</label><input id="f-maps" inputmode="url" placeholder="Google Maps линк (заавал биш)"><small style="color:var(--muted);">Жолооч төөрөхгүй — линк тавьвал хүргэлт хурдан</small></div>
+      <div class="form-group" id="f-pickup-wrap" style="display:none;">
+        <div class="pickup-box">
+          <div class="pickup-h">🏬 Ирж авах хаяг</div>
+          <div class="pickup-a" id="f-pickup-addr"></div>
+          <a class="pickup-map" id="f-pickup-map" target="_blank" rel="noopener">🗺 Газрын зураг дээр харах</a>
+        </div>
+      </div>
+      <div class="form-grid" id="f-org-wrap" style="display:none;">
+        <div class="form-group"><label for="f-company">Байгууллагын нэр <span class="req">*</span></label><input id="f-company" placeholder="ХХК-ийн нэр"></div>
+        <div class="form-group"><label for="f-register">Байгууллагын регистр <span class="req">*</span></label><input id="f-register" type="text" inputmode="numeric" placeholder="1234567"><small style="color:var(--muted);">Нэхэмжлэх, НӨАТ-ын баримтад шаардлагатай</small></div>
       </div>
       <div class="form-group"><label for="f-note">Нэмэлт тайлбар</label><textarea id="f-note" placeholder="Setup-ийн дэлгэрэнгүй, тусгай хүсэлт..."></textarea></div>
     </div>
@@ -1121,6 +1139,8 @@ const CONFIG = {
   DB_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.Brx7AjnPrzfv--KLb-J-FK-7DmdRusxUF2jaFgKzd1s',
   PRODUCTS_URL: 'https://n8n.nomaadcamp.com/webhook/mevent-products?key=1YP4RCfL_DMiBhDfkCkX6AesQHd5p2lZ',
   ORDER_URL: 'https://n8n.nomaadcamp.com/webhook/m-event-site-order?key=1YP4RCfL_DMiBhDfkCkX6AesQHd5p2lZ',
+  // Ирж авах хаяг — аппын CHIMUN_LEGAL.address-тай ижил байлгана
+  PICKUP_ADDRESS: 'Улаанбаатар, Баянзүрх дүүрэг, 11-р хороо, Ногоон зоорь 1-13',
   PHONE: '+976 7755-1010',
   // Сошиал хаяг (хоосон бол footer-т харагдахгүй)
   SOCIAL: {
@@ -1956,11 +1976,28 @@ function goStep(s) {
     foot.style.display = '';
     document.getElementById('drawer-title').textContent = 'Холбоо барих мэдээлэл';
     // Хүргэлтийн сонголт — бүс солиход км/хаяг харуулах + дүн шинэчлэх
+    // Захиалагчийн төрөл — байгууллага сонговол л РД/нэр асууна. Хүн бүрээс бүгдийг
+    // шаардвал нийтэд нээлттэй формд захиалагч цөөрдөг тул нөхцөлөөр л гаргана.
+    const ctEl = document.getElementById('f-custtype');
+    const syncCustType = () => {
+      document.getElementById('f-org-wrap').style.display = ctEl.value === 'org' ? '' : 'none';
+    };
+    if (ctEl) { ctEl.onchange = syncCustType; syncCustType(); }
     const zoneEl = document.getElementById('f-delivzone');
     const applyDeliv = () => {
       const z = zoneEl.value;
       document.getElementById('f-delivkm-wrap').style.display = z === 'out' ? '' : 'none';
-      document.getElementById('f-address-wrap').style.display = z === 'pickup' ? 'none' : '';
+      const isPick = z === 'pickup';
+      document.getElementById('f-address-wrap').style.display = isPick ? 'none' : '';
+      document.getElementById('f-maps-wrap').style.display = isPick ? 'none' : '';
+      // Ирж авах бол манай хаяг + газрын зургийн линк АВТОМАТААР гарна
+      const pw = document.getElementById('f-pickup-wrap');
+      pw.style.display = isPick ? '' : 'none';
+      if (isPick) {
+        document.getElementById('f-pickup-addr').textContent = CONFIG.PICKUP_ADDRESS;
+        document.getElementById('f-pickup-map').href =
+          'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(CONFIG.PICKUP_ADDRESS);
+      }
       syncDelivery(); renderCart(); renderInfoSummary();
     };
     zoneEl.onchange = applyDeliv;
@@ -1984,14 +2021,33 @@ async function submitOrder() {
   if (!email) { alert('Email хаягаа оруулна уу — үнийн санал, баталгаажуулалтыг тэр хаяг руу илгээнэ'); document.getElementById('f-email').focus(); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { alert('Email буруу байна'); document.getElementById('f-email').focus(); return; }
   if (isDeliv && !address) { alert('Хүргэлтийн хаяг шаардлагатай'); return; }
+  // Байгууллага сонговол нэр + РД заавал (нэхэмжлэх/НӨАТ-д шаардлагатай)
+  const custType = (document.getElementById('f-custtype') || {}).value || 'person';
+  const company = document.getElementById('f-company').value.trim();
+  const register = document.getElementById('f-register').value.trim();
+  if (custType === 'org') {
+    if (!company) { alert('Байгууллагын нэрээ оруулна уу'); document.getElementById('f-company').focus(); return; }
+    if (!/^\d{7}$/.test(register.replace(/\s/g, ''))) { alert('Байгууллагын регистр 7 оронтой тоо байх ёстой'); document.getElementById('f-register').focus(); return; }
+  }
+  // ── Сагсыг АМЬД каталогтой тулгана ──────────────────────────────────────────
+  // Сагс localStorage-д хадгалагддаг тул хуучин захиалагчийн сагсанд каталогоос
+  // хасагдсан бараа үлдэж, аппад «байхгүй бараа» болж очдог байсан (2026-09-02).
+  const _byId = new Map((state.products || []).map(p => [String(p.id), p]));
+  const _bySku = new Map((state.products || []).filter(p => p.sku).map(p => [String(p.sku), p]));
+  const _resolve = x => _byId.get(String(x.id)) || _bySku.get(String(x.id)) || null;
+  const _gone = state.cart.filter(x => !_resolve(x));
+  if (_gone.length) {
+    alert('Эдгээр бараа одоо боломжгүй болсон байна:\n\n· ' + _gone.map(x => x.name).join('\n· ')
+      + '\n\nСагснаас хасаад дахин илгээнэ үү.');
+    return;
+  }
   if (dlv.zone === 'out' && !dlv.km) { alert('Хотоос гадна: зайг км-ээр оруулна уу'); return; }
 
   const order = {
     customer: {
       name, phone, address: isDeliv ? address : '',
       email,
-      company: document.getElementById('f-company').value.trim(),
-      register: document.getElementById('f-register').value.trim(),
+      type: custType, company, register,
     },
     note: (() => {
       const n = document.getElementById('f-note').value.trim();
@@ -2001,11 +2057,20 @@ async function submitOrder() {
       if (t.offHoursFee) s = (s ? s + ' · ' : '') + `Ажлын бус цаг ${t.offHours} (+${fmt(t.offHoursFee)})`;
       // Хүргэлтийг ⟦DLV|zone|km|fee⟧ token-оор — апп үүнийг уншиж төлбөр/бүсийг харуулна
       s = (s ? s + ' ' : '') + `⟦DLV|${dlv.zone}|${Math.round(dlv.km) || 0}|${Math.round(dlv.fee) || 0}⟧`;
+      // Харилцагчийн мэдээлэл — аппын custInfoOf() яг энэ токеныг уншина.
+      // note нь n8n-ээр дамжин app_orders-д хүрдэг тул backend өөрчлөх шаардлагагүй.
+      const ci = {};
+      if (custType === 'org') { if (company) ci.company = company; if (register) ci.reg = register; }
+      const mapsUrl = isDeliv ? ((document.getElementById('f-maps') || {}).value || '').trim() : '';
+      if (mapsUrl) ci.maps = mapsUrl.replace(/[⟦⟧]/g, '').slice(0, 400);
+      if (Object.keys(ci).length) s = (s ? s + ' ' : '') + `⟦CI|${JSON.stringify(ci)}⟧`;
       return s;
     })(),
     delivery: dlv,
     dates: { start: state.dates.start + ' ' + state.dates.timeStart, end: state.dates.end + ' ' + state.dates.timeEnd },
-    items: state.cart.map(x => ({ id: x.id, name: x.name, qty: x.qty, price: x.price, deposit: x.deposit })),
+    // ⚠ Каталогийн жинхэнэ утгыг илгээнэ — сагсанд хуучирсан нэр/зураг үлдсэн байж болно.
+    items: state.cart.map(x => { const p = _resolve(x) || {};
+      return { id: x.id, sku: p.sku || '', name: p.name || x.name, qty: x.qty, price: x.price, deposit: x.deposit, photo: p.photo || x.photo || '' }; }),
     totals: cartTotals(),
     submittedAt: new Date().toISOString(),
     source: 'm-event-website',
