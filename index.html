@@ -440,6 +440,9 @@
   .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); letter-spacing: .18em; }
   .btn-block { width: 100%; }
 
+  /* Үнийн саналын тайлбар — зочинд юу болохыг тодорхой хэлнэ */
+  .quote-note { margin:10px 0 16px; padding:11px 13px; border-radius:10px; font-size:13px; line-height:1.55;
+    background:rgba(234,88,12,.07); border:1px solid rgba(234,88,12,.28); color:var(--text,#1f2937); }
   /* CART DRAWER */
   .drawer-bg {
     position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 90;
@@ -1067,6 +1070,8 @@
     <!-- Step 3: Customer info -->
     <div class="checkout-step" id="step-info">
       <div class="checkout-summary" id="step-info-summary"></div>
+      <div class="quote-note">📞 Менежер <b>1 цагийн дотор</b> холбогдож түрээсийн нөөцийг баталгаажуулна. Төлбөр урьдчилж авахгүй.</div>
+
       <div class="form-group"><label for="f-custtype">Захиалагч <span class="req">*</span></label>
         <select id="f-custtype">
           <option value="person">👤 Хувь хүн</option>
@@ -1124,10 +1129,10 @@
     <div class="checkout-step" id="step-success">
       <div class="success-screen">
         <div class="check">✓</div>
-        <h2>Захиалга илгээгдлээ!</h2>
-        <p>Бид 1 цагийн дотор утсаар холбогдож баталгаажуулах болно.</p>
-        <div class="order-num">Захиалгын № <span id="success-num">—</span></div>
-        <p style="margin-top: 18px;">Та манайхаар захиалга өгсөнд баярлалаа 🙏</p>
+        <h2>Хүсэлт хүлээн авлаа!</h2>
+        <p>Менежер <b>1 цагийн дотор</b> холбогдож түрээсийн нөөцийг баталгаажуулна.</p>
+        <div class="order-num">Хүсэлтийн № <span id="success-num">—</span></div>
+        <p style="margin-top: 18px;">Сонирхсонд баярлалаа 🙏</p>
       </div>
     </div>
   </div>
@@ -1581,7 +1586,7 @@ function updateAvailWarn() {
   box.style.display = '';
   box.innerHTML = `<b style="font-weight:700;">⚠ Сонгосон өдрүүдэд зарим бараа хүрэлцэхгүй байж магадгүй:</b>
     <ul style="margin:6px 0 0;padding-left:18px;">${sh.map(s => `<li>${escapeHtml(s.name)} — ${s.avail}ш боломжтой (та ${s.need}ш авах гэж байна)</li>`).join('')}</ul>
-    <div style="margin-top:6px;font-size:12px;">Захиалга илгээх боломжтой — бид баталгаажуулахдаа хамт зохицуулна. Эсвэл тоо/огноогоо тохируулна уу.</div>`;
+    <div style="margin-top:6px;font-size:12px;">Хүсэлт илгээх боломжтой — менежер боломжийг шалгаад хамт зохицуулна. Эсвэл тоо/огноогоо тохируулна уу.</div>`;
 }
 
 /* ==================== PRODUCT MODAL ==================== */
@@ -2024,7 +2029,10 @@ function goStep(s) {
     document.getElementById('drawer-title').textContent = 'Түрээсийн хугацаа';
     renderDatesStep();
   } else if (s === 'info') {
-    btn.textContent = '📤 Захиалга илгээх';
+    // «Захиалга илгээх» гэдэг нь ШУУД баталгаажлаа гэсэн ойлголт төрүүлдэг байсан.
+    // Бодит урсгал: аппад ноорог болж очоод менежер боломжийг шалгаж баталгаажуулна.
+    // Нэрийг бодит байдалтай нийцүүлэв — эс бөгөөс зочин захиалсан гэж бодоод гомдол гарна.
+    btn.textContent = '💬 Үнийн санал авах';
     btn.onclick = submitOrder;
     foot.style.display = '';
     document.getElementById('drawer-title').textContent = 'Холбоо барих мэдээлэл';
@@ -2172,7 +2180,7 @@ async function submitOrder() {
   } catch(e) {
     alert('Алдаа гарлаа: ' + e.message + '\n\nУтсаар захиалаарай: ' + CONFIG.PHONE);
   } finally {
-    btn.textContent = '📤 Захиалга илгээх'; btn.disabled = false;
+    btn.textContent = '💬 Үнийн санал авах'; btn.disabled = false;
   }
 }
 
