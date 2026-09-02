@@ -537,7 +537,23 @@
     width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 6px; background: #fff;
   }
   .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--primary); }
-  .pickup-box { border: 1px solid var(--line, #e5e7eb); border-radius: 12px; padding: 12px 14px; background: rgba(0,0,0,.02); }
+  /* Хүргэлтийн сонголт — үнэ нь ШУУД харагдах карт. Хамгийн үнэтэй шийдвэр тул
+     хамгийн тод контрол байх ёстой (өмнө энгийн select байсан, үнэ нь dropdown
+     дотор нуугдаж, бусад талбартай ялгарахгүй байв). */
+  .dlv-opts { display: grid; gap: 8px; }
+  .dlv-opt { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+    border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--panel);
+    cursor: pointer; transition: border-color .15s, background .15s; }
+  .dlv-opt:hover { border-color: var(--border-strong); }
+  .dlv-opt.on { border-color: var(--brand); background: var(--brand-soft); }
+  .dlv-ico { font-size: 18px; line-height: 1; flex-shrink: 0; }
+  .dlv-t { flex: 1; min-width: 0; font-weight: 700; font-size: 14px; color: var(--text); }
+  .dlv-sub { display: block; font-weight: 400; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .dlv-price { flex-shrink: 0; font-weight: 800; font-size: 14px; color: var(--text); white-space: nowrap; }
+  .dlv-price.free { color: var(--muted); font-weight: 700; }
+  /* Сонгосон хувилбарын дэлгэрэнгүй — сонголттойгоо холбоотой нь харагдана */
+  .dlv-detail { border-left: 2px solid var(--brand); margin: 10px 0 0 6px; padding-left: 12px; }
+  .pickup-box { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
   .pickup-h { font-weight: 700; font-size: 13px; margin-bottom: 5px; }
   .pickup-a { font-size: 13px; line-height: 1.5; color: var(--muted); }
   .pickup-map { display: inline-block; margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--primary); text-decoration: underline; }
@@ -1062,14 +1078,33 @@
         <div class="form-group"><label for="f-phone">Утас <span class="req">*</span></label><input id="f-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="9911____"></div>
       </div>
       <div class="form-group"><label for="f-email">Email <span class="req">*</span></label><input id="f-email" type="email" inputmode="email" autocomplete="email" placeholder="example@gmail.com"><small style="color:var(--muted);">Үнийн санал, баталгаажуулалтыг энэ хаяг руу илгээнэ</small></div>
-      <div class="form-group"><label for="f-delivzone">Хүргэлт <span class="req">*</span></label>
-        <select id="f-delivzone">
-          <option value="pickup">🏬 Өөрөө авах (хүргэлтгүй)</option>
-          <option value="city">🚚 Хот дотор — 150,000₮</option>
-          <option value="out">🚚 Хотоос гадна (км-ээр)</option>
+      <div class="form-group">
+        <label>Барааг хэрхэн авах вэ? <span class="req">*</span></label>
+        <div class="dlv-opts" id="f-delivopts">
+          <button type="button" class="dlv-opt" data-zone="pickup">
+            <span class="dlv-ico">🏬</span>
+            <span class="dlv-t">Өөрөө авах<span class="dlv-sub">Манай агуулахаас</span></span>
+            <span class="dlv-price free">Үнэгүй</span>
+          </button>
+          <button type="button" class="dlv-opt" data-zone="city">
+            <span class="dlv-ico">🚚</span>
+            <span class="dlv-t">Хот дотор<span class="dlv-sub">Хүргэж өгөөд буцааж авна</span></span>
+            <span class="dlv-price">150,000₮</span>
+          </button>
+          <button type="button" class="dlv-opt" data-zone="out">
+            <span class="dlv-ico">🚚</span>
+            <span class="dlv-t">Хотоос гадна<span class="dlv-sub">Зайнаас хамаарна</span></span>
+            <span class="dlv-price">км-ээр</span>
+          </button>
+        </div>
+        <select id="f-delivzone" hidden aria-hidden="true" tabindex="-1">
+          <option value="pickup">Өөрөө авах</option>
+          <option value="city">Хот дотор</option>
+          <option value="out">Хотоос гадна</option>
         </select>
+        <div class="dlv-detail" id="f-dlv-detail" hidden></div>
       </div>
-      <div class="form-group" id="f-delivkm-wrap" style="display:none;"><label for="f-delivkm">Хотоос гадна — нэг талын зай (км)</label><input id="f-delivkm" type="number" inputmode="numeric" min="0" placeholder="Жишээ: 100"><small style="color:var(--muted);">Очих+буцах = км × 2 × 5,000₮</small></div>
+      <div class="form-group" id="f-delivkm-wrap" style="display:none;"><label for="f-delivkm">Нэг талын зай (км)</label><input id="f-delivkm" type="number" inputmode="numeric" min="0" placeholder="Жишээ: 100"><small style="color:var(--muted);">Очих+буцах = км × 2 × 5,000₮</small></div>
       <div class="form-group" id="f-address-wrap" style="display:none;"><label for="f-address">Хүргэлтийн хаяг <span class="req">*</span></label><input id="f-address" autocomplete="street-address" placeholder="Дүүрэг, хороо, байр, давхар"></div>
       <div class="form-group" id="f-maps-wrap" style="display:none;"><label for="f-maps">📍 Байршлын линк</label><input id="f-maps" inputmode="url" placeholder="Google Maps линк (заавал биш)"><small style="color:var(--muted);">Жолооч төөрөхгүй — линк тавьвал хүргэлт хурдан</small></div>
       <div class="form-group" id="f-pickup-wrap" style="display:none;">
@@ -1986,8 +2021,18 @@ function goStep(s) {
     };
     if (ctEl) { ctEl.onchange = syncCustType; syncCustType(); }
     const zoneEl = document.getElementById('f-delivzone');
+    // Хамаарах талбаруудыг сонголтын ДООР нэг хайрцагт цуглуулна — сонголттойгоо
+    // холбоотой нь харагдана (өмнө тус тусдаа өлгөөтэй байв).
+    const detail = document.getElementById('f-dlv-detail');
+    ['f-delivkm-wrap', 'f-address-wrap', 'f-maps-wrap', 'f-pickup-wrap']
+      .forEach(id => { const el = document.getElementById(id); if (el && el.parentNode !== detail) detail.appendChild(el); });
+    // Картууд нуугдсан select-ийг жолооднo — бусад бүх код хэвээр ажиллана
+    document.querySelectorAll('#f-delivopts .dlv-opt').forEach(b => {
+      b.onclick = () => { zoneEl.value = b.dataset.zone; zoneEl.dispatchEvent(new Event('change', { bubbles: true })); };
+    });
     const applyDeliv = () => {
       const z = zoneEl.value;
+      document.querySelectorAll('#f-delivopts .dlv-opt').forEach(b => b.classList.toggle('on', b.dataset.zone === z));
       document.getElementById('f-delivkm-wrap').style.display = z === 'out' ? '' : 'none';
       const isPick = z === 'pickup';
       document.getElementById('f-address-wrap').style.display = isPick ? 'none' : '';
@@ -2000,6 +2045,8 @@ function goStep(s) {
         document.getElementById('f-pickup-map').href = CONFIG.PICKUP_MAP
           || ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(CONFIG.PICKUP_ADDRESS));
       }
+      detail.hidden = !['f-delivkm-wrap', 'f-address-wrap', 'f-maps-wrap', 'f-pickup-wrap']
+        .some(id => { const el = document.getElementById(id); return el && el.style.display !== 'none'; });
       syncDelivery(); renderCart(); renderInfoSummary();
     };
     zoneEl.onchange = applyDeliv;
