@@ -1214,11 +1214,11 @@ const state = {
   delivery: { zone: 'pickup', km: 0, fee: 0 },   // хүргэлт (default очиж авах)
 };
 
-/* ==================== ХҮРГЭЛТ (аппын томьёотой ИЖИЛ) ====================
-   ⚠ ТАРИФ SYNC: апп АПП ЧИМУН ХХК/app.js-ийн DELIVERY_CITY_FEE/PER_KM-тэй ЯГ ИЖИЛ байх ёстой.
-   Нэгийг өөрчилбөл нөгөө repo-г ЗААВАЛ зас — эс бол суваг хооронд өөр үнэ. */
-const DELIVERY_CITY_FEE = 150000;   // ₮ хот дотор (очих+буцах багтсан)
-const DELIVERY_PER_KM = 5000;       // ₮ нэг талын км тутам
+/* ==================== ХҮРГЭЛТ ====================
+   ТАРИФ = app_config['tariffs']-аас (loadTariffs), доорх нь fallback. Апп app.js мөн энэ app_config-оос
+   татна — тарифын нэг эх сурвалж. [[tariff_two_repos_sync]] */
+let DELIVERY_CITY_FEE = 150000;   // ₮ хот дотор (fallback)
+let DELIVERY_PER_KM = 5000;       // ₮ нэг талын км тутам (fallback)
 function calcDeliveryFee(zone, km) {
   if (zone === 'city') return DELIVERY_CITY_FEE;
   if (zone === 'out') return Math.max(0, (Math.round(Number(km) || 0)) * 2 * DELIVERY_PER_KM);
@@ -1368,6 +1368,24 @@ async function loadPopularity() {
     const v = rows[0] && rows[0].value;
     if (v && typeof v === 'object' && !Array.isArray(v)) POP = v;
   } catch (e) { /* хоосон хэвээр — эрэмбэ нэр рүү унана */ }
+}
+// Тариф (хүргэлт/хямдрал/ажлын бус цаг) — app_config['tariffs']-аас. Аппын app.js мөн энэ эх сурвалжаас
+// уншина — тарифыг НЭГ газраас (app_config) удирдана. Татаж чадахгүй бол дээрх fallback хэвээр.
+async function loadTariffs() {
+  try {
+    const r = await fetch(CONFIG.DB_BASE + '/app_config?key=eq.tariffs&select=value',
+      { headers: { apikey: CONFIG.DB_ANON_KEY, Authorization: 'Bearer ' + CONFIG.DB_ANON_KEY } });
+    if (!r.ok) return;
+    const rows = await r.json();
+    const v = rows[0] && rows[0].value;
+    if (!v || typeof v !== 'object') return;
+    if (Number(v.delivery_city_fee) > 0) DELIVERY_CITY_FEE = Number(v.delivery_city_fee);
+    if (Number(v.delivery_per_km) > 0) DELIVERY_PER_KM = Number(v.delivery_per_km);
+    if (Number(v.offhours_fee) > 0) OFFHOURS_FEE = Number(v.offhours_fee);
+    if (v.work_start != null && Number(v.work_start) >= 0 && Number(v.work_start) <= 23) WORK_START = Number(v.work_start);
+    if (v.work_end != null && Number(v.work_end) >= 0 && Number(v.work_end) <= 23) WORK_END = Number(v.work_end);
+    if (Array.isArray(v.tiers) && v.tiers.length) RENTAL_TIERS = v.tiers.map(x => ({ min: Number(x.min) || 1, pct: Number(x.pct) || 0, label: x.label || '' })).sort((a, b) => b.min - a.min);
+  } catch (e) { /* fallback хэвээр */ }
 }
 // Барааны/бүлгийн түрээсийн давтамж (бүлэг = гишүүдийн хамгийн их нь).
 function popOf(p) {
@@ -1780,9 +1798,8 @@ function removeFromCart(id) {
   renderGrid();
 }
 // Түрээсийн хугацааны хямдралын шат — урт түрээслэх тусам хямд.
-// ⚠ ТАРИФ SYNC: апп АПП ЧИМУН ХХК/app.js-ийн RENTAL_TIERS-тэй ЯГ ИЖИЛ байх ёстой (апп ч авто-хямдрал
-// хэрэглэнэ). Нэгийг өөрчилбөл нөгөө repo-г ЗААВАЛ зас.
-const RENTAL_TIERS = [
+// ТАРИФ = app_config['tariffs'].tiers-ээс (loadTariffs), доорх нь fallback. Апп ч энэ app_config-оос.
+let RENTAL_TIERS = [
   { min: 30, pct: 0.55, label: 'Сарын хямдрал' },
   { min: 7,  pct: 0.40, label: '7+ хоногийн хямдрал' },
   { min: 2,  pct: 0.20, label: 'Олон хоногийн хямдрал' },
@@ -1792,9 +1809,8 @@ function rentalDiscount(days) {
   for (const t of RENTAL_TIERS) if (days >= t.min) return t;
   return { min: 1, pct: 0, label: '' };
 }
-// Ажлын цаг 09:00–18:00. Үүнээс гадуур авах/өгөх бүрт нэмэгдэл.
-// ⚠ ТАРИФ SYNC: апп app.js-ийн ORDER_OFFHOURS_FEE / _isOffHour (WORK 9–18)-тэй ЯГ ИЖИЛ байх ёстой.
-const WORK_START = 9, WORK_END = 18, OFFHOURS_FEE = 20000;
+// Ажлын цаг 09:00–18:00. Үүнээс гадуур авах/өгөх бүрт нэмэгдэл. Тариф = app_config['tariffs'] (fallback доор).
+let WORK_START = 9, WORK_END = 18, OFFHOURS_FEE = 20000;
 function isOffHours(t) { const h = parseInt(String(t || '').slice(0, 2), 10); return isNaN(h) ? false : (h < WORK_START || h > WORK_END); }
 function offHoursCount() { return (isOffHours(state.dates.timeStart) ? 1 : 0) + (isOffHours(state.dates.timeEnd) ? 1 : 0); }
 function cartTotals() {
@@ -2429,7 +2445,7 @@ function maybeAskDates() {
   document.documentElement.classList.add('reveal-on');
   initEvents();
   observeReveals();                                        // статик брэнд хэсгүүд
-  await Promise.all([loadProducts(), loadActiveOrders(), loadCategoryGroups(), loadPopularity()]);   // бараа + түрээс + ангиллын бүлэг + давтамж
+  await Promise.all([loadProducts(), loadActiveOrders(), loadCategoryGroups(), loadPopularity(), loadTariffs()]);   // бараа + түрээс + ангиллын бүлэг + давтамж + тариф
   applyUrlParams();                                        // ?q= / ?cat= (хуучин Google линк сэргээх)
   render();
   enterCards();
