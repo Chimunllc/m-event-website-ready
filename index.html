@@ -1751,7 +1751,7 @@ function addToCart(p, qty, openDrawer) {
   renderCart();
   renderGrid();
   // Худалдан авалт эхлэхэд огноог заавал асууна (үзэх урсгалыг хаахгүй, зөвхөн энд).
-  if (!state.datesChosen) { showDrawer('dates'); return; }
+  if (!state.datesChosen) { showDrawer('dates', { dateOnly: true }); return; }
   if (openDrawer) showDrawer();
 }
 function setCartQty(id, qty) {
@@ -1954,7 +1954,11 @@ function renderOffHoursNote() {
 function renderDatesStep() { renderDatePicker(); renderTimes(); renderDateSummary(); renderOffHoursNote(); renderDuration(); updateAvailWarn(); }
 
 /* ==================== DRAWER & CHECKOUT FLOW ==================== */
-function showDrawer(step) {
+// opts.dateOnly = зочин зөвхөн ОГНОО тохируулж байна (эхний зочин, эсвэл дээд
+// тууз дээрх «Огноо» товч). Ийм үед огноо сонгомогц хаагдаж, зочин каталогоо
+// үзсээр байна — захиалгын форм руу шахах нь эрт бөгөөд зочныг үргээдэг.
+function showDrawer(step, opts) {
+  state.dateOnly = !!(opts && opts.dateOnly);
   _lastFocus = document.activeElement;
   document.getElementById('drawer').classList.add('open');
   document.getElementById('drawer-bg').classList.add('open');
@@ -1999,9 +2003,21 @@ function goStep(s) {
     foot.style.display = '';
     document.getElementById('drawer-title').textContent = '🛒 Миний сагс';
   } else if (s === 'dates') {
-    btn.textContent = 'Үргэлжлүүлэх →';
+    const _dOnly = !!state.dateOnly;
+    btn.textContent = _dOnly ? '✓ Хадгалаад бараа үзэх' : 'Үргэлжлүүлэх →';
     btn.onclick = () => {
       if (!state.dates.start || !state.dates.end) { alert('Гарах ба буцах огноог сонгоно уу.'); return; }
+      if (_dOnly) {   // зөвхөн огноо — каталог руу буцаана
+        // Анхдагч огноог баталгаажуулсан ч «сонгосон» гэж тооцно, эс бөгөөс
+        // хуудас шинэчлэх бүрд огнооны цонх дахин дахин нээгдэнэ.
+        state.datesChosen = true;
+        try { localStorage.setItem('d-chosen', '1'); } catch (_) {}
+        renderGrid(); updateDateLabels();
+        hideDrawer();
+        toast('Огноо тохирлоо — тухайн өдрүүдэд боломжтой барааг харууллаа');
+        return;
+      }
+      if (!state.cart.length) { alert('Эхлээд бараа сонгоно уу.'); goStep('cart'); return; }
       goStep('info');
     };
     foot.style.display = '';
@@ -2059,6 +2075,13 @@ function goStep(s) {
 }
 async function submitOrder() {
   // Validate
+  // Хоосон сагстай захиалга — аппад 0₮-ийн утгагүй мөр болж очдог. Огноог эхэлж
+  // асуудаг урсгалаар (maybeAskDates) сагс шалгагдалгүй энд хүрч болдог байсан.
+  if (!state.cart.length) {
+    alert('Сагс хоосон байна — эхлээд бараа сонгоно уу.');
+    hideDrawer();
+    return;
+  }
   const name = document.getElementById('f-name').value.trim();
   const phone = document.getElementById('f-phone').value.trim();
   const dlv = syncDelivery();
@@ -2261,7 +2284,7 @@ function initEvents() {
   const _sort = document.getElementById('sort-sel'); if (_sort) _sort.onchange = (e) => { state.sort = e.target.value; renderGrid(); };
   const _oa = document.getElementById('only-avail'); if (_oa) _oa.onchange = (e) => { state.onlyAvail = e.target.checked; renderGrid(); };
   // Огноо сонгох товч → drawer-ийн огнооны алхам
-  const _gtDate = document.getElementById('gt-date'); if (_gtDate) _gtDate.onclick = () => showDrawer('dates');
+  const _gtDate = document.getElementById('gt-date'); if (_gtDate) _gtDate.onclick = () => showDrawer('dates', { dateOnly: true });
   // Сагсны FAB + дээш буцах
   const _fab = document.getElementById('cart-fab'); if (_fab) _fab.onclick = () => showDrawer('cart');
   const _toTop = document.getElementById('to-top'); if (_toTop) _toTop.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2282,7 +2305,7 @@ function initEvents() {
   state.pickerMonth = ymd(new Date(parseYmd(state.dates.start).getFullYear(), parseYmd(state.dates.start).getMonth(), 1));
   localStorage.setItem('d-start', state.dates.start); localStorage.setItem('d-end', state.dates.end);
   try { state.datesChosen = localStorage.getItem('d-chosen') === '1'; } catch (_) { state.datesChosen = false; }
-  const _dbEdit = document.getElementById('db-edit'); if (_dbEdit) _dbEdit.onclick = () => showDrawer('dates');
+  const _dbEdit = document.getElementById('db-edit'); if (_dbEdit) _dbEdit.onclick = () => showDrawer('dates', { dateOnly: true });
   updateDateLabels();
 
   // cart
@@ -2379,7 +2402,7 @@ function maybeAskDates() {
     const p = new URLSearchParams(location.search);
     if (p.get('q') || p.get('cat')) return;
   } catch (e) {}
-  showDrawer('dates');
+  showDrawer('dates', { dateOnly: true });
 }
 
 (async function start() {
