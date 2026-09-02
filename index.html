@@ -1563,7 +1563,7 @@ function renderDuration() {
   const days = diffDays();
   let h = `<b style="font-weight:700;">${days} хоног</b> түрээслэнэ`;
   h += days >= 2
-    ? ` · <span style="font-weight:700;">−20% олон хоногийн хямдрал орно</span>`
+    ? ` · <span style="font-weight:700;">−${Math.round(rentalDiscount(days).pct * 100)}% олон хоногийн хямдрал орно</span>`
     : ` · 2+ хоног түрээслэвэл 20% хямдрал`;
   el.innerHTML = h;
 }
@@ -1852,7 +1852,7 @@ function renderInfoSummary() {
   el.innerHTML = `
     <div class="row"><span>${state.cart.length} төрөл, ${state.cart.reduce((s,x)=>s+x.qty,0)} ширхэг</span><span>${state.dates.start} → ${state.dates.end}</span></div>
     <div class="row"><span>Хугацаа</span><span>${t.days} хоног</span></div>
-    ${t.multiDayDiscount ? `<div class="row" style="color:var(--success);"><span>Олон хоногийн хямдрал (20%)</span><span>−${fmt(t.multiDayDiscount)}</span></div>` : ''}
+    ${t.multiDayDiscount ? `<div class="row" style="color:var(--success);"><span>Олон хоногийн хямдрал (${Math.round(t.multiDayPct * 100)}%)</span><span>−${fmt(t.multiDayDiscount)}</span></div>` : ''}
     ${t.delivery > 0 ? `<div class="row"><span>🚚 Хүргэлт${state.delivery.zone === 'out' ? ` (${state.delivery.km}км × 2)` : ''}</span><span>${fmt(t.delivery)}</span></div>` : ''}
     ${t.offHoursFee > 0 ? `<div class="row"><span>🌙 Ажлын бус цаг (${t.offHours})</span><span>${fmt(t.offHoursFee)}</span></div>` : ''}
     <div class="row bold"><span>Нийт төлөх</span><span>${fmt(t.grand)}</span></div>
@@ -2133,8 +2133,13 @@ async function submitOrder() {
       const n = document.getElementById('f-note').value.trim();
       const t = cartTotals();
       let s = n;
-      if (t.multiDayDiscount) s = (s ? s + ' · ' : '') + `${t.days} хоногийн хямдрал (−20% = ${fmt(t.multiDayDiscount)})`;
+      if (t.multiDayDiscount) s = (s ? s + ' · ' : '') + `${t.days} хоногийн хямдрал (−${Math.round(t.multiDayPct * 100)}% = ${fmt(t.multiDayDiscount)})`;
       if (t.offHoursFee) s = (s ? s + ' · ' : '') + `Ажлын бус цаг ${t.offHours} (+${fmt(t.offHoursFee)})`;
+      // Ажлын бус цагийн ⟦RT|эхлэх|дуусах⟧ токен (C4) — апп parseOrderTimes/orderOffHoursFee-ээр уншиж
+      // үнийн санал/гэрээний задаргаанд «Ажлын бус цаг» мөр гаргана (⟦DLV⟧-тэй ижил загвар).
+      const _sh = parseInt(String(state.dates.timeStart || '').slice(0, 2), 10);
+      const _eh = parseInt(String(state.dates.timeEnd || '').slice(0, 2), 10);
+      if (!isNaN(_sh) && !isNaN(_eh)) s = (s ? s + ' ' : '') + `⟦RT|${_sh}|${_eh}⟧`;
       // Хүргэлтийг ⟦DLV|zone|km|fee⟧ token-оор — апп үүнийг уншиж төлбөр/бүсийг харуулна
       s = (s ? s + ' ' : '') + `⟦DLV|${dlv.zone}|${Math.round(dlv.km) || 0}|${Math.round(dlv.fee) || 0}⟧`;
       // Харилцагчийн мэдээлэл — аппын custInfoOf() яг энэ токеныг уншина.
