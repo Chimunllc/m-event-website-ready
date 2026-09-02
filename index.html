@@ -1214,7 +1214,9 @@ const state = {
   delivery: { zone: 'pickup', km: 0, fee: 0 },   // хүргэлт (default очиж авах)
 };
 
-/* ==================== ХҮРГЭЛТ (аппын томьёотой ИЖИЛ) ==================== */
+/* ==================== ХҮРГЭЛТ (аппын томьёотой ИЖИЛ) ====================
+   ⚠ ТАРИФ SYNC: апп АПП ЧИМУН ХХК/app.js-ийн DELIVERY_CITY_FEE/PER_KM-тэй ЯГ ИЖИЛ байх ёстой.
+   Нэгийг өөрчилбөл нөгөө repo-г ЗААВАЛ зас — эс бол суваг хооронд өөр үнэ. */
 const DELIVERY_CITY_FEE = 150000;   // ₮ хот дотор (очих+буцах багтсан)
 const DELIVERY_PER_KM = 5000;       // ₮ нэг талын км тутам
 function calcDeliveryFee(zone, km) {
@@ -1777,7 +1779,9 @@ function removeFromCart(id) {
   renderCart();
   renderGrid();
 }
-// Түрээсийн хугацааны хямдралын шат — урт түрээслэх тусам хямд (апп-тай ижил байлгана).
+// Түрээсийн хугацааны хямдралын шат — урт түрээслэх тусам хямд.
+// ⚠ ТАРИФ SYNC: апп АПП ЧИМУН ХХК/app.js-ийн RENTAL_TIERS-тэй ЯГ ИЖИЛ байх ёстой (апп ч авто-хямдрал
+// хэрэглэнэ). Нэгийг өөрчилбөл нөгөө repo-г ЗААВАЛ зас.
 const RENTAL_TIERS = [
   { min: 30, pct: 0.55, label: 'Сарын хямдрал' },
   { min: 7,  pct: 0.40, label: '7+ хоногийн хямдрал' },
@@ -1789,6 +1793,7 @@ function rentalDiscount(days) {
   return { min: 1, pct: 0, label: '' };
 }
 // Ажлын цаг 09:00–18:00. Үүнээс гадуур авах/өгөх бүрт нэмэгдэл.
+// ⚠ ТАРИФ SYNC: апп app.js-ийн ORDER_OFFHOURS_FEE / _isOffHour (WORK 9–18)-тэй ЯГ ИЖИЛ байх ёстой.
 const WORK_START = 9, WORK_END = 18, OFFHOURS_FEE = 20000;
 function isOffHours(t) { const h = parseInt(String(t || '').slice(0, 2), 10); return isNaN(h) ? false : (h < WORK_START || h > WORK_END); }
 function offHoursCount() { return (isOffHours(state.dates.timeStart) ? 1 : 0) + (isOffHours(state.dates.timeEnd) ? 1 : 0); }
