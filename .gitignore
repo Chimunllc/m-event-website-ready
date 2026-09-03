@@ -1,3 +1,10 @@
 node_modules/
 package.json
 package-lock.json
+
+# n8n workflow export — дотоод тохиргоо (Telegram chat_id, Drive/Sheet ID).
+# Нийтийн repo тул commit хийхгүй. Backup хэрэгтэй бол аппын repo дахь
+# n8n-workflows-backup/ (мөн public) БИШ, локал санах ойд байлга.
+*.n8n.json
+Гаргасан.json
+Буцаалт.json
