@@ -1177,7 +1177,12 @@ const CONFIG = {
   // Галерейн олон зургийг барааны дэлгэрэнгүй нээх үед lazy татна (loadProductPhotos).
   DB_PRODUCTS_URL: 'https://n8n.nomaadcamp.com/db/rest/v1/products?select=sku,id,code,name,category,all_categories,type,price,deposit,stock,photo,description,archived,bundle_items,broken,maintenance,qty_mevent,qty_nomaad,variant_group,media_url&archived=eq.false&order=name.asc',
   // Идэвхтэй түрээс (нөөц эзэлж буй) — availability бодоход. Буцаж ирсэн (stopped/archived)/ноорог/цуцлах орохгүй.
-  DB_ORDERS_URL: 'https://n8n.nomaadcamp.com/db/rest/v1/app_orders?select=number,status,starts_at,stops_at,items&status=in.(reserved,preparation,cleaning,started)',
+  // Боломжит үлдэгдэл — public_availability view-ээс (2026-09-03).
+  // Өмнө нь app_orders-ийг ШУУД уншдаг байсан: тэр нь 1005 мөр харилцагчийн нэр, утас,
+  // имэйл, хаяг, төлбөрийг нийтэд нээлттэй болгодог байв (anon SELECT). View зөвхөн
+  // огноо + sku/нэр + тоо гаргана. Мөн НӨӨЦ ЭЗЛЭХ 9 ТӨЛӨВИЙГ СЕРВЕР ТАЛД бэхэлсэн —
+  // энд 4 төлөв бичигдсэн байсан тул «rented» бараа СУЛ харагдаж давхар захиалга үүсдэг байв.
+  DB_ORDERS_URL: 'https://n8n.nomaadcamp.com/db/rest/v1/public_availability?select=starts_at,stops_at,items',
   DB_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.Brx7AjnPrzfv--KLb-J-FK-7DmdRusxUF2jaFgKzd1s',
   PRODUCTS_URL: 'https://n8n.nomaadcamp.com/webhook/mevent-products?key=1YP4RCfL_DMiBhDfkCkX6AesQHd5p2lZ',
   ORDER_URL: 'https://n8n.nomaadcamp.com/webhook/m-event-site-order?key=1YP4RCfL_DMiBhDfkCkX6AesQHd5p2lZ',
