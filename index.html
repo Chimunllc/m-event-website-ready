@@ -1270,6 +1270,9 @@ function applyProductList(list) {
       return p;
     });
   // "Захиалгат асар" (зохиомол тооцоолуур) хассан — асар бодит агуулахын бараагаар л харагдана.
+  // Каталог ирмэгц сагсны үнийг амьд утгаар шинэчилнэ — localStorage-д хуучин/өөрчилсөн
+  // үнэ үлдсэн байж болно. Хэрэглэгч зөв дүн харна, илгээхэд дахин тулгагдана.
+  try { if (typeof syncCartPrices === 'function' && syncCartPrices() && typeof renderCart === 'function') renderCart(); } catch (e) {}
 }
 async function fetchProductList(src) {
   const r = await fetch(src.url, src.opts || {});
@@ -1818,6 +1821,22 @@ function rentalDiscount(days) {
 let WORK_START = 9, WORK_END = 18, OFFHOURS_FEE = 20000;
 function isOffHours(t) { const h = parseInt(String(t || '').slice(0, 2), 10); return isNaN(h) ? false : (h < WORK_START || h > WORK_END); }
 function offHoursCount() { return (isOffHours(state.dates.timeStart) ? 1 : 0) + (isOffHours(state.dates.timeEnd) ? 1 : 0); }
+// ⚠ Сагс localStorage-д хадгалагддаг — үнийг тэндээс БҮҮ ИТГЭ (2026-09-03).
+// Консолоор price=0 болгоод илгээвэл total_mnt 0 болж орлогод буруу бүртгэгддэг байв.
+// Каталог ачаалагдсан бол мөр бүрийн үнийг АМЬД утгаар дарж бичнэ.
+function syncCartPrices() {
+  const list = state.products || [];
+  if (!list.length) return false;   // каталог алга — тулгах боломжгүй
+  const byId = new Map(list.map(p => [String(p.id), p]));
+  const bySku = new Map(list.filter(p => p.sku).map(p => [String(p.sku), p]));
+  (state.cart || []).forEach(x => {
+    const p = byId.get(String(x.id)) || bySku.get(String(x.id));
+    if (!p) return;
+    x.price = Number(p.price) || 0;
+    x.deposit = 0;   // барьцаа сайтад тооцохгүй — менежер шийднэ
+  });
+  return true;
+}
 function cartTotals() {
   const days = diffDays();
   let subtotal = 0;
@@ -2149,6 +2168,15 @@ async function submitOrder() {
       + '\n\nСагснаас хасаад дахин илгээнэ үү.');
     return;
   }
+  // Үнийг АМЬД каталогоос дарж бичнэ — сагсны хуулбарт бүү итгэ.
+  syncCartPrices();
+  const _bad = (state.cart || []).filter(x => !(Number(x.price) > 0));
+  if (_bad.length) {
+    alert('Эдгээр барааны үнэ тодорхойгүй байна:\n\n· ' + _bad.map(x => x.name).join('\n· ')
+      + '\n\nБидэнтэй холбогдож үнийн санал аваарай.');
+    return;
+  }
+  renderCart();
   if (dlv.zone === 'out' && !dlv.km) { alert('Хотоос гадна: зайг км-ээр оруулна уу'); return; }
 
   const order = {
@@ -2183,7 +2211,7 @@ async function submitOrder() {
     dates: { start: state.dates.start + ' ' + state.dates.timeStart, end: state.dates.end + ' ' + state.dates.timeEnd },
     // ⚠ Каталогийн жинхэнэ утгыг илгээнэ — сагсанд хуучирсан нэр/зураг үлдсэн байж болно.
     items: state.cart.map(x => { const p = _resolve(x) || {};
-      return { id: x.id, sku: p.sku || '', name: p.name || x.name, qty: x.qty, price: x.price, deposit: x.deposit, photo: p.photo || x.photo || '' }; }),
+      return { id: x.id, sku: p.sku || '', name: p.name || x.name, qty: x.qty, price: Number(p.price) || 0, deposit: 0, photo: p.photo || x.photo || '' }; }),
     totals: cartTotals(),
     submittedAt: new Date().toISOString(),
     source: 'm-event-website',
