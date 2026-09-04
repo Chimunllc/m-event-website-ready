@@ -18,8 +18,35 @@ const ROOT = __dirname;
 const SITE = 'https://mevent.mn';
 const BRAND = 'M-Event';
 
-const raw = JSON.parse(fs.readFileSync(path.join(ROOT, 'products.json'), 'utf8'));
-const all = (Array.isArray(raw) ? raw : (raw.products || []))
+// ⚠ 2026-09-04: АМЬД каталогоос уншина. Өмнө нь зөвхөн products.json уншдаг байсан
+// бөгөөд тэр файл сайтын кодоос аль хэдийн салсан (сайт DB_PRODUCTS_URL-ээс татдаг) тул
+// ХУУЧИРСАН: 16 барааны үнэ зөрүүтэй (ихэвчлэн ~30% өндөр — Google дээр бодит үнээс
+// үнэтэй харагдана), мөн нөөц/үнэ хуучин утгаараа шүүгдэж ~100 бараа хуудасгүй үлдсэн.
+// DB татагдахгүй бол products.json руу унана (офлайн build ажиллах ёстой).
+const DB_URL = 'https://n8n.nomaadcamp.com/db/rest/v1/products'
+  + '?select=sku,id,code,name,category,all_categories,type,price,deposit,stock,photo,description,archived,bundle_items,qty_mevent,qty_nomaad'
+  + '&archived=eq.false&order=name.asc';
+
+function loadProducts() {
+  try {
+    const out = require('child_process').execFileSync('curl',
+      ['-sS', '--max-time', '30', '-H', 'Cache-Control: no-cache', DB_URL],
+      { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    const d = JSON.parse(out);
+    if (!Array.isArray(d) || !d.length) throw new Error('хоосон хариу');
+    console.log(`  каталог: АМЬД DB-ээс ${d.length} бараа`);
+    return d;
+  } catch (e) {
+    console.warn(`  ⚠ DB татагдсангүй (${e.message}) → products.json руу унав`);
+    const j = JSON.parse(fs.readFileSync(path.join(ROOT, 'products.json'), 'utf8'));
+    const rows = Array.isArray(j) ? j : (j.products || []);
+    console.log(`  каталог: products.json-оос ${rows.length} бараа (ХУУЧИРСАН байж болно)`);
+    return rows;
+  }
+}
+
+const raw = loadProducts();
+const all = raw
   .filter(p => {
     if (p.archived) return false;
     if (p.type === 'service' || p.type === 'package') return true;
@@ -84,7 +111,16 @@ fs.writeFileSync(idxPath, html.replace(re, block));
 
 /* ---------- 2) products/<slug>/index.html ---------- */
 const prodDir = path.join(ROOT, 'products');
-fs.rmSync(prodDir, { recursive: true, force: true });   // хуучин үүсгэсэн хуудсуудыг цэвэрлэнэ
+// ⚠ 2026-09-04: ХУУЧИН ХУУДСЫГ УСТГАХГҮЙ.
+// Өмнө нь энд `fs.rmSync(prodDir, {recursive:true})` байсан. Гэвч SKU нь хуучин
+// «ASAR-12X35» хэлбэрээс «M-NNN» болж СОЛИГДСОН тул slug өөрчлөгдөж, устгавал
+// Google-д индекслэгдсэн 159 URL бүгд 404 болно (159-өөс зөвхөн 53 нь нэрээр
+// шинэ бараатай таарна — барааны нэрс ч өөрчлөгдсөн тул автомат чиглүүлэлт
+// найдваргүй, буруу бараа руу заах эрсдэлтэй).
+// Тиймээс: шинэ хуудсыг НЭМНЭ, хуучныг хэвээр үлдээнэ (200 буцаасаар байна).
+// sitemap-д зөвхөн ШИНЭ багц орно → Google аажмаар хуучныг унагана, 404 гарахгүй.
+// Зөв slug миграц (хуучин→шинэ 301) нь нэр тулгах ажил шаардана — тусдаа ажил.
+fs.mkdirSync(prodDir, { recursive: true });
 fs.mkdirSync(prodDir, { recursive: true });
 
 function productPage(p) {
