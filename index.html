@@ -431,7 +431,17 @@
   .asar-head span { font-size: 12px; color: var(--muted); font-weight: 600; }
   .asar-size { font-family: var(--font-display); font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
   .asar-range { width: 100%; margin: 0; accent-color: var(--price); height: 26px; }
-  .asar-ticks { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); margin-top: -2px; }
+  /* Зогсоолууд ИЛ — хэр их татахаа таамаглах шаардлагагүй, дарж ч сонгоно */
+  .asar-ticks { display: flex; justify-content: space-between; gap: 2px; margin-top: 2px; }
+  .asar-tick {
+    flex: 1 1 0; min-width: 0; border: 0; background: none; cursor: pointer; padding: 3px 0 0;
+    font-size: 10.5px; color: var(--muted); font-family: var(--font-body); line-height: 1.2;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .asar-tick::before { content: ''; width: 2px; height: 7px; border-radius: 1px; background: var(--border-strong); }
+  .asar-tick.on { color: var(--price); font-weight: 800; }
+  .asar-tick.on::before { background: var(--price); height: 10px; }
+  .asar-tick:hover { color: var(--text); }
   .asar-out { margin-top: 10px; font-size: 13px; line-height: 1.6; }
   .asar-out b { font-variant-numeric: tabular-nums; }
   .asar-note { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
@@ -1042,7 +1052,7 @@
         <div class="asar-box" id="m-asar" style="display:none;">
           <div class="asar-head"><span>📐 Асрын урт сонгох</span><b class="asar-size" id="m-asar-size"></b></div>
           <input type="range" class="asar-range" id="m-asar-range" min="1" max="8" step="1" value="1" aria-label="Асрын урт">
-          <div class="asar-ticks"><span id="m-asar-min"></span><span id="m-asar-max"></span></div>
+          <div class="asar-ticks" id="m-asar-ticks"></div>
           <div class="asar-out" id="m-asar-out"></div>
           <div class="asar-note" id="m-asar-note"></div>
         </div>
@@ -1756,8 +1766,13 @@ function setupAsarSizer(p, qty) {
   box.style.display = ''; qrow.style.display = 'none';
   const rng = document.getElementById('m-asar-range');
   rng.min = 1; rng.max = a.bays; rng.value = Math.min(a.bays, Math.max(1, qty || 1));
-  document.getElementById('m-asar-min').textContent = a.width + '×' + a.mod + 'м';
-  document.getElementById('m-asar-max').textContent = a.width + '×' + a.maxLen + 'м';
+  const ticks = document.getElementById('m-asar-ticks');
+  ticks.innerHTML = Array.from({ length: a.bays }, (_, i) =>
+    `<button type="button" class="asar-tick" data-bays="${i + 1}">${(i + 1) * a.mod}м</button>`).join('');
+  ticks.onclick = (e) => {
+    const b = e.target.closest('[data-bays]'); if (!b) return;
+    rng.value = b.dataset.bays; paint();
+  };
   const paint = () => {
     const n = Math.max(1, parseInt(rng.value) || 1);
     const t = asarSizeText(a, n);
@@ -1766,7 +1781,8 @@ function setupAsarSizer(p, qty) {
       '<b>' + t.m2.toLocaleString('en-US') + ' м²</b> талбай · ' + n + ' модуль<br>'
       + '<b>' + fmt(p.price * n) + '</b> / хоног';
     document.getElementById('m-asar-note').textContent =
-      'Урт нь ' + a.mod + ' метрийн модулиар нэмэгдэнэ. Энэ иж бүрдлээс ' + a.width + '×' + a.maxLen + 'м хүртэл угсарна.';
+      'Урт нь ' + a.mod + ' метрийн модулиар нэмэгдэнэ (' + a.bays + ' сонголт). Энэ иж бүрдлээс ' + a.width + '×' + a.maxLen + 'м хүртэл угсарна.';
+    ticks.querySelectorAll('.asar-tick').forEach(t => t.classList.toggle('on', +t.dataset.bays === n));
   };
   rng.oninput = paint;
   paint();
