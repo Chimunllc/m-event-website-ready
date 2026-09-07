@@ -1,0 +1,22 @@
+name: Logic
+
+# Цэвэр логикийн тест — браузер, амьд API шаардахгүй тул PR бүрт хэдэн секундэд
+# ажиллана. Smoke (Playwright + амьд дата) нь main руу нэгтгэсний дараа ажилладаг
+# бөгөөд API унасан үед улаан болдог тул PR-ын хаалт болгож болохгүй.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  logic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Logic test
+        run: node test/logic.mjs

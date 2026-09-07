@@ -2017,6 +2017,16 @@ var MN_WD = ['Да', 'Мя', 'Лх', 'Пү', 'Ба', 'Бя', 'Ня'];           
 var MN_WD_FULL = ['Ням', 'Даваа', 'Мягмар', 'Лхагва', 'Пүрэв', 'Баасан', 'Бямба'];
 function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function parseYmd(s) { var p = String(s).slice(0, 10).split('-'); return new Date(+p[0], (+p[1]) - 1, +p[2]); }
+// Хадгалсан огноо хуучирсан эсэх (ISO мөрийг шууд харьцуулна — цагийн бүсээс
+// хамаарахгүй). localStorage-д үлдсэн ӨНГӨРСӨН огноо нь буцаж ирсэн зочинд
+// календарийг өнгөрсөн сар дээр нээж, өнгөрсөн өдрөөр үнэ бодуулж байв
+// (2026-09-07-нд зочин 8-р сарын 27–29-ийг сонгосон хэвээр харсан).
+function datesExpired(startIso, endIso, todayIso) {
+  var t = todayIso || ymd(new Date());
+  if (startIso && String(startIso).slice(0, 10) < t) return true;
+  if (endIso && String(endIso).slice(0, 10) < t) return true;
+  return false;
+}
 function formatMnDate(iso) {
   if (!iso) return '—';
   var d = parseYmd(iso);
@@ -2473,6 +2483,12 @@ function initEvents() {
   // dates — захиалгат календарь (native input-гүй). Анхдагч: өнөөдөр → маргааш
   const _today = new Date(); _today.setHours(0, 0, 0, 0);
   const _tmrw = new Date(_today.getTime() + 86400000);
+  // Хуучирсан сонголтыг хаяна — эс бөгөөс өнгөрсөн сарын календарь нээгдэж,
+  // өнгөрсөн өдрийн үнэ сагсанд үлдэж, захиалга өнгөрсөн огноотой илгээгдэнэ.
+  if (datesExpired(state.dates.start, state.dates.end, ymd(_today))) {
+    state.dates.start = ''; state.dates.end = '';
+    try { localStorage.removeItem('d-chosen'); } catch (_) {}
+  }
   if (!state.dates.start) state.dates.start = ymd(_today);
   if (!state.dates.end) state.dates.end = ymd(_tmrw);
   if (!state.dates.timeStart) state.dates.timeStart = '09:00';
