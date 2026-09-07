@@ -1777,9 +1777,11 @@ function setupAsarSizer(p, qty) {
     const n = Math.max(1, parseInt(rng.value) || 1);
     const t = asarSizeText(a, n);
     document.getElementById('m-asar-size').textContent = t.label;
+    // Үнэ ТАЛБАЙГААР бодогддог тул м²-ийн тарифыг ил үзүүлнэ (модулийн үнэ ÷ модулийн талбай)
+    const rate = Math.round(p.price / (a.width * a.mod));
     document.getElementById('m-asar-out').innerHTML =
       '<b>' + t.m2.toLocaleString('en-US') + ' м²</b> талбай · ' + n + ' модуль<br>'
-      + '<b>' + fmt(p.price * n) + '</b> / хоног';
+      + '<b>' + fmt(p.price * n) + '</b> / хоног <span style="color:var(--muted);">(' + fmt(rate) + ' × м²)</span>';
     document.getElementById('m-asar-note').textContent =
       'Урт нь ' + a.mod + ' метрийн модулиар нэмэгдэнэ (' + a.bays + ' сонголт). Энэ иж бүрдлээс ' + a.width + '×' + a.maxLen + 'м хүртэл угсарна.';
     ticks.querySelectorAll('.asar-tick').forEach(t => t.classList.toggle('on', +t.dataset.bays === n));
