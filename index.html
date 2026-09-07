@@ -1604,6 +1604,8 @@ function cardHtml(p, idx) {
   const priceUnit = _ai
     ? ('-с эхлэн /хоног · ' + fmt(Math.round(p.price / (_ai.width * _ai.mod))) + '/м²')
     : (isGroup ? '-с эхлэн /хоног' : '/хоног');
+  // Асрын картан дээрх үнэ = ХАМГИЙН БАГА захиалж болох хэмжээнийх (10м), нэг модулийнх БИШ
+  const _cardPrice = _ai ? p.price * _ai.minBays : p.price;
   const label = isGroup ? (p.name + ' — өнгө сонгох') : (outOfStock ? (p.name + ' — нөөц дууссан') : (p.name + ' — дэлгэрэнгүй'));
   return `
     <div class="card${inCart?' in-cart':''}${outOfStock?' out-of-stock':''}" role="button" tabindex="0" aria-label="${escapeHtml(label)}">
@@ -1613,7 +1615,7 @@ function cardHtml(p, idx) {
         <div class="card-name">${escapeHtml(p.name)}</div>
         ${variantHint ? `<div class="card-meta">${variantHint}</div>` : ''}
         <div class="card-price-row">
-          <div class="card-price">${fmt(p.price)}<small>${priceUnit}</small></div>
+          <div class="card-price">${fmt(_cardPrice)}<small>${priceUnit}</small></div>
           <button class="card-add${isGroup?' is-group':''}" aria-label="${isGroup?'Өнгө сонгох':(outOfStock?'Нөөц дууссан':'Сагсанд нэмэх')}" title="${isGroup?'Өнгө сонгох':(outOfStock?'Нөөц дууссан':'Сагсанд нэмэх')}">${addBtn}</button>
         </div>
       </div>
@@ -1770,10 +1772,12 @@ function setupAsarSizer(p, qty) {
   if (lbl) lbl.textContent = a.mod + 'м модулийн үнэ / хоног';
   box.style.display = ''; qrow.style.display = 'none';
   const rng = document.getElementById('m-asar-range');
-  rng.min = 1; rng.max = a.bays; rng.value = Math.min(a.bays, Math.max(1, qty || 1));
+  rng.min = a.minBays; rng.max = a.bays; rng.value = Math.min(a.bays, Math.max(a.minBays, qty || a.minBays));
   const ticks = document.getElementById('m-asar-ticks');
-  ticks.innerHTML = Array.from({ length: a.bays }, (_, i) =>
-    `<button type="button" class="asar-tick" data-bays="${i + 1}">${(i + 1) * a.mod}м</button>`).join('');
+  ticks.innerHTML = Array.from({ length: a.bays - a.minBays + 1 }, (_, i) => {
+    const b = a.minBays + i;
+    return `<button type="button" class="asar-tick" data-bays="${b}">${b * a.mod}м</button>`;
+  }).join('');
   ticks.onclick = (e) => {
     const b = e.target.closest('[data-bays]'); if (!b) return;
     rng.value = b.dataset.bays; paint();
@@ -1788,7 +1792,7 @@ function setupAsarSizer(p, qty) {
       '<b>' + t.m2.toLocaleString('en-US') + ' м²</b> талбай · ' + n + ' модуль<br>'
       + '<b>' + fmt(p.price * n) + '</b> / хоног <span style="color:var(--muted);">(' + fmt(rate) + ' × м²)</span>';
     document.getElementById('m-asar-note').textContent =
-      'Урт нь ' + a.mod + ' метрийн модулиар нэмэгдэнэ (' + a.bays + ' сонголт). Энэ иж бүрдлээс ' + a.width + '×' + a.maxLen + 'м хүртэл угсарна.';
+      'Урт нь ' + a.mod + ' метрийн модулиар нэмэгдэнэ. Хамгийн бага ' + a.width + '×' + a.minLen + 'м, энэ иж бүрдлээс ' + a.width + '×' + a.maxLen + 'м хүртэл угсарна.';
     ticks.querySelectorAll('.asar-tick').forEach(t => t.classList.toggle('on', +t.dataset.bays === n));
   };
   rng.oninput = paint;
@@ -1848,6 +1852,7 @@ function closeProduct(fromPop) {
    450 м²» гэж харуулна. Сагсанд модулийн тоогоор орно (үнэ зөв гарна).
    Нэрнээс уншиж байгаа шалтгаан: аппын каталог нэг эх сурвалж — сайтад тусдаа
    тохиргоо давхардуулбал хоёр нь зөрнө. */
+const ASAR_MIN_LEN_M = 10;
 function asarInfo(p) {
   const n = String((p && p.name) || '');
   const w = n.match(/асар\s*(\d+)\s*м\s*өргөн/i);
@@ -1856,7 +1861,9 @@ function asarInfo(p) {
   const width = +w[1], mod = +m[1];
   if (!(width > 0) || !(mod > 0)) return null;
   const bays = Math.max(1, availStock(p) || 1);
-  return { width, mod, bays, maxLen: bays * mod };
+  // Хамгийн бага түрээслэх урт — 10 метр. Нэг модуль (5м) дангаараа асар болдоггүй.
+  const minBays = Math.min(bays, Math.max(1, Math.ceil(ASAR_MIN_LEN_M / mod)));
+  return { width, mod, bays, minBays, maxLen: bays * mod, minLen: minBays * mod };
 }
 function asarSizeText(a, bays) {
   const len = Math.max(1, bays) * a.mod;
@@ -2492,7 +2499,7 @@ function initEvents() {
     const _a = asarInfo(state.currentProduct);
     const _box = document.getElementById('m-asar');
     const qty = (_a && _box && _box.style.display !== 'none')
-      ? Math.max(1, parseInt(document.getElementById('m-asar-range').value) || 1)
+      ? Math.max(_a.minBays, parseInt(document.getElementById('m-asar-range').value) || _a.minBays)
       : Math.max(1, parseInt(document.getElementById('m-qty').value) || 1);
     const existed = state.cart.find(x => x.id === state.currentProduct.id);
     // remove if exists then re-add with new qty
