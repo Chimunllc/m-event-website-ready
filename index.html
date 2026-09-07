@@ -1597,8 +1597,13 @@ function cardHtml(p, idx) {
   // Товчны агуулга: бүлэг=сум, дууссан=×, сагсанд=✓, бусад=нэмэх икон
   const plusIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';
   const addBtn = isGroup ? '→' : (outOfStock ? '×' : (inCart ? '✓' : plusIcon));
+  // Асар: картан дээр «нэг модулийн үнэ» гэдэг нь худалдан авагчид утгагүй тоо
+  // (хэн ч 12×5м асар түрээслэхгүй). Тиймээс жагсаалтын стандарт хэлбэрээр —
+  // ХАМГИЙН БАГА тохиргооны үнэ «-с эхлэн», доор нь м²-ийн тариф.
   const _ai = asarInfo(p);
-  const priceUnit = _ai ? ('/ ' + _ai.mod + 'м модуль · хоног') : (isGroup ? '-с эхлэн /хоног' : '/хоног');
+  const priceUnit = _ai
+    ? ('-с эхлэн /хоног · ' + fmt(Math.round(p.price / (_ai.width * _ai.mod))) + '/м²')
+    : (isGroup ? '-с эхлэн /хоног' : '/хоног');
   const label = isGroup ? (p.name + ' — өнгө сонгох') : (outOfStock ? (p.name + ' — нөөц дууссан') : (p.name + ' — дэлгэрэнгүй'));
   return `
     <div class="card${inCart?' in-cart':''}${outOfStock?' out-of-stock':''}" role="button" tabindex="0" aria-label="${escapeHtml(label)}">
