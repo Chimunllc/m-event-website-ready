@@ -1769,7 +1769,7 @@ function setupAsarSizer(p, qty) {
     return;
   }
   // Дээрх үнэ нь НЭГ МОДУЛИЙНХ — доорх нийт дүнтэй андуурахгүйн тулд ил хэлнэ.
-  if (lbl) lbl.textContent = a.mod + 'м модулийн үнэ / хоног';
+  if (lbl) lbl.textContent = a.mod + ' метр тутмын үнэ / хоног';
   box.style.display = ''; qrow.style.display = 'none';
   const rng = document.getElementById('m-asar-range');
   rng.min = a.minBays; rng.max = a.bays; rng.value = Math.min(a.bays, Math.max(a.minBays, qty || a.minBays));
@@ -1852,17 +1852,21 @@ function closeProduct(fromPop) {
    450 м²» гэж харуулна. Сагсанд модулийн тоогоор орно (үнэ зөв гарна).
    Нэрнээс уншиж байгаа шалтгаан: аппын каталог нэг эх сурвалж — сайтад тусдаа
    тохиргоо давхардуулбал хоёр нь зөрнө. */
-const ASAR_MIN_LEN_M = 10;
+const ASAR_MOD_M = 5;   // модулийн урт — бүх асар 5 метрийн алхамтай
+// Нэр нь «Асар 18м өргөн · 10–40м урт» хэлбэртэй: өргөн + боломжит уртын муж.
+// Хэрэглэгчид ойлгомжтой нэр байхын зэрэгцээ хөтөлбөрт хангалттай мэдээлэл өгнө.
 function asarInfo(p) {
   const n = String((p && p.name) || '');
   const w = n.match(/асар\s*(\d+)\s*м\s*өргөн/i);
-  const m = n.match(/(\d+)\s*м\s*модуль/i);
-  if (!w || !m) return null;
-  const width = +w[1], mod = +m[1];
-  if (!(width > 0) || !(mod > 0)) return null;
+  // Шинэ нэр «… 10–40м урт»; хуучин нэр «… 5м модуль» — нэр солигдох хүртэл хоёуланг тэвчинэ.
+  const L = n.match(/(\d+)\s*[–—-]\s*(\d+)\s*м\s*урт/i);
+  const old = n.match(/(\d+)\s*м\s*модуль/i);
+  if (!w || (!L && !old)) return null;
+  const width = +w[1], mod = ASAR_MOD_M;
+  const minLen = L ? +L[1] : 10;
+  if (!(width > 0) || !(minLen > 0)) return null;
   const bays = Math.max(1, availStock(p) || 1);
-  // Хамгийн бага түрээслэх урт — 10 метр. Нэг модуль (5м) дангаараа асар болдоггүй.
-  const minBays = Math.min(bays, Math.max(1, Math.ceil(ASAR_MIN_LEN_M / mod)));
+  const minBays = Math.min(bays, Math.max(1, Math.ceil(minLen / mod)));
   return { width, mod, bays, minBays, maxLen: bays * mod, minLen: minBays * mod };
 }
 function asarSizeText(a, bays) {
