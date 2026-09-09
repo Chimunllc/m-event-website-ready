@@ -13,6 +13,7 @@ import { dirname, join } from 'path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = readFileSync(join(ROOT, 'index.html'), 'utf8');
+const SRC404 = readFileSync(join(ROOT, '404.html'), 'utf8');
 
 let pass = 0;
 const fails = [];
@@ -25,25 +26,26 @@ function eq(name, got, want) {
 }
 
 /* ── index.html-ээс нэрлэсэн функцийг сугалах (хаалт тоолж) ───────────────── */
-function extractFn(name) {
-  const at = SRC.indexOf('function ' + name + '(');
+function extractFn(name, src = SRC) {
+  const at = src.indexOf('function ' + name + '(');
   if (at < 0) throw new Error('функц олдсонгүй: ' + name);
-  let i = SRC.indexOf('{', at), depth = 0;
-  for (let j = i; j < SRC.length; j++) {
-    if (SRC[j] === '{') depth++;
-    else if (SRC[j] === '}' && --depth === 0) return SRC.slice(at, j + 1);
+  let i = src.indexOf('{', at), depth = 0;
+  for (let j = i; j < src.length; j++) {
+    if (src[j] === '{') depth++;
+    else if (src[j] === '}' && --depth === 0) return src.slice(at, j + 1);
   }
   throw new Error('хаагдаагүй функц: ' + name);
 }
 
 /* ── index.html-ээс `const NAME = {...}` блокийг сугалах ──────────────────── */
-function extractConst(name) {
-  const at = SRC.indexOf('const ' + name + ' = {');
+function extractConst(name, src = SRC) {
+  let at = src.indexOf('const ' + name + ' = {');
+  if (at < 0) at = src.indexOf('var ' + name + ' = {');
   if (at < 0) throw new Error('тогтмол олдсонгүй: ' + name);
   let depth = 0;
-  for (let j = SRC.indexOf('{', at); j < SRC.length; j++) {
-    if (SRC[j] === '{') depth++;
-    else if (SRC[j] === '}' && --depth === 0) return SRC.slice(at, j + 1) + ';';
+  for (let j = src.indexOf('{', at); j < src.length; j++) {
+    if (src[j] === '{') depth++;
+    else if (src[j] === '}' && --depth === 0) return src.slice(at, j + 1) + ';';
   }
   throw new Error('хаагдаагүй тогтмол: ' + name);
 }
@@ -147,6 +149,54 @@ ok('SCAN: сагсанд нэмэхэд огнооны цонх руу шидд�
 ok('SCAN: сагснаас огноо руу заавал ордог', /if \(!state\.cart\.length\) \{ alert\('Сагс хоосон байна'\); return; \}\s*\n\s*goStep\('dates'\);/.test(SRC));
 ok('SCAN: огноо сонгоогүй бол цааш явуулахгүй',
   /if \(!state\.dates\.start \|\| !state\.dates\.end\) \{ alert\('Гарах ба буцах огноог сонгоно уу\.'\); return; \}/.test(SRC));
+
+/* ── 11. 404 — хуучин Booqable хаягийн зөөлөн буулт ───────────────────────── */
+// Google-д /products/1500w · /products/13 · /products/<uuid> хэвээр байна.
+// Өмнө нь slug-ийг шууд ?q= болгож шиддэг тул 9 хаягийн 6 нь ХООСОН хайлт өгдөг байв.
+const ctx404 = createContext({});
+runInContext(extractConst('MN_LAT', SRC404), ctx404);
+runInContext('var UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, JUNK = /^[0-9a-f]{8,}$/, UNITS = { w:"вт", kw:"квт", v:"в", m:"м", l:"л" };', ctx404);
+for (const fn of ['searchKey', 'slugWords', 'candidates']) runInContext(extractFn(fn, SRC404), ctx404);
+
+// ⚠ Хоёр файлын `searchKey` салбарлавал 404-ийн тулгалт чимээгүй зөрнө.
+eq('404-ийн searchKey нь index.html-тэйгээ ЯГ ижил',
+  extractFn('searchKey', SRC404).replace(/\s+/g, ' '), extractFn('searchKey').replace(/\s+/g, ' '));
+
+eq('slug: uuid хэсгүүд хаягдана',
+  ctx404.slugWords('88e720df-d68a-410a-8774-3f75dbc42866').join(','), '');
+eq('slug: «300-<uuid>» → зөвхөн 300',
+  ctx404.slugWords('300-64cd566d-1718-4f12-8237-107fda13e14a').join(','), '300');
+eq('slug: утгатай үг үлдэнэ', ctx404.slugWords('sandal-turees').join(','), 'sandal,turees');
+eq('slug: .html арилна', ctx404.slugWords('asar-12x20.html').join(','), 'asar,12x20');
+
+// Нэгжийг кирилл болгосон хувилбар ЭХЭНД байх ёстой: «1500w» → «1500вт» → M-182
+eq('нэр дэвшигч: 1500w → 1500вт эхэнд', ctx404.candidates(['1500w'])[0], '1500вт');
+ok('нэр дэвшигч: урт→богино тайрна',
+  ctx404.candidates(['sandal', 'turees']).indexOf('sandal turees') <
+  ctx404.candidates(['sandal', 'turees']).indexOf('sandal'));
+eq('«1500вт» нь M-182-ын нэртэй таарна',
+  ctx404.searchKey('Хиймэл цасны машин 1500Вт').includes(ctx404.searchKey('1500вт')), true);
+
+/* ── 12. SCAN: 404 хоосон хайлт руу болзолгүй шиддэггүй ───────────────────── */
+ok('SCAN: 404 нь slug-ийг шууд ?q= болгож шиддэггүй',
+  !/var dest = slug \? \('\/\?q=' \+ encodeURIComponent\(slug\)\) : '\/';/.test(SRC404));
+ok('SCAN: 404 нь каталогтой тулгана', /fetch\('\/products\.json'/.test(SRC404));
+ok('SCAN: ганц таарвал барааны хуудас руу', /hit\.length === 1[\s\S]{0,160}?location\.replace\('\/products\/'/.test(SRC404));
+ok('SCAN: /collections/ зам ч баригдана', /products\?\|collections\?/.test(SRC404));
+ok('SCAN: илэрцгүй үед 404 хуудсан дээр үлдэнэ (redirect биш)',
+  /\.catch\(function \(\) \{[\s\S]{0,200}?lede\.textContent/.test(SRC404));
+
+/* ── 13. SCAN: хуудаслалт ─────────────────────────────────────────────────── */
+// 159 карт нэг дор рендерлэгдэж хуудас 28,230px (утасны ~33 дэлгэц) болдог байв.
+ok('SCAN: нэг хуудсанд рендерлэх тоо тогтоосон', /const GRID_PAGE = \d+;/.test(SRC));
+ok('SCAN: грид зөвхөн тухайн хуудсыг рендерлэнэ', /const page = list\.slice\(0, state\.shown\);/.test(SRC));
+ok('SCAN: «Цааш үзэх» товч байна', /id="more-btn"/.test(SRC));
+// ⚠ Картын onclick нь СЛАЙСЛАСАН массиваас авах ёстой — эс бөгөөс өөр бараа нээгдэнэ.
+ok('SCAN: картын холбоос page[i]-ээс (list[i] БИШ)',
+  /const it = page\[i\];/.test(SRC) && !/const it = list\[i\];/.test(SRC));
+// Шүүлт солигдоход эхний хуудас руу буцахгүй бол «24/30» атал 96 карт харагдана.
+ok('SCAN: шүүлт солигдоход хуудас 1 рүү буцна',
+  /state\._gridSig[\s\S]{0,120}?state\.shown = GRID_PAGE;/.test(SRC));
 
 /* ── Дүн ──────────────────────────────────────────────────────────────────── */
 if (fails.length) {
