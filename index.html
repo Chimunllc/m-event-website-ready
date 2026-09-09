@@ -1533,12 +1533,45 @@ function renderCategories() {
   const cml = document.getElementById('cat-menu-label');
   if (cml) cml.textContent = state.category === 'all' ? 'Бүх ангилал' : state.category;
 }
+/* ── ХАЙЛТЫН ХЭЛНИЙ ГҮҮР ──────────────────────────────────────────────────────
+   Монголд олон хүн латинаар бичдэг. Хайлт түүхий дэд мөрөөр л таардаг байсан тул
+   тэд ХООСОН дэлгэц хардаг байв — хэмжсэн: sandal 0 · shiree 0 · maihan 0 ·
+   asar 0 (кириллээр 16 · 23 · 8 · 7). Одоо хоёр талыг НЭГ түлхүүрт буулгана. */
+const MN_LAT = { 'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'j','з':'z',
+  'и':'i','й':'i','к':'k','л':'l','м':'m','н':'n','о':'o','ө':'o','п':'p','р':'r','с':'s',
+  'т':'t','у':'u','ү':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sh','ъ':'','ы':'y',
+  'ь':'','э':'e','ю':'yu','я':'ya' };
+// Кирилл→латин, дараа нь бичлэгийн хувилбаруудыг эвлүүлнэ. Хоёр тал ИЖИЛ дамжина
+// тул эвлүүлэг нь утгыг гажуудуулахгүй, зөвхөн бичлэгийн зөрүүг арилгана:
+//   kh→h (хаан ~ khaan) · ts→c (цэнэг ~ cenreg) · y→i (тайз ~ tayz) ·
+//   u→o (өргөн ~ urgun) · давхар үсэг→нэг (ширээ ~ shiree ~ shire)
+function searchKey(str) {
+  let t = '';
+  for (const ch of String(str || '').toLowerCase()) t += (MN_LAT[ch] !== undefined ? MN_LAT[ch] : ch);
+  return t.replace(/kh/g, 'h').replace(/ts/g, 'c').replace(/y/g, 'i').replace(/u/g, 'o')
+          .replace(/[^a-z0-9]+/g, '').replace(/(.)\1+/g, '$1');
+}
+// Зээлдмэл үг — каталогт латинаар, хэрэглэгч кириллээр бичдэг (эсрэгээр нь ч).
+// Галиглалаар таарахгүй тул гараар холбоно. Шинэ тохиолдол гарвал энд нэмнэ.
+const SEARCH_ALIAS = { 'proektor': 'projector', 'proiektor': 'projector', 'pivo': 'beer' };
+// Тайлбарыг ч оруулна — эс бөгөөс латинаар хайсан хүн кириллээр хайсан хүнээс
+// цөөн үр дүн харна (хэмжсэн: тайз 47 ↔ tayz 5, учир нь «тайз» олон тайлбарт бий).
+// Бараа тус бүрд НЭГ удаа тооцоод хадгална.
+function productSearchKey(p) {
+  if (p._skey === undefined) p._skey = searchKey((p.name || '') + ' ' + (p.category || '') + ' ' + (p.code || '') + ' ' + (p.description || ''));
+  return p._skey;
+}
 function filteredProducts() {
   let list = state.products;
   if (state.category !== 'all') list = list.filter(p => p.category === state.category);
   if (state.search) {
     const q = state.search.toLowerCase();
-    list = list.filter(p => p.name.toLowerCase().includes(q) || (p.description||'').toLowerCase().includes(q) || (p.code||'').toLowerCase().includes(q) || (p.code||'').replace(/-/g,'').toLowerCase().includes(q));
+    let qk = searchKey(state.search);
+    if (SEARCH_ALIAS[qk]) qk = searchKey(SEARCH_ALIAS[qk]);
+    // 3 тэмдэгтээс богино түлхүүр хэт олон зүйлд таарна — зөвхөн түүхий хайлт.
+    const useKey = qk.length >= 3;
+    list = list.filter(p => p.name.toLowerCase().includes(q) || (p.description||'').toLowerCase().includes(q) || (p.code||'').toLowerCase().includes(q) || (p.code||'').replace(/-/g,'').toLowerCase().includes(q)
+      || (useKey && productSearchKey(p).includes(qk)));
   }
   return list;
 }
@@ -1921,8 +1954,8 @@ function addToCart(p, qty, openDrawer) {
   saveCart();
   renderCart();
   renderGrid();
-  // Худалдан авалт эхлэхэд огноог заавал асууна (үзэх урсгалыг хаахгүй, зөвхөн энд).
-  if (!state.datesChosen) { showDrawer('dates', { dateOnly: true }); return; }
+  // ⚠ Энд огноо асуухгүй — сагсанд нэмэх мөчид үзэх урсгалыг таслах нь хамгийн
+  // муу газар. Огноог төлбөр рүү орох замд (сагс → огноо) заавал шаардана.
   if (openDrawer) showDrawer();
 }
 function setCartQty(id, qty) {
@@ -2276,8 +2309,7 @@ function goStep(s) {
 }
 async function submitOrder() {
   // Validate
-  // Хоосон сагстай захиалга — аппад 0₮-ийн утгагүй мөр болж очдог. Огноог эхэлж
-  // асуудаг урсгалаар (maybeAskDates) сагс шалгагдалгүй энд хүрч болдог байсан.
+  // Хоосон сагстай захиалга — аппад 0₮-ийн утгагүй мөр болж очдог.
   if (!state.cart.length) {
     alert('Сагс хоосон байна — эхлээд бараа сонгоно уу.');
     hideDrawer();
@@ -2619,19 +2651,6 @@ function applyUrlParams() {
   } catch (e) {}
 }
 
-// Эхний зочинд түрээсийн хугацааг ЭХЭЛЖ асууна (хаалт биш — хааж болно).
-// ⚠ ?q= / ?cat=-тай ирсэн зочинд асуухгүй: тэд Google-ийн хайлтаас статик барааны
-// хуудсаар дамжин ирдэг ба тэнд модал нээх нь intrusive interstitial болж
-// мобайл хайлтын эрэмбэд сөргөөр нөлөөлнө. Тэд сагсанд нэмэх үедээ асуулгана.
-function maybeAskDates() {
-  if (state.datesChosen) return;
-  try {
-    const p = new URLSearchParams(location.search);
-    if (p.get('q') || p.get('cat')) return;
-  } catch (e) {}
-  showDrawer('dates', { dateOnly: true });
-}
-
 (async function start() {
   document.documentElement.classList.add('reveal-on');
   initEvents();
@@ -2641,7 +2660,10 @@ function maybeAskDates() {
   render();
   enterCards();
   setTimeout(revealAllRemaining, 2200);                    // fail-safe: юу ч нуугдаж үлдэхгүй
-  maybeAskDates();                                         // эхний зочинд түрээсийн хугацааг эхэлж асууна
+  // ⚠ Ачаалахад огноо асуудаггүй. Зочин эхлээд БАРААГАА харна — огноог сагс →
+  // огноо → мэдээлэл гэсэн урсгал дотор `goStep('dates')` заавал шаардана.
+  // Өмнө нь нэг ч бараа харагдахаас өмнө бүтэн дэлгэцээр асуудаг байв.
+  // Огноо тохироогүйг толгойн тууз (`db-unset`) сануулж, «Өөрчлөх» товч нээнэ.
 })();
 </script>
 </body>

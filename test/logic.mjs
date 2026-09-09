@@ -36,9 +36,22 @@ function extractFn(name) {
   throw new Error('хаагдаагүй функц: ' + name);
 }
 
+/* ── index.html-ээс `const NAME = {...}` блокийг сугалах ──────────────────── */
+function extractConst(name) {
+  const at = SRC.indexOf('const ' + name + ' = {');
+  if (at < 0) throw new Error('тогтмол олдсонгүй: ' + name);
+  let depth = 0;
+  for (let j = SRC.indexOf('{', at); j < SRC.length; j++) {
+    if (SRC[j] === '{') depth++;
+    else if (SRC[j] === '}' && --depth === 0) return SRC.slice(at, j + 1) + ';';
+  }
+  throw new Error('хаагдаагүй тогтмол: ' + name);
+}
+
 const ctx = createContext({});
-for (const fn of ['ymd', 'parseYmd', 'datesExpired']) runInContext(extractFn(fn), ctx);
-const { ymd, datesExpired } = ctx;
+runInContext(extractConst('MN_LAT'), ctx);
+for (const fn of ['ymd', 'parseYmd', 'datesExpired', 'searchKey']) runInContext(extractFn(fn), ctx);
+const { ymd, datesExpired, searchKey } = ctx;
 
 /* ── 1. Хуучирсан огноо — 2026-09 дэх бодит эвдрэл ────────────────────────── */
 // Зочин 8-р сард 27–29-ийг сонгоод localStorage-д үлдээв. 9-р сарын 7-нд буцаж
@@ -104,6 +117,36 @@ ok('SCAN: toast дээд талд байрлана', /top:/.test(toastCss) && !/
 ok('SCAN: толгойн tel холбоос дугаараа бичвэрээр харуулна',
   /<a href="tel:\+97677551010"[\s\S]{0,900}?<span class="ib-num">7755-1010<\/span>/.test(SRC));
 ok('SCAN: мобайлд сагсны товчны «Сагс» үг нуугдана', /\.cart-btn \.cb-lbl \{ display: none/.test(SRC));
+
+/* ── 9. Хайлтын хэлний гүүр — латинаар бичсэн хүн 0 илэрц авдаг байв ──────── */
+// Кирилл ба латин бичлэг НЭГ түлхүүрт буух ёстой.
+const same = (a, b) => eq(`«${a}» ≡ «${b}»`, searchKey(a), searchKey(b));
+same('сандал', 'sandal');
+same('ширээ', 'shiree');
+same('ширээ', 'shire');            // давхар үсэг эвлүүлнэ
+same('майхан', 'maihan');
+same('майхан', 'maykhan');         // kh→h, y→i
+same('асар', 'asar');
+same('тайз', 'tayz');
+same('гэрэлтүүлэг', 'gereltuuleg');
+same('генератор', 'generator');
+same('хулдаас', 'huldaas');
+ok('өөр үг өөр түлхүүртэй', searchKey('сандал') !== searchKey('ширээ'));
+eq('хоосон утга', searchKey(''), '');
+eq('цэг таслал хасагдана', searchKey('Асар 12×20 (иж бүрэн)'), searchKey('asar 1220 ij buren'));
+
+/* ── 10. SCAN: хайлт болон огнооны урсгал ─────────────────────────────────── */
+ok('SCAN: хайлт галиглалын түлхүүр ашиглана', /productSearchKey\(p\)\.includes\(qk\)/.test(SRC));
+ok('SCAN: түлхүүрт тайлбар ч ордог (кирилл/латин ижил үр дүн)',
+  /_skey = searchKey\([\s\S]{0,160}?p\.description/.test(SRC));
+// Огноог АЧААЛАХАД асуудаг хаалт хасагдсан — зочин эхлээд бараагаа харна.
+ok('SCAN: ачаалахад огнооны цонх нээгддэггүй', !/maybeAskDates/.test(SRC));
+ok('SCAN: сагсанд нэмэхэд огнооны цонх руу шиддэггүй',
+  !/renderGrid\(\);\s*\n\s*\/\/[^\n]*\n\s*if \(!state\.datesChosen\) \{ showDrawer\('dates'/.test(SRC));
+// ⚠ Хаалт хассан ч ШААРДЛАГА хэвээр: сагс → огноо → мэдээлэл.
+ok('SCAN: сагснаас огноо руу заавал ордог', /if \(!state\.cart\.length\) \{ alert\('Сагс хоосон байна'\); return; \}\s*\n\s*goStep\('dates'\);/.test(SRC));
+ok('SCAN: огноо сонгоогүй бол цааш явуулахгүй',
+  /if \(!state\.dates\.start \|\| !state\.dates\.end\) \{ alert\('Гарах ба буцах огноог сонгоно уу\.'\); return; \}/.test(SRC));
 
 /* ── Дүн ──────────────────────────────────────────────────────────────────── */
 if (fails.length) {
