@@ -298,6 +298,16 @@
     grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
     gap: 26px 22px;
   }
+
+  /* «Цааш үзэх» — 159 бараа нэг дор рендерлэгдэж хуудас 28,000px болдог байв */
+  .grid-more { display: none; margin-top: 22px; text-align: center; }
+  .grid-more.on { display: block; }
+  .grid-more button { font-family: var(--font-display); font-weight: 700; font-size: 14px;
+    padding: 14px 30px; border-radius: 12px; border: 1.5px solid var(--border-strong);
+    background: #fff; color: var(--primary); cursor: pointer; transition: border-color .15s, color .15s; }
+  .grid-more button:hover { border-color: var(--accent); color: var(--accent); }
+  .grid-more .left { display: block; margin-top: 9px; font-size: 12.5px; color: var(--muted);
+    font-variant-numeric: tabular-nums; }
   .card {
     background: transparent; border: none; border-radius: var(--radius);
     cursor: pointer; transition: transform .2s ease;
@@ -967,6 +977,7 @@
       </div>
     </div>
     <div class="grid" id="grid"></div>
+    <div class="grid-more" id="grid-more"></div>
   </main>
 </div>
 
@@ -1613,25 +1624,36 @@ function sortList(list) {
   else arr.sort((a, b) => { const d = popOf(b) - popOf(a); return d !== 0 ? d : String(a.name).localeCompare(String(b.name), 'mn'); });
   return arr;
 }
+// Нэг удаад хэдэн бараа рендерлэх вэ. Бүгдийг нэг дор гаргахад хуудас 28,230px
+// (утасны ~33 дэлгэц) болж, DOM-д 159 карт зэрэг сууж байв.
+const GRID_PAGE = 24;
 function renderGrid() {
   let list = withVariants(filteredProducts());
   if (state.onlyAvail) list = list.filter(p => p.type === 'service' || availStock(p) > 0);
   list = sortList(list);
+  // Шүүлт өөрчлөгдвөл эхний хуудас руу буцна. Дуудлагын газар бүрийг засахын оронд
+  // шүүлтийн «гарын үсгээр» таньна — шинэ шүүлт нэмэгдэхэд ч өөрөө ажиллана.
+  const sig = [state.category, state.search, state.sort, state.onlyAvail].join('\u0000');
+  if (sig !== state._gridSig) { state._gridSig = sig; state.shown = GRID_PAGE; }
+  if (!(state.shown > 0)) state.shown = GRID_PAGE;
+  const page = list.slice(0, state.shown);
   document.getElementById('grid-title').textContent = state.category === 'all' ? 'Бүх бараа' : state.category;
   document.getElementById('grid-meta').textContent = list.length + ' бараа';
+  const more = document.getElementById('grid-more');
   const grid = document.getElementById('grid');
   if (!list.length) {
+    if (more) { more.className = 'grid-more'; more.innerHTML = ''; }
     const catActive = state.category !== 'all';
     grid.innerHTML = `<div class="empty">Илэрц олдсонгүй${(state.search && catActive) ? `<br><button class="reset-cat" id="reset-cat">Бүх бараанаас хайх</button>` : ''}</div>`;
     const rc = document.getElementById('reset-cat');
     if (rc) rc.onclick = () => { state.category = 'all'; render(); };
     return;
   }
-  grid.innerHTML = list.map((p, i) => cardHtml(p, i)).join('');
+  grid.innerHTML = page.map((p, i) => cardHtml(p, i)).join('');
   // bind — click + keyboard (Enter/Space)
   grid.querySelectorAll('.card').forEach((el, i) => {
     const act = (e) => {
-      const it = list[i];
+      const it = page[i];
       if (it._variantGroup) { openProduct(it); return; }   // бүлэг → модал нээж хувилбар сонгуулна
       if (e.target.closest('.card-add')) { addToCart(it, 1, false); toast('Сагсанд нэмэгдлээ'); }   // грид "+" → drawer нээхгүй
       else openProduct(it);
@@ -1639,6 +1661,25 @@ function renderGrid() {
     el.onclick = act;
     el.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act(e); } };
   });
+  // «Цааш үзэх» — үлдсэн тоог ил хэлнэ, эс бөгөөс хэдэн бараа нуугдсаныг мэдэхгүй.
+  if (more) {
+    if (list.length > page.length) {
+      more.className = 'grid-more on';
+      more.innerHTML = '<button type="button" id="more-btn">Цааш үзэх</button>'
+        + '<span class="left">' + page.length + ' / ' + list.length + ' бараа</span>';
+      const shownNow = page.length;
+      document.getElementById('more-btn').onclick = () => {
+        state.shown = shownNow + GRID_PAGE;
+        renderGrid();
+        // Шинээр гарсан эхний карт руу зөөнө — товч дарсан хүн хаана байгаагаа мэдэхгүй үлдэхгүй.
+        const first = document.querySelectorAll('#grid .card')[shownNow];
+        if (first) first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      };
+    } else {
+      more.className = 'grid-more';
+      more.innerHTML = '';
+    }
+  }
 }
 function stockBadgeHtml(p) {
   if (p.type === 'service') return '';                       // үйлчилгээнд stock хэрэггүй
