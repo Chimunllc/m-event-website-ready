@@ -198,6 +198,31 @@ ok('SCAN: картын холбоос page[i]-ээс (list[i] БИШ)',
 ok('SCAN: шүүлт солигдоход хуудас 1 рүү буцна',
   /state\._gridSig[\s\S]{0,120}?state\.shown = GRID_PAGE;/.test(SRC));
 
+/* ── 14. Бичвэрийн шатлал — утсанд уншигдах доод хязгаар ──────────────────── */
+// Өмнө нь 20 өөр хэмжээ, доод тал нь 10.5px байв (утсанд 30 элемент 12px-ээс жижиг).
+const CSS = SRC.slice(SRC.indexOf('<style>'), SRC.indexOf('</style>'));
+const smallPx = [...CSS.matchAll(/font-size: *([0-9.]+)px/g)].map(m => parseFloat(m[1])).filter(v => v < 18);
+eq('CSS-д 18px-ээс жижиг ТҮҮХИЙ px үлдээгүй (бүгд токен)', smallPx.join(','), '');
+const xs = (CSS.match(/--fs-xs: *([0-9.]+)px/) || [])[1];
+ok('--fs-xs доод хязгаар 12px-ээс багагүй', Number(xs) >= 12, 'одоо ' + xs);
+for (const t of ['--fs-xs', '--fs-sm', '--fs-md', '--fs-base', '--fs-input', '--fs-lg'])
+  ok('токен тодорхойлогдсон: ' + t, new RegExp(t + ': *[0-9.]+px').test(CSS));
+// `small` ба товч/талбар өөрийн хэмжээгүй бол браузер 83% / 13.333px болгодог.
+ok('SCAN: small тодорхой хэмжээтэй', /\n  small \{ font-size: var\(--fs-/.test(CSS));
+ok('SCAN: button/input тодорхой хэмжээтэй',
+  /button, input, select, textarea \{ font-size: var\(--fs-/.test(CSS));
+
+/* ── 15. SCAN: 360px блок мобайл блокийн ДАРАА байна ──────────────────────── */
+// ⚠ Энэ яг болсон алдаа: 360px блокийг 720px блокийн ДУНД оруулсанд үлдсэн
+// мобайл дүрмүүд (hero, хайлт, ангиллын чип) зөвхөн 360px-д үйлчилж,
+// 390px дээр hero + хайлтын талбар БҮРЭН АЛГА болсон.
+const at720 = CSS.indexOf('@media (max-width: 720px)');
+const at360 = CSS.indexOf('@media (max-width: 360px)');
+const atHero = CSS.indexOf('.m-hero { display: block; }');
+ok('SCAN: 360px блок 720px блокийн дараа', at720 > -1 && at360 > at720, `720@${at720} 360@${at360}`);
+ok('SCAN: мобайл hero нь 720px блок дотор (360px-д БИШ)',
+  atHero > at720 && atHero < at360, `hero@${atHero}`);
+
 /* ── Дүн ──────────────────────────────────────────────────────────────────── */
 if (fails.length) {
   console.log(`❌ LOGIC FAIL — ${pass} тэнцсэн, ${fails.length} унасан`);
