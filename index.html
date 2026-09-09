@@ -64,6 +64,7 @@
     --accent-hover: #CF4A00;
     --accent-soft: #FCEBE1;   /* orange tint */
     --price: #0B1F3A;
+    --foot-muted: #A9B7C7;   /* хөлний бичвэр — navy дэвсгэр дээр */
     --danger: #C2453B;
     --success: #2F7D5B;
     --radius: 16px;
@@ -144,13 +145,17 @@
   .btn-3d:hover { border-color: var(--brand); }
   @media (max-width: 560px){ .btn-3d { padding: 8px 11px; } .btn-3d .lbl-full { display:none; } }
   .icon-btn {
-    width: 42px; height: 42px; border-radius: 100px;
+    min-width: 42px; height: 42px; border-radius: 100px; padding: 0 12px; gap: 7px;
     display: inline-flex; align-items: center; justify-content: center;
     color: var(--text); position: relative; transition: background .15s;
   }
-  .icon-btn svg { width: 19px; height: 19px; }
+  .icon-btn svg { width: 19px; height: 19px; flex: 0 0 auto; }
+  /* Дугаарыг ИЛ бичнэ — түрээсийн үйлчилгээнд залгах нь гол суваг, дүрс дангаараа
+     хангалтгүй. Мобайлд header гүйж алга болдог тул дээд талд заавал харагдана. */
+  .icon-btn .ib-num { font-family: var(--font-display); font-weight: 700; font-size: 13.5px; white-space: nowrap; }
   .icon-btn:hover { background: #fff; box-shadow: var(--shadow); }
   .cart-btn { font-family: var(--font-display); background: var(--primary); color: #fff; padding: 0 20px; height: 44px; border-radius: 11px; font-weight: 700; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 10px; transition: background .2s, letter-spacing .2s; }
+  .cart-btn .cb-lbl { display: inline; }
   .cart-btn svg { width: 17px; height: 17px; }
   .cart-btn:hover { background: #000; letter-spacing: .13em; }
   .cart-count {
@@ -744,10 +749,16 @@
   /* Модал/drawer нээлттэй үед ард талын гүйлтийг түгжих */
   body.modal-open { overflow: hidden; }
 
+  /* ХӨЛ — өмнө нь inline style байсан. Класс болгосон учир: сагсны тууз гарахад
+     доод зай нэмэх дүрэм inline style-д дарагдаж, хөл туузны дор үлдэж байв. */
+  .site-foot { background: var(--primary); color: var(--foot-muted); padding: 48px 28px; margin-top: 32px; text-align: center; }
+
   /* TOAST — "Сагсанд нэмэгдлээ" */
+  /* Дээд талд — доор нь drawer-ийн «Нийт төлөх» ба сагсны тууз байдаг тул
+     доод байрлал нь мөнгөн дүнг яг харах мөчид далдалж байв. */
   .toast {
-    position: fixed; z-index: 300; left: 50%; bottom: calc(80px + env(safe-area-inset-bottom));
-    transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+    position: fixed; z-index: 300; left: 50%; top: calc(12px + env(safe-area-inset-top));
+    transform: translate(-50%, -20px); opacity: 0; pointer-events: none;
     background: var(--text); color: #fff; padding: 12px 20px; border-radius: 100px;
     font-size: 13.5px; font-weight: 600; box-shadow: var(--shadow-lg);
     display: inline-flex; align-items: center; gap: 8px; transition: opacity .25s, transform .25s; max-width: 88vw;
@@ -805,8 +816,13 @@
     .modal-grid { grid-template-columns: 1fr; }
     .modal-img { aspect-ratio: 16 / 10; }
     .header { position: static; }               /* мобайлд header гүйж алга болно — сагс FAB-аар үргэлж хүрнэ */
-    .header-row { padding: 12px 16px; gap: 12px; }
+    .header-row { padding: 12px 16px; gap: 10px; }
     .search-box { display: none; }
+    /* Толгойд зай чөлөөлнө: утасны дугаар ил гарах ёстой, харин «Сагс» гэсэн үг
+       илүүц — доор нь бүтэн өргөний сагсны тууз бий. 320px-д header гүйдэг байв. */
+    .cart-btn { padding: 0 13px; gap: 8px; }
+    .cart-btn .cb-lbl { display: none; }
+    .icon-btn { padding: 0 10px; gap: 6px; }
     /* iOS input zoom сэргийлэх — 16px-ээс багагүй */
     input, select, textarea,
     .m-search input, .form-group input, .form-group textarea, .qty-ctrl input,
@@ -817,8 +833,17 @@
     .cat-chips { display: none; }
     .cat-menu-wrap { display: block; position: static; margin: 0 0 10px; padding: 0; border: none; background: transparent; }
     /* Хөвөгч товчнууд + мобайл hero харагдана */
-    .cart-fab { display: inline-flex; }
-    .to-top { bottom: calc(74px + env(safe-area-inset-bottom)); }   /* сагс FAB-ын дээр давхарлана */
+    /* Дугуй хөвөгч товч байхад барааны нэр/үнэ дээр бууж, хуудасны ТӨГСГӨЛ нь
+       гүйлгээд ч гарч ирдэггүй байв. Одоо бүтэн өргөний тууз + `body.fab-on`
+       доод зай нөөцөлнө — контент туузны дор бүрмөсөн үлдэхгүй. */
+    .cart-fab { display: flex; left: 12px; right: 12px; justify-content: space-between; border-radius: 14px; }
+    /* ⚠ `body`-д padding тавьж БОЛОХГҮЙ — `html, body { height:100% }` тул тэр нь
+       гүйлтийн өндрийг уртасгадаггүй (хэмжсэн: хөл хэвээр туузны дор үлдэв).
+       Тиймээс сүүлчийн блок болох хөлд нь зай нэмнэ. Хоёр хэмжээ: «дээш» товч
+       дангаараа (44px + 16px) ба сагсны тууз нэмэгдсэн үе (то-топ 80px-т өснө). */
+    .site-foot { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+    body.fab-on footer { padding-bottom: calc(140px + env(safe-area-inset-bottom)); }
+    .to-top { bottom: calc(80px + env(safe-area-inset-bottom)); }   /* сагсны туузны дээр */
     .m-hero { display: block; }
     /* Грид хэрэгсэл — мобайлд жижигрүүлж, доор нь */
     .grid-tools { width: 100%; margin-left: 0; }
@@ -859,10 +884,11 @@
       <a href="stage-3d.html" class="btn-3d" title="Тайзны бүтцийг 3D-гээр">🎪 3D тайз</a>
       <a href="tel:+97677551010" class="icon-btn" title="Утсаар захиалах" aria-label="Утсаар захиалах">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 11.5a16 16 0 0 0 6 6l1-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2Z"/></svg>
+        <span class="ib-num">7755-1010</span>
       </a>
       <button class="cart-btn" id="cart-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2.2l2.3 12.4a1.6 1.6 0 0 0 1.6 1.3h8.8a1.6 1.6 0 0 0 1.6-1.3L21 7H5.3"/></svg>
-        <span>Сагс</span>
+        <span class="cb-lbl">Сагс</span>
         <span class="cart-count" id="cart-count">0</span>
       </button>
     </div>
@@ -1018,7 +1044,7 @@
 </section>
 
 <!-- FOOTER -->
-<footer style="background: #0B1F3A; color: #A9B7C7; padding: 48px 28px; margin-top: 32px; text-align: center;">
+<footer class="site-foot">
   <div style="max-width: 1220px; margin: 0 auto;">
     <div style="font-family:'Manrope',sans-serif; font-size: 20px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #fff; margin-bottom: 8px;">M·Event</div>
     <div style="font-size: 13px; margin-bottom: 22px; letter-spacing:.01em;">Арга хэмжээний тоног төхөөрөмжийн түрээс</div>
@@ -1442,8 +1468,12 @@ function setCategory(c) {
 }
 
 function renderCategories() {
+  // Ангиллын тоог ГРИДТЭЙ ИЖИЛ нэгжээр тоолно. Хувилбартай бараа (variant_group)
+  // гридэд НЭГ карт болж нэгддэг тул түүхий барааны тоо картын тоотой зөрдөг байв
+  // (хажуу цэс «Бүх бараа 206», гарчиг «159 бараа» — нэг дэлгэц дээр хоёр тоо).
+  const units = withVariants(state.products);
   const counts = {};
-  state.products.forEach(p => { counts[p.category] = (counts[p.category]||0)+1; });
+  units.forEach(p => { counts[p.category] = (counts[p.category]||0)+1; });
   const inGroup = new Set(); CAT_GROUPS.forEach(g => g.subs.forEach(s => inGroup.add(s)));
   if (!state.openGroups) state.openGroups = new Set();
 
@@ -1453,7 +1483,7 @@ function renderCategories() {
   // Бүх бараа
   const all = document.createElement('li');
   all.className = 'cat-item' + (state.category==='all' ? ' active':'');
-  all.innerHTML = `<span>Бүх бараа</span><span class="count">${state.products.length}</span>`;
+  all.innerHTML = `<span>Бүх бараа</span><span class="count">${units.length}</span>`;
   all.onclick = () => setCategory('all');
   list.appendChild(all);
 
@@ -2378,7 +2408,9 @@ function updateCartFab(count) {
   document.getElementById('cf-total').textContent = fmt(t.grand);
   // Сагс хоосон эсвэл drawer/modal нээлттэй бол FAB нуух
   const busy = document.getElementById('drawer').classList.contains('open') || document.getElementById('product-modal').classList.contains('open') || document.body.classList.contains('cat-open');
-  fab.classList.toggle('show', c > 0 && !busy);
+  const on = c > 0 && !busy;
+  fab.classList.toggle('show', on);
+  document.body.classList.toggle('fab-on', on);   // доод зай нөөцөлнө — тууз контент дардаггүй
 }
 function onScroll() {
   const top = document.getElementById('to-top'); if (!top) return;

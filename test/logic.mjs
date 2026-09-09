@@ -83,6 +83,28 @@ ok('SCAN: хуучирсан үед d-chosen устгагдана (огноог 
 ok('SCAN: өнгөрсөн өдөр disabled', /cur < today \? 'disabled' : ''/.test(SRC));
 ok('SCAN: «өмнөх сар» товч энэ сард хаагдана', /var atMin = \(y < today\.getFullYear\(\)\)/.test(SRC));
 
+/* ── 5. SCAN: ангиллын тоо гридтэй ижил нэгжээр ───────────────────────────── */
+// Хажуу цэс түүхий барааг (206), гарчиг картыг (159) тоолж зөрж байв.
+ok('SCAN: renderCategories нь withVariants-аар тоолно',
+  /function renderCategories\(\)[\s\S]{0,400}?withVariants\(state\.products\)/.test(SRC));
+ok('SCAN: «Бүх бараа»-гийн тоо түүхий state.products.length БИШ',
+  !/Бүх бараа<\/span><span class="count">\$\{state\.products\.length\}/.test(SRC));
+
+/* ── 6. SCAN: сагсны тууз контентыг бүрмөсөн далдлахгүй ───────────────────── */
+ok('SCAN: тууз гарахад body.fab-on тавигдана', /classList\.toggle\('fab-on'/.test(SRC));
+ok('SCAN: fab-on үед хөлд доод зай нөөцөлнө', /body\.fab-on footer\s*\{[^}]*padding-bottom/.test(SRC));
+// ⚠ Хөл inline style-тай байхад тэр зай дүрэм дарагдаж, хөл туузны дор үлддэг байв.
+ok('SCAN: хөл inline style-гүй (класс ашиглана)', /<footer class="site-foot">/.test(SRC) && !/<footer style=/.test(SRC));
+
+/* ── 7. SCAN: toast доод талын мөнгөн дүнг дардаггүй ──────────────────────── */
+const toastCss = (SRC.match(/\.toast \{[^}]*\}/) || [''])[0];
+ok('SCAN: toast дээд талд байрлана', /top:/.test(toastCss) && !/bottom:/.test(toastCss), toastCss.slice(0, 90));
+
+/* ── 8. SCAN: толгойд утасны дугаар ИЛ ────────────────────────────────────── */
+ok('SCAN: толгойн tel холбоос дугаараа бичвэрээр харуулна',
+  /<a href="tel:\+97677551010"[\s\S]{0,900}?<span class="ib-num">7755-1010<\/span>/.test(SRC));
+ok('SCAN: мобайлд сагсны товчны «Сагс» үг нуугдана', /\.cart-btn \.cb-lbl \{ display: none/.test(SRC));
+
 /* ── Дүн ──────────────────────────────────────────────────────────────────── */
 if (fails.length) {
   console.log(`❌ LOGIC FAIL — ${pass} тэнцсэн, ${fails.length} унасан`);
