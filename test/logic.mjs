@@ -296,6 +296,66 @@ ok('татагдсан үед хэвийн тоо харагдана',
 /* SCAN: нэрээр тулгах хуучин функц эргэж ирэхгүй */
 ok('SCAN: bookedFor(name) буцаж ирээгүй', !/function bookedFor\s*\(\s*name\s*\)/.test(SRC));
 
+/* ── 17. SEO хуудас ↔ каталог зөрөх ёсгүй (сүнс хуудас, дутуу хуудас) ────── */
+// ⚠ 2026-09-09 аудитаар олдсон бодит байдал: 28 хуудас каталогоос хасагдсан
+//   бараанд 200 OK, «нөөцтэй», үнэтэйгээ үлдсэн (хамгийн үнэтэй нь 27,720,000₮-ийн
+//   байхгүй асар); 15 бодит бараа хуудасгүй; 15 хуудасны үнэ буруу. Шалтгаан нь
+//   `build-seo.js`-ийг ХҮН гараар ажиллуулдаг байсан явдал.
+//   Одоо өдөр бүр автоматаар ажиллана — эдгээр тест зөрүүг барина.
+import { readdirSync, existsSync } from 'fs';
+
+const PRODUCTS_DIR = join(ROOT, 'products');
+const SITEMAP = readFileSync(join(ROOT, 'sitemap.xml'), 'utf8');
+const smSlugs = new Set([...SITEMAP.matchAll(/\/products\/([^/]+)\//g)].map(m => m[1]));
+const skuDirs = readdirSync(PRODUCTS_DIR).filter(d => /^m-\d+/i.test(d)
+  && existsSync(join(PRODUCTS_DIR, d, 'index.html')));
+
+// Хуудас бүр ЭСВЭЛ sitemap-д байна (амьд бараа), ЭСВЭЛ хаагдсан (noindex tombstone).
+const ghosts = skuDirs.filter(d => {
+  if (smSlugs.has(d)) return false;
+  return !readFileSync(join(PRODUCTS_DIR, d, 'index.html'), 'utf8').includes('data-tombstone="1"');
+});
+ok('SEO: каталогт байхгүй барааны хуудас нээлттэй үлдээгүй',
+  ghosts.length === 0, ghosts.slice(0, 8).join(', '));
+
+// sitemap-д байгаа бүх хуудас диск дээр бодитоор байна (404 гарахгүй).
+const missing = [...smSlugs].filter(s => !existsSync(join(PRODUCTS_DIR, s, 'index.html')));
+ok('SEO: sitemap-ийн бүх хаяг бодитоор байна',
+  missing.length === 0, missing.slice(0, 8).join(', '));
+
+// Хаагдсан хуудас индексэд ОРОХГҮЙ бөгөөд sitemap-д БАЙХГҮЙ байх ёстой.
+const tombs = skuDirs.filter(d =>
+  readFileSync(join(PRODUCTS_DIR, d, 'index.html'), 'utf8').includes('data-tombstone="1"'));
+const tombInSitemap = tombs.filter(d => smSlugs.has(d));
+ok('SEO: хаагдсан хуудас sitemap-д ороогүй', tombInSitemap.length === 0, tombInSitemap.join(', '));
+ok('SEO: хаагдсан хуудас бүр noindex',
+  tombs.every(d => readFileSync(join(PRODUCTS_DIR, d, 'index.html'), 'utf8').includes('noindex')));
+
+/* ── 18. SCAN: автомат build-ийн хамгаалалтууд ────────────────────────────── */
+const BSEO = readFileSync(join(ROOT, 'build-seo.js'), 'utf8');
+ok('SCAN: build-seo нь REQUIRE_LIVE үед хуучин snapshot руу унахгүй',
+  /REQUIRE_LIVE/.test(BSEO) && /process\.exit\(1\)/.test(BSEO));
+ok('SCAN: build-seo хасагдсан хуудсыг хаадаг блоктой', /data-tombstone/.test(BSEO));
+const SYNC = join(ROOT, '.github/workflows/catalog-sync.yml');
+ok('SCAN: өдөр тутмын каталог sync ажил байгаа', existsSync(SYNC));
+ok('SCAN: sync ажил REQUIRE_LIVE-тэй ажилладаг',
+  existsSync(SYNC) && /REQUIRE_LIVE/.test(readFileSync(SYNC, 'utf8')));
+
+/* ── 19. Сайтын алдаа аппын системд урсдаг эсэх ───────────────────────────── */
+// Аппын `errFingerprint`-тэй ЯГ ижил томьёо байх ёстой — эс бөгөөс нэг алдаа
+// хоёр өөр хээтэй болж, GitHub дээр 2 тусдаа Issue үүснэ.
+const efp = createContext({});
+runInContext(extractFn('errFingerprint'), efp);
+eq('алдааны хээ: тогтвортой', efp.errFingerprint('boom', 'https://mevent.mn/x.js'),
+   efp.errFingerprint('boom', 'https://mevent.mn/x.js?v=9'));   // ?v= хээнд ОРОХГҮЙ
+ok('алдааны хээ: 12 тэмдэгт', efp.errFingerprint('a', 'b').length === 12);
+ok('алдааны хээ: өөр алдаа өөр хээтэй',
+   efp.errFingerprint('a', 'b') !== efp.errFingerprint('c', 'b'));
+ok('SCAN: window.error сонсогч бүртгэгдсэн', /addEventListener\('error'/.test(SRC));
+ok('SCAN: unhandledrejection сонсогч бүртгэгдсэн', /addEventListener\('unhandledrejection'/.test(SRC));
+ok('SCAN: алдаа мэдээлэгч өөрөө унахгүй (catch байна)',
+   /function reportErr[\s\S]{0,1400}catch \(e\) \{ \/\* зориуд чимээгүй \*\/ \}/.test(SRC));
+
 /* ── Дүн ──────────────────────────────────────────────────────────────────── */
 if (fails.length) {
   console.log(`❌ LOGIC FAIL — ${pass} тэнцсэн, ${fails.length} унасан`);

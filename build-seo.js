@@ -37,6 +37,14 @@ function loadProducts() {
     console.log(`  каталог: АМЬД DB-ээс ${d.length} бараа`);
     return d;
   } catch (e) {
+    // ⚠ АВТОМАТ (CI) ажиллагаанд ХУУЧИН snapshot руу унаж БОЛОХГҮЙ. Унавал скрипт
+    //    280 хуудсыг хуучин үнээр дарж бичээд «✅ бэлэн» гэж хэлнэ — хэн ч мэдэхгүй.
+    //    Тиймээс REQUIRE_LIVE=1 үед чангаар унана; хүн гараар ажиллуулахад л уналт зөвшөөрөгдөнө.
+    if (process.env.REQUIRE_LIVE === '1') {
+      console.error(`❌ Амьд каталог татагдсангүй (${e.message}). REQUIRE_LIVE=1 тул ХУУЧИН`
+        + ` products.json-оор дарж бичихгүй — build зогсов.`);
+      process.exit(1);
+    }
     console.warn(`  ⚠ DB татагдсангүй (${e.message}) → products.json руу унав`);
     const j = JSON.parse(fs.readFileSync(path.join(ROOT, 'products.json'), 'utf8'));
     const rows = Array.isArray(j) ? j : (j.products || []);
@@ -223,6 +231,53 @@ listed.forEach(p => {
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'index.html'), productPage(p));
 });
+
+/* ---------- 2b) Каталогоос хасагдсан барааны хуудсыг ХААХ ---------- */
+// ⚠ 2026-09-10: 28 хуудас «сүнс» болж үлдсэн байсан. Барааг архивлах / нөөцийг 0
+//   болгоход хуудас нь mevent.mn дээр 200 OK, «нөөцтэй», үнэтэйгээ үлдсээр байв —
+//   хамгийн үнэтэй нь 27,720,000₮-ийн байхгүй асар. Google-ээс орж ирсэн хүн
+//   залгаад «тийм бараа байхгүй» гэж сонсдог. Тоо нь ЗӨВХӨН өсдөг байсан.
+//
+//   Хуудсыг УСТГАХГҮЙ (Google-д индекслэгдсэн, 404 нь зэрэглэлийг унагана) —
+//   оронд нь noindex + «түрээслэгдэхээ больсон» + хайлт руу заасан хуудсаар дарна.
+//   Зөвхөн sku хэлбэрийн (m-NNN) хавтсыг хөнднө: хуучин нэрний slug-ууд бол
+//   `build-redirects.js`-ийн шилжүүлэг тул тэдгээрийг орхино.
+const TOMBSTONE_MARK = 'data-tombstone="1"';
+function tombstonePage(slug) {
+  return `<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Энэ бараа түрээслэгдэхээ больсон — ${BRAND}</title>
+<meta name="robots" content="noindex,follow">
+<link rel="canonical" href="${SITE}/">
+<meta ${TOMBSTONE_MARK}>
+<style>body{font:16px/1.6 system-ui,sans-serif;margin:0;display:grid;place-items:center;min-height:100vh;padding:24px;text-align:center}a{color:#0b6}</style>
+</head>
+<body>
+<div>
+  <h1 style="font-size:20px;margin:0 0 8px">Энэ бараа түрээслэгдэхээ больсон</h1>
+  <p style="margin:0 0 16px;color:#555">Ойролцоо бараа каталогаас олдож магадгүй.</p>
+  <p><a href="${SITE}/">Бүх бараа үзэх →</a></p>
+  <p style="color:#555">Лавлах: <a href="tel:+97677551010">7755-1010</a></p>
+</div>
+</body>
+</html>
+`;
+}
+const liveSlugs = new Set(listed.map(p => p._slug));
+let closed = 0, alreadyClosed = 0;
+for (const d of (fs.existsSync(prodDir) ? fs.readdirSync(prodDir) : [])) {
+  if (!/^m-\d+/i.test(d)) continue;                 // хуучин нэрний slug — шилжүүлэг, бүү хөнд
+  if (liveSlugs.has(d)) continue;                   // амьд бараа
+  const f = path.join(prodDir, d, 'index.html');
+  if (!fs.existsSync(f)) continue;
+  if (fs.readFileSync(f, 'utf8').includes(TOMBSTONE_MARK)) { alreadyClosed++; continue; }
+  fs.writeFileSync(f, tombstonePage(d));
+  closed++;
+}
+if (closed) console.log(`  🔒 каталогоос хасагдсан ${closed} хуудсыг хаав (нийт хаалттай: ${closed + alreadyClosed})`);
 
 /* ---------- 3) sitemap.xml + robots.txt ---------- */
 const today = new Date().toISOString().slice(0, 10);
