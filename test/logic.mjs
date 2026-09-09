@@ -223,6 +223,79 @@ ok('SCAN: 360px блок 720px блокийн дараа', at720 > -1 && at360 >
 ok('SCAN: мобайл hero нь 720px блок дотор (360px-д БИШ)',
   atHero > at720 && atHero < at360, `hero@${atHero}`);
 
+/* ── 16. Сул үлдэгдэл — SKU-гаар тулгах (давхар захиалгын хамгаалалт) ────── */
+// ⚠ ЯГ БОЛСОН АЛДАА (2026-09-09 аудитаар амьд датанаас олдсон):
+//   Каталогт M-223 «Ширээ 8 хүний (хар)» 7ш. Идэвхтэй захиалгын мөр нь хуучин
+//   нэрээрээ «Ширээ 8 хүний» гэж үлдсэн. Сайт НЭРЭЭР тулгадаг байсан тул таарахгүй
+//   болж, аль хэдийн захиалагдсан 7 ширээг «бүгд сул» гэж зарж байв.
+const av = createContext({ state: null });
+for (const fn of ['_prodOfItem', 'bookedForProduct', 'availStock', 'stockBadgeHtml']) runInContext(extractFn(fn), av);
+runInContext("const _normName = (s) => String(s || '').toLowerCase().replace(/\\s+/g, ' ').trim();", av);
+
+const DATES = { start: '2026-09-11', end: '2026-09-14' };
+function setup(products, orders, dates = DATES, availOk = true) {
+  av.state = { products, orders, dates, availOk };
+  return av;
+}
+const P_TABLE = { sku: 'M-223', id: 'uuid-223', name: 'Ширээ 8 хүний (хар)', type: 'rental', stock: 7 };
+
+setup([P_TABLE], [{ starts_at: '2026-09-11', stops_at: '2026-09-14',
+  items: [{ sku: 'M-223', name: 'Ширээ 8 хүний', qty: '2' }] }]);
+eq('нэр солигдсон ч sku-гаар таарч нөөц эзэлнэ', av.availStock(P_TABLE), 5);
+
+setup([P_TABLE], [{ starts_at: '2026-09-11', stops_at: '2026-09-14',
+  items: [{ sku: 'uuid-223', name: 'огт өөр нэр', qty: '3' }] }]);
+eq('хуучин UUID-гаар ч таарна', av.availStock(P_TABLE), 4);
+
+setup([P_TABLE], [{ starts_at: '2026-09-11', stops_at: '2026-09-14',
+  items: [{ name: 'Ширээ 8 хүний (хар)', qty: '1' }] }]);
+eq('sku байхгүй бол нэрээр нөөц зам ажиллана', av.availStock(P_TABLE), 6);
+
+setup([P_TABLE], [{ starts_at: '2026-09-01', stops_at: '2026-09-03',
+  items: [{ sku: 'M-223', qty: '5' }] }]);
+eq('огноо давхцахгүй бол хасахгүй', av.availStock(P_TABLE), 7);
+
+setup([P_TABLE], [{ starts_at: '2026-09-11', stops_at: '2026-09-14',
+  items: [{ sku: 'M-223', qty: '5' }] }], { start: '', end: '' });
+eq('огноо сонгоогүй бол хасахгүй', av.availStock(P_TABLE), 7);
+
+const P_OTHER = { sku: 'M-221', id: 'uuid-221', name: 'Ширээ 6 хүний', type: 'rental', stock: 2 };
+setup([P_TABLE, P_OTHER], [{ starts_at: '2026-09-11', stops_at: '2026-09-14',
+  items: [{ sku: 'M-223', name: 'Ширээ 8 хүний', qty: '2' }] }]);
+eq('өөр барааны захиалга нөлөөлөхгүй', av.availStock(P_OTHER), 2);
+
+/* Багц — бүрэлдэхүүнээрээ хязгаарлагдана, хоёр талдаа нөөц эзэлнэ */
+const SPK = { sku: 'M-010', name: 'Чанга яригч', type: 'rental', stock: 4 };
+const MIX = { sku: 'M-011', name: 'Пүльт', type: 'rental', stock: 1 };
+const PKG = { sku: 'M-317', name: 'Хөгжим GOLD', type: 'package', stock: 9,
+  bundle_items: [{ sku: 'M-010', qty: 2 }, { sku: 'M-011', qty: 1 }] };
+
+setup([SPK, MIX, PKG], []);
+eq('багцын тоо бүрэлдэхүүнээр хязгаарлагдана (өөрийн stock=9 биш)', av.availStock(PKG), 1);
+
+setup([SPK, MIX, PKG], [{ starts_at: '2026-09-11', stops_at: '2026-09-14',
+  items: [{ sku: 'M-011', qty: '1' }] }]);
+eq('бүрэлдэхүүн тусад нь зарагдвал багц дуусна', av.availStock(PKG), 0);
+
+setup([SPK, MIX, PKG], [{ starts_at: '2026-09-11', stops_at: '2026-09-14',
+  items: [{ sku: 'M-317', name: 'Хөгжим GOLD', qty: '1' }] }]);
+eq('багц захиалагдвал бүрэлдэхүүн нь эзлэгдэнэ', av.availStock(SPK), 2);
+eq('багц захиалагдвал багц өөрөө дуусна', av.availStock(PKG), 0);
+
+setup([SPK, MIX, { ...PKG, bundle_items: [{ sku: 'M-999', qty: 1 }] }], []);
+eq('бүрэлдэхүүн каталогт байхгүй бол багц 0', av.availStock(av.state.products[2]), 0);
+
+/* Идэвхтэй түрээс татагдаагүй бол «сул» гэж БҮҮ хэл */
+setup([P_TABLE], [], DATES, false);
+ok('нөөц татагдаагүй бол картан дээр ил хэлнэ',
+  /шалгагдаагүй/.test(av.stockBadgeHtml(P_TABLE)), av.stockBadgeHtml(P_TABLE));
+setup([P_TABLE], [], DATES, true);
+ok('татагдсан үед хэвийн тоо харагдана',
+  /7ш боломжтой/.test(av.stockBadgeHtml(P_TABLE)), av.stockBadgeHtml(P_TABLE));
+
+/* SCAN: нэрээр тулгах хуучин функц эргэж ирэхгүй */
+ok('SCAN: bookedFor(name) буцаж ирээгүй', !/function bookedFor\s*\(\s*name\s*\)/.test(SRC));
+
 /* ── Дүн ──────────────────────────────────────────────────────────────────── */
 if (fails.length) {
   console.log(`❌ LOGIC FAIL — ${pass} тэнцсэн, ${fails.length} унасан`);
