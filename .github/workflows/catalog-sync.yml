@@ -1,0 +1,56 @@
+name: Каталог → сайт (өдөр бүр)
+
+# Яагаад: барааны хуудас, sitemap, эхний дэлгэцийн хуулбарыг ХҮН гараар
+# `node build-seo.js` ажиллуулж шинэчилдэг байсан. Мартагдах бүрд зөрүү өсдөг —
+# 2026-09-09-нд: 28 хуудас байхгүй бараанд, 15 бараа хуудасгүй, 15 хуудасны үнэ
+# буруу (макс зөрүү 2,550,000₮), products.json 36 барааг байхгүй болсныг мэдэхгүй.
+# Мартагдах боломжтой алхам эрт орой мартагдана — тиймээс автоматжуулав.
+
+on:
+  schedule:
+    - cron: '0 21 * * *'      # UTC 21:00 = Улаанбаатар 05:00
+  workflow_dispatch:           # гараар ч ажиллуулж болно
+  push:
+    branches: [main]
+    paths:
+      - 'build-seo.js'
+      - 'build-redirects.js'
+      - 'build-products-json.js'
+      - 'redirect-map.json'
+
+concurrency:
+  group: catalog-sync          # зэрэг ажиллаад бие биенээ дарахаас сэргийлнэ
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Амьд каталогоос дахин үүсгэх
+        env:
+          REQUIRE_LIVE: '1'    # DB татагдахгүй бол ХУУЧИН датагаар дарж бичихгүй, унана
+        run: |
+          node build-products-json.js
+          node build-seo.js
+          node build-redirects.js
+
+      - name: Логикийн тест
+        run: node test/logic.mjs
+
+      - name: Өөрчлөлт байвал commit
+        run: |
+          if git diff --quiet; then
+            echo "Каталог өөрчлөгдөөгүй — commit хийх зүйл алга."
+            exit 0
+          fi
+          git config user.name  "chimun-bot"
+          git config user.email "ceo@nomaadcamp.com"
+          git add -A
+          git commit -m "Каталог → сайт: хуудас, sitemap, products.json автоматаар шинэчлэв
+
+          $(git diff --cached --stat | tail -1)"
+          git push
