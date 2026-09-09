@@ -372,6 +372,8 @@
   .stock-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--success); flex: 0 0 auto; }
   .stock-badge.out { background: transparent; color: #9E362C; }
   .stock-badge.out::before { background: #C2453B; }
+  .stock-badge.unverified { color: #8A6100; white-space: normal; }
+  .stock-badge.unverified::before { background: #C08400; }
   .variant-hint { display: inline-block; margin-left: 6px; font-size: var(--fs-xs); color: var(--brand); font-weight: 600; }
   .modal-variants { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
   .variant-chip { padding: 6px 14px; border: 1.5px solid var(--border); border-radius: 100px; background: #fff; font-size: var(--fs-sm); cursor: pointer; transition: all .15s; }
@@ -1311,6 +1313,7 @@ const CONFIG = {
 const state = {
   products: [],
   orders: [],   // идэвхтэй түрээс (availability бодоход)
+  availOk: false,   // идэвхтэй түрээс амжилттай татагдсан уу (үгүй бол сул тоо БАТАЛГААГҮЙ)
   cart: JSON.parse(localStorage.getItem('cart') || '[]'),
   category: 'all',
   search: '',
@@ -1439,28 +1442,77 @@ async function loadActiveOrders() {
   if (!CONFIG.DB_ORDERS_URL) return;
   try {
     const r = await fetch(CONFIG.DB_ORDERS_URL, { cache: 'no-store', headers: { apikey: CONFIG.DB_ANON_KEY, Authorization: 'Bearer ' + CONFIG.DB_ANON_KEY } });
-    if (r.ok) state.orders = await r.json();
-  } catch (e) { console.warn('Идэвхтэй захиалга татаж чадсангүй:', e.message); }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    state.orders = await r.json();
+    state.availOk = true;
+  } catch (e) {
+    // ⚠ ЧИМЭЭГҮЙ БҮҮ ӨНГӨР. Татагдаагүйг «захиалга байхгүй» гэж үзвэл БҮХ бараа
+    //   бүрэн сул харагдаж, аль хэдийн зарагдсаныг дахин зарна. Тугийг буулгаж,
+    //   картан дээр «нөөц шалгагдаагүй» гэж ил хэлнэ.
+    state.availOk = false;
+    console.warn('Идэвхтэй захиалга татаж чадсангүй:', e.message);
+  }
 }
 const _normName = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
-// Сонгосон огнооны хүрээнд тухайн бараа хэдэн ширхэг захиалагдсан (идэвхтэй түрээст)
-function bookedFor(name) {
-  const n = _normName(name);
+// Захиалгын мөрийг каталогийн бараатай тулгана: sku → id → нэр.
+// ⚠ НЭРЭЭР тулгаж БОЛОХГҮЙ: барааны нэр бол харагдах шошго, таних тэмдэг БИШ.
+//   Аппад нэрийг засмагц (жишээ «Ширээ 8 хүний» → «Ширээ 8 хүний (хар)») тэр барааны
+//   идэвхтэй түрээс сайтын тооцооноос унаж, аль хэдийн зарагдсан бараа «сул» харагдана.
+//   Мөр бүр sku авчирдаг (M-NNN эсвэл хуучин UUID) тул түүгээр тулгана; нэр зөвхөн нөөц зам.
+function _prodOfItem(it) {
+  const k = String((it && it.sku) || '').trim();
+  if (k) {
+    const p = state.products.find(x => String(x.sku) === k || String(x.id) === k);
+    if (p) return p;
+  }
+  const n = _normName(it && it.name);
+  return n ? (state.products.find(x => _normName(x.name) === n) || null) : null;
+}
+// Сонгосон огнооны хүрээнд тухайн бараа хэдэн ширхэг захиалагдсан (идэвхтэй түрээст).
+// Багц захиалагдсан бол түүний бүрэлдэхүүн ч эзлэгдэнэ — эс бөгөөс багцын дотоод
+// бараа тусад нь дахин зарагдана.
+function bookedForProduct(p) {
   const s = String(state.dates.start || '').slice(0, 10), e = String(state.dates.end || '').slice(0, 10);
-  if (!n || !s || !e) return 0;   // огноо сонгоогүй бол хасахгүй
+  if (!p || !s || !e) return 0;   // огноо сонгоогүй бол хасахгүй
+  const sku = String(p.sku || ''), nm = _normName(p.name);
   let total = 0;
   for (const o of (state.orders || [])) {
     const os = String(o.starts_at || '').slice(0, 10), oe = String(o.stops_at || '').slice(0, 10);
     if (!os || !oe || !(s <= oe && os <= e)) continue;   // огнооны давхцалгүй бол алгасна
-    for (const it of (o.items || [])) if (_normName(it.name) === n) total += Number(it.qty) || 0;
+    for (const it of (o.items || [])) {
+      const q = Number(it.qty) || 0;
+      if (!q) continue;
+      const rp = _prodOfItem(it);
+      if (rp ? rp === p : _normName(it.name) === nm) { total += q; continue; }
+      if (rp && rp.type === 'package' && Array.isArray(rp.bundle_items)) {
+        for (const c of rp.bundle_items) {
+          if (c && sku && String(c.sku) === sku) total += q * Math.max(1, Number(c.qty) || 1);
+        }
+      }
+    }
   }
   return total;
 }
-// Сонгосон огнооны СУЛ нөөц = M-Event нөөц − идэвхтэй түрээст захиалагдсан
-function availStock(p) {
-  if (p._variantGroup && Array.isArray(p.variants)) return p.variants.reduce((s, v) => s + availStock(v), 0);
-  if (p.type === 'service' || p.type === 'package') return Number(p.stock || 0);
-  return Math.max(0, (Number(p.stock) || 0) - bookedFor(p.name));
+// Сонгосон огнооны СУЛ нөөц = M-Event нөөц − идэвхтэй түрээст захиалагдсан.
+// Багц нь өөрийн тоотой биш, БҮРЭЛДЭХҮҮНИЙХЭЭ сул тоогоор хязгаарлагдана.
+function availStock(p, _seen) {
+  if (!p) return 0;
+  if (p._variantGroup && Array.isArray(p.variants)) return p.variants.reduce((s, v) => s + availStock(v, _seen), 0);
+  if (p.type === 'service') return Number(p.stock || 0);
+  if (p.type === 'package' && Array.isArray(p.bundle_items) && p.bundle_items.length) {
+    const seen = _seen || new Set();
+    if (seen.has(p)) return 0;            // багц өөрийгөө агуулсан тохиолдлын хамгаалалт
+    seen.add(p);
+    let m = Infinity;
+    for (const c of p.bundle_items) {
+      if (!c || !c.sku) continue;
+      const cp = state.products.find(x => String(x.sku) === String(c.sku));
+      if (!cp) return 0;                  // бүрэлдэхүүн каталогт алга — багц бүрдэхгүй
+      m = Math.min(m, Math.floor(availStock(cp, seen) / Math.max(1, Number(c.qty) || 1)));
+    }
+    return isFinite(m) ? Math.max(0, m) : 0;
+  }
+  return Math.max(0, (Number(p.stock) || 0) - bookedForProduct(p));
 }
 
 /* ==================== RENDER ==================== */
@@ -1748,6 +1800,10 @@ function stockBadgeHtml(p) {
   if (p.type === 'service') return '';                       // үйлчилгээнд stock хэрэггүй
   const s = availStock(p);   // сонгосон огнооны боломжит нөөц (идэвхтэй түрээс хассан)
   if (s === 0) return '<span class="stock-badge out">Дууссан</span>';
+  // Огноо сонгосон ч идэвхтэй түрээс татагдаагүй бол тоо нь БАТАЛГААГҮЙ — тэгж хэлнэ.
+  if (state.dates.start && state.dates.end && !state.availOk) {
+    return '<span class="stock-badge unverified">Нөөц шалгагдаагүй — лавлана уу</span>';
+  }
   return `<span class="stock-badge">${s}ш боломжтой</span>`;   // боломжтой бүх төлөвт НЭГ ижил үг (тоо + "боломжтой")
 }
 // Икон: эхний ~6 картыг eager+priority (LCP), үлдсэнийг lazy. sizes нь responsive.
