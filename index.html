@@ -1430,6 +1430,9 @@ function render() {
 // Ангиллын шатлал: том бүлэг → дэд категори. Дэд категори = барааны бодит `category` утга.
 // Бүлэгт ороогүй категори standalone (эвхэгдэхгүй) харагдана.
 // Ангиллын бүлгүүд — DB-ээс (app_config, аппаас засагдана) татна. Доорх нь зөвхөн default/fallback.
+// ⚠ Уншихдаа `app_config_public` ХАРАГДАЦ-аас татна, үндсэн хүснэгтээс БИШ: app_config-д
+//    хувийн данс, актласан хөрөнгө, ажилтны утас зэрэг дотоод утга байдаг тул тэр хүснэгт
+//    нийтэд хаалттай. Харагдац нь сайтад хэрэгтэй 3 түлхүүрийг л гаргана.
 let CAT_GROUPS = [
   { name: 'Тайз, хөгжим, гэрэлтүүлэг', subs: ['Тайз', 'Хөгжим', 'Гэрэлтүүлэг', 'Эффект'] },
   { name: 'Ширээ, тавилга', subs: ['Ширээ, сандал, бүтээлэг', 'Засал, тохижилт'] },
@@ -1439,7 +1442,7 @@ let CAT_GROUPS = [
 ];
 async function loadCategoryGroups() {
   try {
-    const r = await fetch(CONFIG.DB_BASE + '/app_config?key=eq.mevent_category_groups&select=value',
+    const r = await fetch(CONFIG.DB_BASE + '/app_config_public?key=eq.mevent_category_groups&select=value',
       { headers: { apikey: CONFIG.DB_ANON_KEY, Authorization: 'Bearer ' + CONFIG.DB_ANON_KEY } });
     if (!r.ok) return;
     const rows = await r.json();
@@ -1451,7 +1454,7 @@ async function loadCategoryGroups() {
 let POP = {};
 async function loadPopularity() {
   try {
-    const r = await fetch(CONFIG.DB_BASE + '/app_config?key=eq.mevent_popularity&select=value',
+    const r = await fetch(CONFIG.DB_BASE + '/app_config_public?key=eq.mevent_popularity&select=value',
       { headers: { apikey: CONFIG.DB_ANON_KEY, Authorization: 'Bearer ' + CONFIG.DB_ANON_KEY } });
     if (!r.ok) return;
     const rows = await r.json();
@@ -1463,7 +1466,7 @@ async function loadPopularity() {
 // уншина — тарифыг НЭГ газраас (app_config) удирдана. Татаж чадахгүй бол дээрх fallback хэвээр.
 async function loadTariffs() {
   try {
-    const r = await fetch(CONFIG.DB_BASE + '/app_config?key=eq.tariffs&select=value',
+    const r = await fetch(CONFIG.DB_BASE + '/app_config_public?key=eq.tariffs&select=value',
       { headers: { apikey: CONFIG.DB_ANON_KEY, Authorization: 'Bearer ' + CONFIG.DB_ANON_KEY } });
     if (!r.ok) return;
     const rows = await r.json();
