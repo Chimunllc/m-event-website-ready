@@ -1321,19 +1321,36 @@ function saveCart() { localStorage.setItem('cart', JSON.stringify(state.cart)); 
 //  - Чимун ХХК-ийн дотоод хөрөнгө (asset) харагдахгүй.
 //  - Нөөц = M-Event салбарын тоо − эвдэрсэн − засварт. Үйлчилгээ/багц үргэлж.
 function applyProductList(list) {
-  state.products = list
-    .filter(p => {
-      if (p.type === 'service' || p.type === 'package') return true;
-      if (p.qty_mevent == null) return String(p.type || 'rental') !== 'asset';  // хуучин дата (json) — type-аар
-      return Number(p.qty_mevent) > 0 || Number(p.qty_nomaad) > 0;
-    })
-    .map(p => {
-      if (p.type !== 'package') {
-        const mev = (p.qty_mevent != null) ? (Number(p.qty_mevent) || 0) : (Number(p.stock) || 0);
-        p.stock = Math.max(0, mev - (Number(p.broken) || 0) - (Number(p.maintenance) || 0));
-      }
-      return p;
-    });
+  const kept = list.filter(p => {
+    if (p.type === 'service' || p.type === 'package') return true;
+    if (p.qty_mevent == null) return String(p.type || 'rental') !== 'asset';  // хуучин дата (json) — type-аар
+    return Number(p.qty_mevent) > 0 || Number(p.qty_nomaad) > 0;
+  });
+  // 1-р үе: энгийн барааны нөөц (багц энэ тоонуудаас хамаарна).
+  kept.forEach(p => {
+    if (p.type === 'package') return;
+    const mev = (p.qty_mevent != null) ? (Number(p.qty_mevent) || 0) : (Number(p.stock) || 0);
+    p.stock = Math.max(0, mev - (Number(p.broken) || 0) - (Number(p.maintenance) || 0));
+  });
+  // 2-р үе: БАГЦ = бүтээгдэхүүн биш, бүтээгдэхүүний нийлбэр. Нөөцийг нь өөрийнх
+  // нь хадгалагдсан тооноос БИШ, бүрэлдэхүүнээс тухайн агшинд бодно —
+  // хадгалагдсан тоо бүрэлдэхүүн өөрчлөгдөхөд хоцорч, байхгүй багц зарагдана.
+  // (Аппын packageStock-той ижил дүрэм: min(бүрэлдэхүүний нөөц ÷ тоо).)
+  const bySku = {};
+  kept.forEach(p => { if (p.sku) bySku[String(p.sku)] = p; });
+  kept.forEach(p => {
+    if (p.type !== 'package') return;
+    const cs = Array.isArray(p.bundle_items) ? p.bundle_items.filter(c => c && c.sku) : [];
+    if (!cs.length) { p.stock = 0; return; }
+    let m = Infinity;
+    for (const c of cs) {
+      const cp = bySku[String(c.sku)];
+      if (!cp) { m = 0; break; }
+      m = Math.min(m, Math.floor((Number(cp.stock) || 0) / Math.max(1, Number(c.qty) || 1)));
+    }
+    p.stock = isFinite(m) ? Math.max(0, m) : 0;
+  });
+  state.products = kept;
   // "Захиалгат асар" (зохиомол тооцоолуур) хассан — асар бодит агуулахын бараагаар л харагдана.
   // Каталог ирмэгц сагсны үнийг амьд утгаар шинэчилнэ — localStorage-д хуучин/өөрчилсөн
   // үнэ үлдсэн байж болно. Хэрэглэгч зөв дүн харна, илгээхэд дахин тулгагдана.
