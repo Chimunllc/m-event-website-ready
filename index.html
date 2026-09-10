@@ -2628,7 +2628,17 @@ async function submitOrder() {
         body: JSON.stringify(order),
       });
       const data = await r.json().catch(() => ({}));
-      orderNum = data.orderNumber || data.order_number || '#' + Date.now().toString(36).toUpperCase();
+      // ⚠ ХУУРАМЧ АМЖИЛТ ХИЙХГҮЙ (2026-09-10). Өмнө нь хариу ямар ч байсан
+      //   (500, хоосон бие, HTML) `{}` болж хувирч, `#K2X…` гэсэн ЗОХИОМОЛ дугаар
+      //   үүсгээд «Амжилттай» дэлгэц гаргаж, сагсыг цэвэрлэдэг байв. n8n секунд
+      //   саатахад л захиалга бүрмөсөн алга болж, харилцагч залгахыг хүлээж суудаг.
+      //   n8n нь Code node унахад HTTP 200 + ХООСОН бие буцаадаг (амьд шалгасан)
+      //   тул зөвхөн `r.ok` хангалтгүй — дугаар ирсэн эсэхийг ЗААВАЛ шалгана.
+      const num = data.orderNumber || data.order_number || '';
+      if (!r.ok || data.ok === false || !num) {
+        throw new Error(data.reason || 'Захиалга бүртгэгдсэнгүй. Сагс хэвээр байна.');
+      }
+      orderNum = num;
     } else {
       // Локал demo
       console.log('ORDER (demo, n8n холбогдоогүй):', order);
