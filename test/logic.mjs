@@ -394,6 +394,18 @@ ok('ГЭРЭЭ: build-seo public_catalog-аас уншина', /rest\/v1\/public
 ok('ГЭРЭЭ: build-seo дахин шүүдэггүй', !/qty_mevent/.test(noComments(BSEO2)));
 ok('ГЭРЭЭ: build-products-json public_catalog-аас уншина', /rest\/v1\/public_catalog/.test(BPJ));
 
+// SEO хуудас Google-д ҮНЭН зарлах ёстой — «нөөцтэй» гэж хатуу бичихийг хаана.
+// ⚠ Хөгжим DIAMOND (6.2сая₮) ба ULTRA (7.6сая₮) бодитоор угсрагдахгүй байхад
+//   «InStock» гэж зарлагдаж байв (4 микрофон шаарддаг, 2 л байна).
+ok('ГЭРЭЭ: SEO хуудас нөөцийг хатуу InStock гэж бичихгүй',
+  !/availability: 'https:\/\/schema\.org\/InStock'/.test(noComments(BSEO2)));
+ok('ГЭРЭЭ: нөөц харагдацын stock-оос тооцогдоно', /availOf\s*=\s*p\s*=>/.test(BSEO2));
+ok('ГЭРЭЭ: priceValidUntil хатуу огноогүй',
+  !/priceValidUntil: '20\d\d-\d\d-\d\d'/.test(noComments(BSEO2)));
+// Багцын тооцоо сайтад давхардахаа болив — харагдац өгдөг.
+ok('ГЭРЭЭ: applyProductList багцын тоог дахин бодохгүй',
+  !/bundle_items/.test(noComments(extractFn('applyProductList'))));
+
 /* ── 21. ГЭРЭЭ: алдааны хээ аппынхтай ижил (алтан утга) ──────────────────── */
 // Хоёр репо нэг ижил томьёотой байх ёстой — эс бөгөөс нэг алдаа хоёр Issue болно.
 // Ижил тогтмолыг аппын test/run.js-д ч бичсэн. Аль нэг тал өөрчлөгдвөл тэр тал унана.
