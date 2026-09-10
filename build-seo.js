@@ -65,6 +65,15 @@ const all = raw.slice().sort((a, b) => String(a.name).localeCompare(String(b.nam
 
 const esc = s => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = n => (Number(n) || 0).toLocaleString('mn-MN') + '₮';
+// Google-д ҮНЭН зарлана. Өмнө нь бүх хуудас «InStock» гэж ХАТУУ бичигдсэн байсан
+// тул угсрагдахгүй багцууд ч нөөцтэй гэж зарлагдаж байв — Хөгжим DIAMOND
+// (6,200,000₮) 4 микрофон шаарддаг ч агуулахад 2 л байна, ULTRA (7,600,000₮)
+// мөн адил. Харагдац одоо багцын үлдэгдлийг бүрэлдэхүүнээс бодож өгдөг тул
+// тэр тоог шууд хэрэглэнэ.
+const availOf = p => (p.type === 'service' || Number(p.stock) > 0)
+  ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock';
+// Үнэ хүчинтэй хугацаа — өнөөдрөөс 1 жил. Хатуу огноо өнгөрвөл Google үнийг үл хэрэгсэнэ.
+const PRICE_VALID = new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10);
 // SKU/id-ээс цэвэр slug (латин/тоо). Давхцвал index залгана.
 function slugOf(p) {
   let s = String(p.sku || p.id || p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -89,7 +98,7 @@ const itemList = {
       '@type': 'Product', name: p.name, category: p.category || undefined,
       image: /^https?:\/\//.test(p.photo || '') ? p.photo : undefined,
       url: SITE + '/products/' + p._slug + '/',
-      offers: { '@type': 'Offer', price: Number(p.price) || 0, priceCurrency: 'MNT', availability: 'https://schema.org/InStock', url: SITE + '/products/' + p._slug + '/' }
+      offers: { '@type': 'Offer', price: Number(p.price) || 0, priceCurrency: 'MNT', availability: availOf(p), url: SITE + '/products/' + p._slug + '/' }
     }
   }))
 };
@@ -141,7 +150,7 @@ function productPage(p) {
     '@context': 'https://schema.org', '@type': 'Product',
     name: p.name, image: img, description: p.description || (p.name + ' түрээс'),
     category: p.category || undefined, sku: p.sku || undefined, brand: { '@type': 'Brand', name: BRAND },
-    offers: { '@type': 'Offer', url, price: Number(p.price) || 0, priceCurrency: 'MNT', availability: 'https://schema.org/InStock', priceValidUntil: '2026-12-31',
+    offers: { '@type': 'Offer', url, price: Number(p.price) || 0, priceCurrency: 'MNT', availability: availOf(p), priceValidUntil: PRICE_VALID,
       seller: { '@type': 'Organization', name: BRAND } }
   };
   const crumbs = {
