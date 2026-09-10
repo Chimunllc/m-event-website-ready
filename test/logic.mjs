@@ -356,6 +356,94 @@ ok('SCAN: unhandledrejection сонсогч бүртгэгдсэн', /addEventLi
 ok('SCAN: алдаа мэдээлэгч өөрөө унахгүй (catch байна)',
    /function reportErr[\s\S]{0,1400}catch \(e\) \{ \/\* зориуд чимээгүй \*\/ \}/.test(SRC));
 
+/* ── 20. ГЭРЭЭ: сайт зөвхөн НИЙТИЙН харагдацаас уншина ───────────────────── */
+// ⚠ Сайт өмнө нь `products` хүснэгтээс шууд уншиж, «юу харагдах» дүрмээ ӨӨРӨӨ
+//   бичдэг байсан. Тэр дүрэм аппд ба build-seo.js-д мөн тусад нь бичигдсэн тул
+//   гурав зөрж, аппад бараа хадгалахад сайтаас чимээгүй алга болдог байв.
+//   Одоо дүрэм DB-д (`public_catalog`) НЭГ УДАА бичигдсэн. Энэ тест сайтыг
+//   хүснэгт рүү буцаж хандахаас хаана.
+// Тайлбар доторх үг скан-тестийг худал унагахгүй байх ёстой.
+const noComments = (t) => String(t).replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+const ALLOWED_ENDPOINTS = new Set([
+  'public_catalog',        // каталог + сул нөөц (дүрэм DB-д)
+  'public_availability',   // идэвхтэй түрээс
+  'app_config_public',     // тариф / ангилал / түрээсийн давтамж
+  'app_errors',            // алдааны лог (зөвхөн бичих)
+]);
+const touched = [...SRC.matchAll(/rest\/v1\/([a-z_]+)|DB_BASE \+ '\/([a-z_]+)/g)]
+  .map(m => m[1] || m[2]);
+const forbidden = [...new Set(touched)].filter(t => !ALLOWED_ENDPOINTS.has(t));
+ok('ГЭРЭЭ: сайт зөвхөн нийтийн харагдацаас уншина',
+  forbidden.length === 0, 'зөвшөөрөгдөөгүй: ' + forbidden.join(', '));
+ok('ГЭРЭЭ: каталог public_catalog-аас татагдана', touched.includes('public_catalog'));
+
+// Сайт өөрөө шүүхээ больсон эсэх — дүрэм давхардаж эхэлбэл барина.
+const apl = extractFn('applyProductList');
+ok('ГЭРЭЭ: applyProductList дахин шүүдэггүй',
+  !/qty_mevent|'asset'/.test(noComments(apl)), 'шүүлт буцаж ирсэн байна');
+
+// Build скриптүүд ч мөн харагдацаас
+const BSEO2 = readFileSync(join(ROOT, 'build-seo.js'), 'utf8');
+const BPJ = readFileSync(join(ROOT, 'build-products-json.js'), 'utf8');
+ok('ГЭРЭЭ: build-seo public_catalog-аас уншина', /rest\/v1\/public_catalog/.test(BSEO2));
+ok('ГЭРЭЭ: build-seo дахин шүүдэггүй', !/qty_mevent/.test(noComments(BSEO2)));
+ok('ГЭРЭЭ: build-products-json public_catalog-аас уншина', /rest\/v1\/public_catalog/.test(BPJ));
+
+/* ── 21. ГЭРЭЭ: алдааны хээ аппынхтай ижил (алтан утга) ──────────────────── */
+// Хоёр репо нэг ижил томьёотой байх ёстой — эс бөгөөс нэг алдаа хоёр Issue болно.
+// Ижил тогтмолыг аппын test/run.js-д ч бичсэн. Аль нэг тал өөрчлөгдвөл тэр тал унана.
+eq('ГЭРЭЭ: errFingerprint алтан утга',
+  efp.errFingerprint('boom', 'https://mevent.mn/app.js'), '0788b3feaf14');
+
+/* ── 22. АМЬД ГЭРЭЭ: DB-тэй тулгах (сүлжээгүй бол АЛГАСНА) ───────────────── */
+// ⚠ Сүлжээний саатал дээр улаан болдог тест хэдхэн хоногийн дараа үл тоомсорлогдоно.
+//   Тиймээс эдгээр зөвхөн ХАРИУ ИРСЭН үед шалгана; ирээгүй бол алгасаад PR-ыг
+//   зогсоохгүй. Өдөр бүрийн catalog-sync ажил амьд датаг ямар ч байсан хөнддөг.
+const DB = 'https://n8n.nomaadcamp.com/db/rest/v1';
+async function probe(path) {
+  const r = await fetch(DB + path, { signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+try {
+  // (а) Сайтын татдаг БҮХ багана харагдацад байгаа эсэх — багана нэр солиход шууд барина.
+  const sel = (SRC.match(/public_catalog\?select=([^&']+)/) || [])[1];
+  ok('АМЬД: сайтын select мөр олдов', !!sel);
+  if (sel) {
+    const rows = await probe('/public_catalog?select=' + sel + '&limit=1');
+    ok('АМЬД: сайтын татдаг багана бүр харагдацад байна', Array.isArray(rows));
+  }
+  // (б) Тарифын нөөц утга амьд тохиргоотой таарах эсэх. Хоёр репо ижил нөөц утгатай
+  //     байх ёстой; амьд тохиргоо бол хоёуланд нь нийтлэг ҮНЭН тул түүнтэй тулгана.
+  const cfg = (await probe('/app_config_public?key=eq.tariffs&select=value'))[0];
+  const v = cfg && cfg.value;
+  if (v) {
+    const tCtx = createContext({});
+    // ⚠ vm-д `let` нь контекстийн шинж чанар БОЛДОГГҮЙ — `var` болгож оруулна.
+    const asVar = (re) => runInContext(SRC.match(re)[0].replace(/^let /, 'var '), tCtx);
+    asVar(/let RENTAL_TIERS = \[[\s\S]*?\];/);
+    asVar(/let WORK_START = [^\n]+/);
+    asVar(/let DELIVERY_CITY_FEE = [^\n]+/);
+    asVar(/let DELIVERY_PER_KM = [^\n]+/);
+    eq('АМЬД: хүргэлтийн нөөц үнэ тохиргоотой таарна', tCtx.DELIVERY_CITY_FEE, Number(v.delivery_city_fee));
+    eq('АМЬД: км тарифын нөөц утга таарна', tCtx.DELIVERY_PER_KM, Number(v.delivery_per_km));
+    eq('АМЬД: ажлын цагийн нөөц утга таарна', tCtx.WORK_START, Number(v.work_start));
+    eq('АМЬД: хямдралын шатны тоо таарна', tCtx.RENTAL_TIERS.length, v.tiers.length);
+    const same = tCtx.RENTAL_TIERS.every((t, i) =>
+      Number(t.min) === Number(v.tiers[i].min) && Number(t.pct) === Number(v.tiers[i].pct));
+    ok('АМЬД: хямдралын шатлал тохиргоотой таарна', same,
+       JSON.stringify(tCtx.RENTAL_TIERS) + ' ↔ ' + JSON.stringify(v.tiers));
+  }
+  // (в) Харагдац хаалттай зүйлийг задлаагүй эсэх
+  for (const col of ['cost', 'supplier', 'market_value']) {
+    let leaked = false;
+    try { await probe('/public_catalog?select=sku,' + col + '&limit=1'); leaked = true; } catch (e) { /* хүлээгдсэн */ }
+    ok(`АМЬД: public_catalog «${col}»-ыг задлаагүй`, !leaked);
+  }
+} catch (e) {
+  console.log('   ⏭ АМЬД гэрээний шалгалт алгасав (сүлжээ/DB хүрэхгүй): ' + e.message);
+}
+
 /* ── Дүн ──────────────────────────────────────────────────────────────────── */
 if (fails.length) {
   console.log(`❌ LOGIC FAIL — ${pass} тэнцсэн, ${fails.length} унасан`);
