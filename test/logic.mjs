@@ -412,6 +412,36 @@ ok('ГЭРЭЭ: applyProductList багцын тоог дахин бодохгү
 eq('ГЭРЭЭ: errFingerprint алтан утга',
   efp.errFingerprint('boom', 'https://mevent.mn/app.js'), '0788b3feaf14');
 
+/* ── 21b. Дүрмийн эх бичиг репод байгаа эсэх ──────────────────────────────── */
+// ⚠ Харагдацын SQL зөвхөн VPS дээр байсан бол VPS дахин байгуулахад дүрэм алга
+//   болно — нөөц хуулбарт ямар SQL байсныг хэн ч мэдэхгүй. `db/` фолдер нь
+//   дүрмийн эх бичиг; эдгээр файл уствал эсвэл хоосорвол энэ тест унана.
+{
+  // SQL-ийн тайлбар нь `--` — JS-ийн `//` биш. Тайлбар доторх үг скан-тестийг
+  // худал унагахгүй байх ёстой (файлын толгойд дүрмийг бүтнээр тайлбарласан).
+  const noSql = (t) => String(t).replace(/--[^\n]*/g, '');
+  const cat = noSql(readFileSync(join(ROOT, 'db/public_catalog.sql'), 'utf8'));
+  ok('db: public_catalog.sql харагдац үүсгэдэг',
+    /create or replace view public\.public_catalog/.test(cat));
+  ok('db: дүрэмд үнэ 0 бараа хасагдана', /coalesce\(p\.price, 0\) > 0/.test(cat));
+  ok('db: дүрэмд M-Event нөөц шалгагдана', /coalesce\(p\.qty_mevent, 0\) > 0/.test(cat));
+  ok('db: багцын үлдэгдэл бүрэлдэхүүнээс бодогдоно',
+    /jsonb_array_elements\(coalesce\(b\.bundle_items/.test(cat));
+  ok('db: арилжааны багана харагдацад ороогүй',
+    !/\bp\.cost\b|\bp\.supplier\b|\bp\.market_value\b|\bp\.purchase_date\b|\bp\.source_url\b/.test(cat));
+  ok('db: катерингийн тоо дүрэмд ороогүй (CEO-гийн шийдвэр)', !/qty_catering/.test(cat));
+
+  const cfg = noSql(readFileSync(join(ROOT, 'db/app_config_public.sql'), 'utf8'));
+  ok('db: app_config_public.sql харагдац үүсгэдэг',
+    /create or replace view public\.app_config_public/.test(cfg));
+  // Харагдац сайтын уншдаг ЯГ тэр 3 түлхүүрийг гаргах ёстой — нэмэлт түлхүүр
+  // задарвал дотоод утга нийтэд гарна.
+  const keys = (cfg.match(/where key in \(([^)]+)\)/) || [])[1] || '';
+  const declared = [...keys.matchAll(/'([a-z_]+)'/g)].map(m => m[1]).sort();
+  const used = [...new Set([...SRC.matchAll(/app_config_public\?key=eq\.([a-z_]+)/g)].map(m => m[1]))].sort();
+  eq('db: харагдацын түлхүүр сайтын уншдагтай ЯГ таарна', declared.join(','), used.join(','));
+}
+
 /* ── 22. АМЬД ГЭРЭЭ: DB-тэй тулгах (сүлжээгүй бол АЛГАСНА) ───────────────── */
 // ⚠ Сүлжээний саатал дээр улаан болдог тест хэдхэн хоногийн дараа үл тоомсорлогдоно.
 //   Тиймээс эдгээр зөвхөн ХАРИУ ИРСЭН үед шалгана; ирээгүй бол алгасаад PR-ыг
