@@ -23,9 +23,14 @@ const BRAND = 'M-Event';
 // ХУУЧИРСАН: 16 барааны үнэ зөрүүтэй (ихэвчлэн ~30% өндөр — Google дээр бодит үнээс
 // үнэтэй харагдана), мөн нөөц/үнэ хуучин утгаараа шүүгдэж ~100 бараа хуудасгүй үлдсэн.
 // DB татагдахгүй бол products.json руу унана (офлайн build ажиллах ёстой).
-const DB_URL = 'https://n8n.nomaadcamp.com/db/rest/v1/products'
-  + '?select=sku,id,code,name,category,all_categories,type,price,deposit,stock,photo,description,archived,bundle_items,qty_mevent,qty_nomaad'
-  + '&archived=eq.false&order=name.asc';
+// ⚠ 2026-09-10: `public_catalog` ХАРАГДАЦ-аас уншина, `products`-оос БИШ.
+// «Сайтад юу харагдах» дүрэм өмнө нь ГУРВАН газарт ГУРВАН өөрөөр бичигдсэн байсан
+// (сайт 196, энэ скрипт 190, апп 196) тул нэгийг нь засахад нөгөө хоёр нь хоцордог
+// байв. Одоо дүрэм өгөгдлийн санд НЭГ УДАА бичигдсэн — энд дахин шүүхгүй.
+// Харагдац нь `stock`-ыг (qty_mevent − эвдэрсэн − засварт) бэлдэж өгнө.
+const DB_URL = 'https://n8n.nomaadcamp.com/db/rest/v1/public_catalog'
+  + '?select=sku,id,code,name,category,all_categories,type,price,deposit,stock,photo,description,bundle_items,media_url,setup_fee'
+  + '&order=name.asc';
 
 function loadProducts() {
   try {
@@ -54,15 +59,9 @@ function loadProducts() {
 }
 
 const raw = loadProducts();
-const all = raw
-  .filter(p => {
-    if (p.archived) return false;
-    if (p.type === 'service' || p.type === 'package') return true;
-    if (String(p.type || 'rental') === 'asset') return false;
-    const mev = (p.qty_mevent != null) ? Number(p.qty_mevent) || 0 : Number(p.stock) || 0;
-    return mev > 0 && Number(p.price) > 0;
-  })
-  .sort((a, b) => String(a.name).localeCompare(String(b.name), 'mn'));
+// Шүүлт ЭНД БАЙХГҮЙ — харагдац аль хэдийн шүүсэн. Хэрэв офлайн уналтаар
+// (products.json) ирсэн бол тэр файл ч мөн харагдацаас үүсдэг тул ижилхэн.
+const all = raw.slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'mn'));
 
 const esc = s => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = n => (Number(n) || 0).toLocaleString('mn-MN') + '₮';

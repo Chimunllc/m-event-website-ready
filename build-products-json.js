@@ -20,10 +20,13 @@
 const fs = require('fs');
 const path = require('path');
 
-const SELECT = 'sku,id,code,name,category,all_categories,type,price,deposit,stock,photo,'
-  + 'description,archived,bundle_items,broken,maintenance,qty_mevent,qty_nomaad,variant_group,media_url';
-const URL = 'https://n8n.nomaadcamp.com/db/rest/v1/products'
-  + `?select=${SELECT}&archived=eq.false&order=name.asc`;
+// ⚠ 2026-09-10: `public_catalog` ХАРАГДАЦ-аас. «Сайтад юу харагдах» дүрэм
+// өгөгдлийн санд НЭГ УДАА бичигдсэн тул энд шүүлт ч, талбарын жагсаалт ч
+// давхардахгүй. `stock` нь бэлдэгдсэн (qty_mevent − эвдэрсэн − засварт).
+const SELECT = 'sku,id,code,name,category,all_categories,type,price,deposit,stock,'
+  + 'photo,description,bundle_items,variant_group,variant_label,media_url,setup_fee';
+const URL = 'https://n8n.nomaadcamp.com/db/rest/v1/public_catalog'
+  + `?select=${SELECT}&order=name.asc`;
 
 const out = require('child_process').execFileSync('curl',
   ['-sS', '--max-time', '30', '-H', 'Cache-Control: no-cache', URL],
