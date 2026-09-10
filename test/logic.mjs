@@ -369,9 +369,14 @@ const ALLOWED_ENDPOINTS = new Set([
   'public_availability',   // идэвхтэй түрээс
   'app_config_public',     // тариф / ангилал / түрээсийн давтамж
   'app_errors',            // алдааны лог (зөвхөн бичих)
+  'm-event-site-order',    // n8n: захиалга илгээх (бичих)
 ]);
-const touched = [...SRC.matchAll(/rest\/v1\/([a-z_]+)|DB_BASE \+ '\/([a-z_]+)/g)]
-  .map(m => m[1] || m[2]);
+// ⚠ n8n `webhook/…` замыг ЗААВАЛ хамруулна. 2026-09-10-нд энэ regex зөвхөн
+//   `rest/v1/…`-ийг хардаг байсан тул `webhook/mevent-products` нөөц зам тестийг
+//   хууран өнгөрсөн — тэр зам 280 барааг ШҮҮЛТГҮЙ буцаадаг тул сайт шүүхээ
+//   болисны дараа дотоод хөрөнгө олон нийтэд гарах нүх болж байв.
+const touched = [...SRC.matchAll(/rest\/v1\/([a-z_]+)|webhook\/([a-z0-9-]+)|DB_BASE \+ '\/([a-z_]+)/g)]
+  .map(m => m[1] || m[2] || m[3]);
 const forbidden = [...new Set(touched)].filter(t => !ALLOWED_ENDPOINTS.has(t));
 ok('ГЭРЭЭ: сайт зөвхөн нийтийн харагдацаас уншина',
   forbidden.length === 0, 'зөвшөөрөгдөөгүй: ' + forbidden.join(', '));
