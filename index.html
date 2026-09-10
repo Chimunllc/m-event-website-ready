@@ -3,6 +3,14 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<!-- Google Analytics (GA4) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-2S1WC92568"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-2S1WC92568');
+</script>
 <title>Арга хэмжээний тоног төхөөрөмж түрээс | M-Event Улаанбаатар</title>
 <meta name="description" content="Хурим, төрсөн өдөр, эвентэд сандал, ширээ, майхан, тайз, гэрэлтүүлэг түрээслэнэ. 150+ төрлийн бараа, онлайн захиалга, Улаанбаатар доторх хүргэлт. Утас: 7755-1010." />
 <meta name="keywords" content="эвент түрээс, арга хэмжээний тоног төхөөрөмж түрээс, сандал ширээ түрээс, майхан түрээс, тайз түрээс, гэрэлтүүлэг түрээс, хуримын чимэглэл түрээс, Улаанбаатар" />
@@ -1932,7 +1940,16 @@ function updateAvailWarn() {
 }
 
 /* ==================== PRODUCT MODAL ==================== */
+function gaEvent(name, params) {
+  // Хэмжилт САЙТЫГ УНАГААХГҮЙ: adblock/офлайн үед gtag байхгүй байж болно.
+  try { if (typeof gtag === 'function') gtag('event', name, params || {}); } catch (e) {}
+}
+function gaItem(p, qty) {
+  return { item_id: (p && (p.sku || p.code || p.id)) || '', item_name: (p && p.name) || '',
+           item_category: (p && p.category) || '', price: Number(p && p.price) || 0, quantity: qty || 1 };
+}
 function openProduct(p) {
+  gaEvent('view_item', { currency: 'MNT', value: Number(p.price) || 0, items: [gaItem(p, 1)] });
   const isGroup = !!p._variantGroup;
   const vEl = document.getElementById('m-variants');
   if (isGroup) {
@@ -2165,6 +2182,7 @@ function addToCart(p, qty, openDrawer) {
   if (ex) ex.qty = newQty;
   else state.cart.push({ id: p.id, name: p.name, photo: p.photo, price: p.price, deposit: 0, stock: availStock(p), qty: qty || 1 });   // барьцаа сайтад биш — менежер шийднэ
   saveCart();
+  gaEvent('add_to_cart', { currency: 'MNT', value: (Number(p.price) || 0) * (qty || 1), items: [gaItem(p, qty || 1)] });
   renderCart();
   renderGrid();
   // ⚠ Энд огноо асуухгүй — сагсанд нэмэх мөчид үзэх урсгалыг таслах нь хамгийн
@@ -2627,6 +2645,11 @@ async function submitOrder() {
       orderNum = 'DEMO-' + Date.now().toString(36).toUpperCase();
     }
     document.getElementById('success-num').textContent = orderNum;
+    // ⚠ purchase БИШ: энэ бол ҮНИЙН САНАЛЫН хүсэлт, төлбөр хийгдээгүй. purchase
+    // гэж бичвэл GA-гийн орлого аппын бодит орлоготой зөрнө.
+    gaEvent('generate_lead', { currency: 'MNT', value: Number((order.totals || {}).grand) || 0,
+      transaction_id: String(orderNum), items: (order.items || []).map(it => ({
+        item_id: it.sku || it.id || '', item_name: it.name || '', price: Number(it.price) || 0, quantity: Number(it.qty) || 1 })) });
     state.cart = []; saveCart(); renderCart(); renderGrid();
     goStep('success');
   } catch(e) {
