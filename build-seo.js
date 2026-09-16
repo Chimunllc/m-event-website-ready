@@ -7,10 +7,13 @@
  *  2. index.html доторх <!-- SEO-FALLBACK --> хооронд JSON-LD + <noscript> каталог (линктэй) оруулна.
  *  3. products/<slug>/index.html — бараа бүрд ТУСДАА индекслэгддэг хуудас (title/meta/JSON-LD/зураг/CTA).
  *     → Google бараа бүрийг олж индекслэнэ (SPA дангаар индекслэгддэггүй асуудлыг шийднэ).
- *  4. sitemap.xml (нүүр + бараа бүр) + robots.txt.
+ *  4. turees/<slug>/index.html — АНГИЛЛЫН хуудас («сандал ширээ түрээс» гэх мэт).
+ *     → Хайлтын хэмжээ барааны нэр дээр БИШ, ангиллын нэр дээр байдаг.
+ *  5. sitemap.xml (нүүр + ангилал + бараа бүр) + robots.txt.
  *
  * Ажиллуулах:  node build-seo.js
- * ⚠ Бараа өөрчлөгдвөл дахин ажиллуулна. (Ирээдүйд GitHub Action-оор автоматжуулж болно.)
+ * ⚠ Гараар ажиллуулах шаардлагагүй — `.github/workflows/catalog-sync.yml` өдөр бүр
+ *   05:00 цагт амьд каталогоос дахин үүсгэж, өөрчлөлт байвал өөрөө commit хийнэ.
  */
 const fs = require('fs');
 const path = require('path');
@@ -65,6 +68,22 @@ const all = raw.slice().sort((a, b) => String(a.name).localeCompare(String(b.nam
 
 const esc = s => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = n => (Number(n) || 0).toLocaleString('mn-MN') + '₮';
+// Бичвэрийг ҮГЭЭР таслана. ⚠ 2026-09-17: өмнө нь `.slice(0,120)` шууд таслаад ард
+// нь «Улаанбаатар…» гэж залгадаг байсан тул 225 барааны 116-д нь Google-ийн илэрц
+// дээр «…зориулсан өндөУлаанбаатар доторх хүргэлт» гэсэн эвдэрсэн өгүүлбэр гарч
+// байв. Тайлбар нь хүн дарах эсэхийг шийддэг тул эвдэрсэн байж БОЛОХГҮЙ.
+function clampWords(s, max) {
+  const t = String(s || '')
+    .replace(/\s+/g, ' ')
+    // Каталогийн тайлбарт мөр таслалт таслал болж хувирсан байдаг («юм. , Үзүүлэлтүүд: ,»).
+    .replace(/([.!?:])\s*,\s*/g, '$1 ').replace(/\s*,\s*(?=,)/g, '').replace(/\s+([.,])/g, '$1')
+    .trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const sp = cut.lastIndexOf(' ');
+  // Зай хэт эрт байвал (нэг урт үг) тэмдэгтээр таслахаас өөр арга алга.
+  return (sp > max * 0.6 ? cut.slice(0, sp) : cut).replace(/[\s.,;:·—-]+$/, '') + '…';
+}
 // Google-д ҮНЭН зарлана. Өмнө нь бүх хуудас «InStock» гэж ХАТУУ бичигдсэн байсан
 // тул угсрагдахгүй багцууд ч нөөцтэй гэж зарлагдаж байв — Хөгжим DIAMOND
 // (6,200,000₮) 4 микрофон шаарддаг ч агуулахад 2 л байна, ULTRA (7,600,000₮)
@@ -88,6 +107,75 @@ all.forEach(p => {
 });
 const listed = all.filter(p => p._slug);
 
+/* ---------- 0) Ангиллын хуудас — хайлтын хэмжээ ЭНД байна ---------- */
+// ⚠ 2026-09-17: Сайт 196 барааны хуудастай атлаа АНГИЛЛЫН хуудас 0 байв.
+//   Хүн Google дээр «сандал ширээ түрээс», «асар түрээс» гэж хайдаг —
+//   «3 талт матриц гэрэл» гэж хайдаггүй. Ангилал нь `/?cat=…` query string
+//   байсан бөгөөд canonical нь `/` рүү заадаг тул тусад нь эрэмбэлэгдэх
+//   боломжгүй байсан. Одоо `/turees/<slug>/` гэсэн БОДИТ хуудас үүснэ.
+//
+// ⛔ SLUG-ийг ГАРААР бичсэн — ГАЛИГЛАЛААР БОДОХГҮЙ.
+//   Эдгээр нь амьд URL. Галиглалын функцийг хэзээ нэгэн цагт зассан өдөр
+//   бүх ангиллын хаяг чимээгүй өөрчлөгдөж, индекслэгдсэн хуудсууд 404 болно.
+//   Нэг удаа сонгоод ХЭЗЭЭ Ч солихгүй. Шинэ ангилал нэмэгдвэл галиглалаар
+//   түр slug гарна — тэр үед энэ жагсаалтад гараар нэмж тогтворжуулна.
+const CAT_SLUG = {
+  'Ширээ, сандал, бүтээлэг': 'shiree-sandal',
+  'Аяны хэрэгсэл':           'ayany-heregsel',
+  'Тайзны гэрэлтүүлэг':      'taizny-gereltuuleg',
+  'Хөгжөөнт тоглоом':        'hogjoont-togloom',
+  'Хөгжим':                  'hogjim',
+  'Эрчим хүч, цахилгаан':    'erchim-huch',
+  'Сүүдрэвч':                'suudrevch',
+  'Хөгжмийн багц':           'hogjmiin-bagts',
+  'Засал, тохижилт':         'zasal-tohijilt',
+  'Халаалт, агааржуулалт':   'halaalt-agaarjuulalt',
+  'Эффект':                  'effekt',
+  'Майхан':                  'maihan',
+  'Асар':                    'asar',
+  'Тайз':                    'taiz',
+  'Ресторан хэрэгсэл':       'restoran-heregsel',
+  'Чимэглэлийн гэрэл':       'chimeglelin-gerel',
+};
+// Галиглал — ЗӨВХӨН жагсаалтад байхгүй шинэ ангилалд. index.html-ийн MN_LAT-тай
+// ижил үсгийн зураглал (тэнд хайлтын түлхүүрт, энд хаягт хэрэглэнэ).
+const MN_LAT = { 'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'j','з':'z',
+  'и':'i','й':'i','к':'k','л':'l','м':'m','н':'n','о':'o','ө':'o','п':'p','р':'r','с':'s',
+  'т':'t','у':'u','ү':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sh','ъ':'','ы':'y',
+  'ь':'','э':'e','ю':'yu','я':'ya' };
+function catSlug(cat) {
+  if (CAT_SLUG[cat]) return CAT_SLUG[cat];
+  let t = '';
+  for (const ch of String(cat || '').toLowerCase()) t += (MN_LAT[ch] !== undefined ? MN_LAT[ch] : ch);
+  return t.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || null;
+}
+
+// Хэт цөөн барааны ангилалд хуудас үүсгэхгүй: Google 1-2 мөртэй хуудсыг
+// «thin content» гэж үзнэ. 19 ангиллаас 16 нь үлдэнэ («Бусад» нь хайлтын
+// үг биш тул зориуд хасагдана).
+const CAT_MIN_ITEMS = 3;
+const CAT_SKIP = new Set(['Бусад', '']);
+
+const catBuckets = {};
+listed.forEach(p => {
+  const c = p.category || '';
+  if (CAT_SKIP.has(c)) return;
+  (catBuckets[c] = catBuckets[c] || []).push(p);
+});
+const cats = Object.keys(catBuckets)
+  .filter(c => catBuckets[c].length >= CAT_MIN_ITEMS && catSlug(c))
+  .sort((a, b) => a.localeCompare(b, 'mn'))
+  .map(c => ({ name: c, slug: catSlug(c), items: catBuckets[c] }));
+// Бараа → өөрийнх нь ангиллын хуудас. Талх үйрмэг, дотоод холбоос энд тулна.
+const catOfProduct = {};
+cats.forEach(c => c.items.forEach(p => { catOfProduct[p._slug] = c; }));
+const catUrl = c => SITE + '/turees/' + c.slug + '/';
+// Барааны хуудас руу заах холбоос: ангиллын хуудас байвал түүн рүү, эс бөгөөс нүүр рүү.
+const catHref = p => {
+  const c = catOfProduct[p._slug];
+  return c ? '/turees/' + c.slug + '/' : '/?cat=' + encodeURIComponent(p.category || '');
+};
+
 /* ---------- 1) index.html доторх SEO-FALLBACK ---------- */
 const itemList = {
   '@context': 'https://schema.org', '@type': 'ItemList',
@@ -104,11 +192,19 @@ const itemList = {
 };
 const byCat = {};
 listed.forEach(p => { (byCat[p.category || 'Бусад'] = byCat[p.category || 'Бусад'] || []).push(p); });
+const catBySlugName = {};
+cats.forEach(c => { catBySlugName[c.name] = c; });
 let noscriptHtml = '<noscript><div style="max-width:900px;margin:0 auto;padding:0 20px 40px;">'
   + '<h2>Түрээсийн бараа (' + listed.length + ')</h2>'
-  + '<p>Онлайн захиалга JavaScript-тэй ажиллана. Утсаар: +976 7755-1010</p>';
+  + '<p>Онлайн захиалга JavaScript-тэй ажиллана. Утсаар: +976 7755-1010</p>'
+  // Ангиллын хуудсууд руу нүүрнээс холбоос. Ганц газраас 16 хуудас руу линк
+  // очиход Google тэдгээрийг «чухал» гэж үзнэ — sitemap дангаараа үүнийг өгдөггүй.
+  + (cats.length ? '<h3>Ангиллаар түрээслэх</h3><ul>'
+      + cats.map(c => '<li><a href="/turees/' + c.slug + '/">' + esc(c.name)
+          + ' түрээс</a> (' + c.items.length + ')</li>').join('') + '</ul>' : '');
 Object.keys(byCat).sort((a, b) => a.localeCompare(b, 'mn')).forEach(cat => {
-  noscriptHtml += '<h3>' + esc(cat) + '</h3><ul>';
+  const cp = catBySlugName[cat];
+  noscriptHtml += '<h3>' + (cp ? '<a href="/turees/' + cp.slug + '/">' + esc(cat) + '</a>' : esc(cat)) + '</h3><ul>';
   byCat[cat].forEach(p => {
     noscriptHtml += '<li><a href="/products/' + p._slug + '/">' + esc(p.name) + '</a> — ' + fmt(p.price) + '/хоног</li>';
   });
@@ -142,9 +238,9 @@ fs.mkdirSync(prodDir, { recursive: true });
 function productPage(p) {
   const url = SITE + '/products/' + p._slug + '/';
   const title = p.name + ' түрээс | Арга хэмжээний тоног төхөөрөмж түрээс | ' + BRAND;
-  const desc = (p.name + ' түрээслэнэ — ' + fmt(p.price) + '/хоног. '
-    + (p.description ? String(p.description).replace(/\s+/g, ' ').slice(0, 120) : (p.category || '') + ' ангилал. ')
-    + 'Улаанбаатар доторх хүргэлт. Захиалга: 7755-1010.').slice(0, 300);
+  const desc = clampWords(p.name + ' түрээслэнэ — ' + fmt(p.price) + '/хоног. '
+    + (p.description ? clampWords(p.description, 110) + ' ' : (p.category || '') + ' ангилал. ')
+    + 'Улаанбаатар доторх хүргэлт. Захиалга: 7755-1010.', 300);
   const img = /^https?:\/\//.test(p.photo || '') ? p.photo : (SITE + '/og-image.png');
   const ld = {
     '@context': 'https://schema.org', '@type': 'Product',
@@ -157,7 +253,7 @@ function productPage(p) {
     '@context': 'https://schema.org', '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Нүүр', item: SITE + '/' },
-      { '@type': 'ListItem', position: 2, name: p.category || 'Бараа', item: SITE + '/?cat=' + encodeURIComponent(p.category || '') },
+      { '@type': 'ListItem', position: 2, name: p.category || 'Бараа', item: SITE + catHref(p) },
       { '@type': 'ListItem', position: 3, name: p.name, item: url }
     ]
   };
@@ -222,7 +318,7 @@ function productPage(p) {
     <a href="/" class="brand">M<span>·</span>Event</a>
     <a href="tel:+97677551010" class="call">☎ 7755-1010</a>
   </header>
-  <nav class="crumb"><a href="/">Нүүр</a> › <a href="/?cat=${encodeURIComponent(p.category || '')}">${esc(p.category || 'Бараа')}</a> › ${esc(p.name)}</nav>
+  <nav class="crumb"><a href="/">Нүүр</a> › <a href="${catHref(p)}">${esc(p.category || 'Бараа')}</a> › ${esc(p.name)}</nav>
   <div class="card">
     <div class="ph">${/^https?:\/\//.test(p.photo || '') ? `<img src="${esc(p.photo)}" alt="${esc(p.name)} түрээс" loading="eager" fetchpriority="high">` : ''}</div>
     <div>
@@ -259,13 +355,14 @@ listed.forEach(p => {
 //   Зөвхөн sku хэлбэрийн (m-NNN) хавтсыг хөнднө: хуучин нэрний slug-ууд бол
 //   `build-redirects.js`-ийн шилжүүлэг тул тэдгээрийг орхино.
 const TOMBSTONE_MARK = 'data-tombstone="1"';
-function tombstonePage(slug) {
+function tombstonePage(slug, msg) {
+  const head = msg || 'Энэ бараа түрээслэгдэхээ больсон';
   return `<!doctype html>
 <html lang="mn">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Энэ бараа түрээслэгдэхээ больсон — ${BRAND}</title>
+<title>${esc(head)} — ${BRAND}</title>
 <meta name="robots" content="noindex,follow">
 <link rel="canonical" href="${SITE}/">
 <meta ${TOMBSTONE_MARK}>
@@ -273,7 +370,7 @@ function tombstonePage(slug) {
 </head>
 <body>
 <div>
-  <h1 style="font-size:20px;margin:0 0 8px">Энэ бараа түрээслэгдэхээ больсон</h1>
+  <h1 style="font-size:20px;margin:0 0 8px">${esc(head)}</h1>
   <p style="margin:0 0 16px;color:#555">Ойролцоо бараа каталогаас олдож магадгүй.</p>
   <p><a href="${SITE}/">Бүх бараа үзэх →</a></p>
   <p style="color:#555">Лавлах: <a href="tel:+97677551010">7755-1010</a></p>
@@ -295,11 +392,191 @@ for (const d of (fs.existsSync(prodDir) ? fs.readdirSync(prodDir) : [])) {
 }
 if (closed) console.log(`  🔒 каталогоос хасагдсан ${closed} хуудсыг хаав (нийт хаалттай: ${closed + alreadyClosed})`);
 
+/* ---------- 2c) turees/<slug>/index.html — ангиллын хуудас ---------- */
+const CAT_CSS = `
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Inter",-apple-system,sans-serif; background:#FBFAF7; color:#17171B; line-height:1.6; }
+  .wrap { max-width:1000px; margin:0 auto; padding:20px 20px 60px; }
+  header { display:flex; align-items:center; justify-content:space-between; padding:6px 0 22px; }
+  .brand { font-family:"Manrope"; font-weight:800; font-size:18px; letter-spacing:.04em; text-transform:uppercase; color:#0B1F3A; text-decoration:none; }
+  .brand span { color:#E95400; }
+  .call { background:#0B1F3A; color:#fff; padding:9px 16px; border-radius:100px; font-weight:700; font-size:13px; text-decoration:none; }
+  nav.crumb { font-size:12.5px; color:#5C5C63; margin-bottom:16px; }
+  nav.crumb a { color:#5C5C63; text-decoration:none; }
+  h1 { font-family:"Manrope"; font-size:30px; font-weight:800; letter-spacing:-.02em; color:#0B1F3A; margin-bottom:10px; line-height:1.2; }
+  .lede { font-size:15px; color:#2A3644; max-width:70ch; margin-bottom:10px; }
+  .facts { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 26px; }
+  .facts span { background:#fff; border:1px solid #ECE9E2; border-radius:100px; padding:6px 14px; font-size:12.5px; color:#2A3644; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:16px; }
+  .it { background:#fff; border:1px solid #ECE9E2; border-radius:16px; padding:14px; text-decoration:none; color:inherit; display:flex; flex-direction:column; }
+  .it .ph { aspect-ratio:4/3; background:#FAF9F5; border-radius:11px; display:flex; align-items:center; justify-content:center; overflow:hidden; margin-bottom:12px; }
+  .it .ph img { max-width:100%; max-height:100%; object-fit:contain; }
+  .it .nm { font-weight:600; font-size:14px; color:#0B1F3A; margin-bottom:5px; line-height:1.35; }
+  .it .pr { font-family:"Manrope"; font-weight:800; font-size:16px; color:#0B1F3A; margin-top:auto; }
+  .it .pr small { font-size:12px; font-weight:500; color:#5C5C63; }
+  .it .out { font-size:11.5px; color:#B23B00; font-weight:600; }
+  h2 { font-family:"Manrope"; font-size:19px; font-weight:800; color:#0B1F3A; margin:38px 0 12px; }
+  .prose { font-size:14.5px; color:#2A3644; max-width:70ch; }
+  .prose li { margin-left:18px; }
+  .others { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .others a { background:#fff; border:1px solid #ECE9E2; border-radius:100px; padding:7px 15px; font-size:13px; color:#0B1F3A; text-decoration:none; }
+  .cta { display:inline-block; background:#E95400; color:#fff; padding:14px 30px; border-radius:12px; font-family:"Manrope"; font-weight:700; font-size:14px; text-decoration:none; margin-top:18px; }
+  footer { text-align:center; margin-top:44px; font-size:12.5px; color:#5C5C63; }
+  footer a { color:#5C5C63; }
+  @media (max-width:640px) { h1 { font-size:24px; } .grid { grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; } }
+`;
+
+function categoryPage(c) {
+  const url = catUrl(c);
+  const prices = c.items.map(p => Number(p.price) || 0).filter(n => n > 0).sort((a, b) => a - b);
+  const lo = prices[0] || 0, hi = prices[prices.length - 1] || 0;
+  const inStock = c.items.filter(p => p.type === 'service' || Number(p.stock) > 0).length;
+  const title = c.name + ' түрээс | Улаанбаатар | ' + BRAND;
+  // Тайлбар нь ДАТАНААС гарна — загварын дүүргэлт бичвэр биш. Тоо, үнэ, нөхцөл
+  // нь хуудас бүрд өөр бөгөөд каталог өөрчлөгдөхөд өөрөө шинэчлэгдэнэ.
+  const desc = clampWords(c.name + ' түрээслэнэ — ' + c.items.length + ' төрөл, '
+    + fmt(lo) + '-өөс. Улаанбаатар доторх хүргэлт, 2+ хоногт 20% хөнгөлөлт. '
+    + 'Захиалга: 7755-1010.', 300);
+  const firstImg = (c.items.find(p => /^https?:\/\//.test(p.photo || '')) || {}).photo || (SITE + '/og-image.png');
+
+  const ld = {
+    '@context': 'https://schema.org', '@type': 'CollectionPage',
+    name: c.name + ' түрээс', description: desc, url,
+    isPartOf: { '@type': 'WebSite', name: BRAND, url: SITE + '/' },
+    mainEntity: {
+      '@type': 'ItemList', name: c.name + ' түрээс', numberOfItems: c.items.length,
+      itemListElement: c.items.map((p, i) => ({
+        '@type': 'ListItem', position: i + 1,
+        item: {
+          '@type': 'Product', name: p.name, url: SITE + '/products/' + p._slug + '/',
+          image: /^https?:\/\//.test(p.photo || '') ? p.photo : undefined,
+          offers: { '@type': 'Offer', price: Number(p.price) || 0, priceCurrency: 'MNT', availability: availOf(p), url: SITE + '/products/' + p._slug + '/' }
+        }
+      }))
+    }
+  };
+  const crumbs = {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Нүүр', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: c.name + ' түрээс', item: url }
+    ]
+  };
+  const others = cats.filter(x => x.slug !== c.slug);
+
+  return `<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<!-- Google Analytics (GA4) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-2S1WC92568"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-2S1WC92568');
+</script>
+<title>${esc(title)}</title>
+<meta name="description" content="${esc(desc)}" />
+<link rel="canonical" href="${url}" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="${esc(c.name + ' түрээс | ' + BRAND)}" />
+<meta property="og:description" content="${esc(desc)}" />
+<meta property="og:image" content="${esc(firstImg)}" />
+<meta property="og:url" content="${url}" />
+<meta name="theme-color" content="#0B1F3A" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600&display=swap&subset=cyrillic,latin" rel="stylesheet">
+<script type="application/ld+json">${JSON.stringify(ld)}</script>
+<script type="application/ld+json">${JSON.stringify(crumbs)}</script>
+<style>${CAT_CSS}</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a href="/" class="brand">M<span>·</span>Event</a>
+    <a href="tel:+97677551010" class="call">☎ 7755-1010</a>
+  </header>
+  <nav class="crumb"><a href="/">Нүүр</a> › ${esc(c.name)} түрээс</nav>
+
+  <h1>${esc(c.name)} түрээс</h1>
+  <p class="lede">Улаанбаатар хотод ${esc(c.name.toLowerCase())} түрээслэнэ. Одоогоор ${c.items.length} төрөл
+  бэлэн байна${lo ? ', үнэ ' + fmt(lo) + '-өөс ' + fmt(hi) + ' хүртэл (хоногийн түрээс)' : ''}.
+  Онлайнаар огноогоо сонгож захиалахад боломжит үлдэгдлийг шууд шалгана.</p>
+  <div class="facts">
+    <span>${c.items.length} төрөл</span>
+    <span>${inStock} нь одоо бэлэн</span>
+    <span>2+ хоногт −20%</span>
+    <span>Хот дотор хүргэлт</span>
+    <span>1 цагт баталгаажуулна</span>
+  </div>
+
+  <div class="grid">
+${c.items.map(p => `    <a class="it" href="/products/${p._slug}/">
+      <div class="ph">${/^https?:\/\//.test(p.photo || '') ? `<img src="${esc(p.photo)}" alt="${esc(p.name)} түрээс" loading="lazy">` : ''}</div>
+      <div class="nm">${esc(p.name)}</div>
+      <div class="pr">${fmt(p.price)}<small> /хоног</small>${(p.type === 'service' || Number(p.stock) > 0) ? '' : ' <span class="out">· захиалгаар</span>'}</div>
+    </a>`).join('\n')}
+  </div>
+
+  <h2>${esc(c.name)} түрээслэх нөхцөл</h2>
+  <div class="prose">
+    <ul>
+      <li>Түрээсийн хугацаа хоногоор тооцогдоно. 2 дахь хоногоос <strong>20%</strong>, 7+ хоногт <strong>40%</strong> хүртэл хөнгөлнө.</li>
+      <li>Улаанбаатар доторх хүргэлт 150,000₮-өөс. Барьцааны хэмжээ барааны төрлөөс хамаарна.</li>
+      <li>Захиалга төлбөр хийгдсэнээр баталгаажна. Товлосон өдрөөс 48 цагийн өмнө цуцлах боломжтой.</li>
+      <li>Огноогоо сонгоход тухайн өдрийн бодит үлдэгдэл харагдана — давхар захиалга гарахгүй.</li>
+    </ul>
+  </div>
+  <a class="cta" href="/?cat=${encodeURIComponent(c.name)}">${esc(c.name)} үзэх, захиалах →</a>
+
+  <h2>Бусад ангилал</h2>
+  <div class="others">
+${others.map(x => `    <a href="/turees/${x.slug}/">${esc(x.name)}</a>`).join('\n')}
+  </div>
+
+  <footer>
+    © 2026 Чимун ХХК · <a href="tel:+97677551010">7755-1010</a> · <a href="mailto:info@mevent.mn">info@mevent.mn</a> · <a href="/">Бүх бараа →</a>
+  </footer>
+</div>
+</body>
+</html>`;
+}
+
+const catDir = path.join(ROOT, 'turees');
+fs.mkdirSync(catDir, { recursive: true });
+cats.forEach(c => {
+  const d = path.join(catDir, c.slug);
+  fs.mkdirSync(d, { recursive: true });
+  fs.writeFileSync(path.join(d, 'index.html'), categoryPage(c));
+});
+// Ангилал хоосорвол (бараа нь хасагдсан, эсвэл CAT_MIN_ITEMS-ээс доош унасан)
+// хуудсыг УСТГАХГҮЙ — барааны хуудастай ижил бодлого: noindex + нүүр рүү заана.
+// Устгавал Google-д индекслэгдсэн URL 404 болж зэрэглэл унана.
+const liveCatSlugs = new Set(cats.map(c => c.slug));
+let catClosed = 0;
+for (const d of fs.readdirSync(catDir)) {
+  if (liveCatSlugs.has(d)) continue;
+  const f = path.join(catDir, d, 'index.html');
+  if (!fs.existsSync(f)) continue;
+  if (fs.readFileSync(f, 'utf8').includes(TOMBSTONE_MARK)) continue;
+  fs.writeFileSync(f, tombstonePage(d, 'Энэ ангилал одоогоор түрээслэгдэхгүй байна'));
+  catClosed++;
+}
+if (catClosed) console.log(`  🔒 хоосорсон ${catClosed} ангиллын хуудсыг хаав`);
+
 /* ---------- 3) sitemap.xml + robots.txt ---------- */
 const today = new Date().toISOString().slice(0, 10);
 let sm = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
   + '  <url><loc>' + SITE + '/</loc><lastmod>' + today + '</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>\n'
   + '  <url><loc>' + SITE + '/stage-3d.html</loc><lastmod>' + today + '</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>\n';
+// Ангиллын хуудас нь барааны хуудаснаас ДЭЭГҮҮР (0.9) — хайлтын хэмжээ тэнд байна.
+cats.forEach(c => {
+  sm += '  <url><loc>' + catUrl(c) + '</loc><lastmod>' + today + '</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>\n';
+});
 listed.forEach(p => {
   sm += '  <url><loc>' + SITE + '/products/' + p._slug + '/</loc><lastmod>' + today + '</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>\n';
 });
@@ -307,4 +584,7 @@ sm += '</urlset>\n';
 fs.writeFileSync(path.join(ROOT, 'sitemap.xml'), sm);
 fs.writeFileSync(path.join(ROOT, 'robots.txt'), 'User-agent: *\nAllow: /\n\nSitemap: ' + SITE + '/sitemap.xml\n');
 
-console.log('✅ SEO бэлэн: ' + listed.length + ' бараа → index JSON-LD+noscript, ' + listed.length + ' бүтээгдэхүүний хуудас, sitemap.xml (' + (listed.length + 2) + ' URL), robots.txt');
+console.log('✅ SEO бэлэн: ' + listed.length + ' бараа → index JSON-LD+noscript, '
+  + listed.length + ' бүтээгдэхүүний хуудас, ' + cats.length + ' ангиллын хуудас ('
+  + cats.map(c => c.slug).join(', ') + '), sitemap.xml (' + (listed.length + cats.length + 2)
+  + ' URL), robots.txt');
