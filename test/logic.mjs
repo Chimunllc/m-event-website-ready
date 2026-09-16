@@ -341,6 +341,70 @@ ok('SCAN: өдөр тутмын каталог sync ажил байгаа', exis
 ok('SCAN: sync ажил REQUIRE_LIVE-тэй ажилладаг',
   existsSync(SYNC) && /REQUIRE_LIVE/.test(readFileSync(SYNC, 'utf8')));
 
+/* ── 18b. Ангиллын хуудас — хайлтын хэмжээ эндээс ирнэ ────────────────────── */
+// ⚠ 2026-09-17: сайт 196 барааны хуудастай атлаа ангиллын хуудас 0 байв. Хүн
+//   «сандал ширээ түрээс» гэж хайдаг, «3 талт матриц гэрэл» гэж хайдаггүй.
+const CAT_DIR = join(ROOT, 'turees');
+const smCats = [...SITEMAP.matchAll(/\/turees\/([^/]+)\//g)].map(m => m[1]);
+
+ok('ангилал: sitemap-д ангиллын хуудас бий', smCats.length >= 10, `олдсон: ${smCats.length}`);
+
+const catMissing = smCats.filter(s => !existsSync(join(CAT_DIR, s, 'index.html')));
+ok('ангилал: sitemap-ийн бүх ангилал бодитоор байна', catMissing.length === 0, catMissing.join(', '));
+
+// Хаягийн тогтвортой байдал: зөвхөн жижиг латин үсэг, тоо, зураас.
+const badSlug = smCats.filter(s => !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(s));
+ok('ангилал: slug нь цэвэр латин хаяг', badSlug.length === 0, badSlug.join(', '));
+ok('ангилал: slug давхардаагүй', new Set(smCats).size === smCats.length);
+
+// Хоосорсон ангиллын хуудас БАЙВАЛ хаагдсан (noindex) байх ёстой — устгавал 404.
+const catDirs = existsSync(CAT_DIR) ? readdirSync(CAT_DIR)
+  .filter(d => existsSync(join(CAT_DIR, d, 'index.html'))) : [];
+const catGhosts = catDirs.filter(d => !smCats.includes(d)
+  && !readFileSync(join(CAT_DIR, d, 'index.html'), 'utf8').includes('data-tombstone="1"'));
+ok('ангилал: жагсаалтаас гарсан хуудас нээлттэй үлдээгүй', catGhosts.length === 0, catGhosts.join(', '));
+
+// ⛔ Thin content: Google 1-2 мөртэй хуудсыг эрэмбэлэхгүй, бүр торгож ч мэднэ.
+// ⚠ Байхгүй файлыг уншвал тест stack trace цацаж, дээрх шалгуурын ТОДОРХОЙ
+//   мессежийг дардаг. Тиймээс байгаа хуудсыг л тоолно.
+const thin = smCats.filter(s => existsSync(join(CAT_DIR, s, 'index.html')))
+  .map(s => [s, (readFileSync(join(CAT_DIR, s, 'index.html'), 'utf8')
+    .match(/class="it"/g) || []).length]).filter(x => x[1] < 3);
+ok('ангилал: хэт цөөн барааны хуудас үүсээгүй', thin.length === 0,
+  thin.map(x => x[0] + '=' + x[1]).join(', '));
+
+// ⛔ Барааны талх үйрмэг ангиллын хуудас руу заана — заасан хуудас нь БАЙХ ёстой.
+//   Эвдэрсэн дотоод холбоос нь зэрэглэл дамжуулахаа болиод 404 үүсгэнэ.
+const dangling = [];
+for (const d of skuDirs) {
+  const h = readFileSync(join(PRODUCTS_DIR, d, 'index.html'), 'utf8');
+  if (h.includes('data-tombstone="1"')) continue;
+  const m = h.match(/<nav class="crumb">[\s\S]*?href="\/turees\/([^"/]+)\//);
+  if (m && !existsSync(join(CAT_DIR, m[1], 'index.html'))) dangling.push(d + '→' + m[1]);
+}
+ok('ангилал: барааны талх үйрмэг эвдэрсэн холбоосгүй', dangling.length === 0,
+  dangling.slice(0, 5).join(', '));
+
+// ⛔ Хайлтын илэрцэд гарах тайлбар дунд үгээр тасарч БОЛОХГҮЙ.
+//   2026-09-17 хүртэл `.slice(0,120)` шууд тасалж, ард нь «Улаанбаатар…» гэж
+//   залгадаг байсан тул 225 барааны 116-д нь «…зориулсан өндөУлаанбаатар доторх»
+//   гэж гарч байв. Хүн тэрийг хараад дардаггүй.
+const cutMid = skuDirs.filter(d => {
+  const m = readFileSync(join(PRODUCTS_DIR, d, 'index.html'), 'utf8')
+    .match(/name="description" content="([^"]*)"/);
+  return m && /[а-яёөүА-ЯЁӨҮ]Улаанбаатар/.test(m[1]);
+});
+ok('ангилал: meta тайлбар дунд үгээр тасраагүй', cutMid.length === 0,
+  cutMid.slice(0, 5).join(', '));
+
+// ⛔ SCAN: ангиллын slug ГАРААР бичигдсэн байх ёстой. Галиглалаар бодуулбал
+//   функцийг зассан өдөр бүх амьд URL чимээгүй өөрчлөгдөж 404 болно.
+ok('SCAN: ангиллын slug гараар тогтоогдсон',
+  /const CAT_SLUG = \{/.test(BSEO) && /'Асар':\s*'asar'/.test(BSEO));
+// SCAN: хоосорсон ангилал устгагдахгүй, хаагдана.
+ok('SCAN: ангиллын хуудас устгагддаггүй',
+  /tombstonePage\(d, 'Энэ ангилал/.test(BSEO) && !/rmSync[^\n]*turees/.test(BSEO));
+
 /* ── 19. Сайтын алдаа аппын системд урсдаг эсэх ───────────────────────────── */
 // Аппын `errFingerprint`-тэй ЯГ ижил томьёо байх ёстой — эс бөгөөс нэг алдаа
 // хоёр өөр хээтэй болж, GitHub дээр 2 тусдаа Issue үүснэ.
