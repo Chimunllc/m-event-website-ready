@@ -561,6 +561,55 @@ ok('SCAN: note-д атрибуци нэмэгдэнэ',
 ok('SCAN: атрибуци сайтыг унагаахгүй',
    /function captureAttrib[\s\S]{0,600}?catch \(e\) \{ return null; \}/.test(SRC));
 
+/* ── Meta Pixel ───────────────────────────────────────────────────────────── */
+// Pixel нь Facebook-т «хэн худалдаж авдаг вэ» гэдгийг заана. Үүнгүйгээр зар
+// зөвхөн чат тоолж, хөрвөлтөөр оновчлох боломжгүй.
+const fbx = createContext({ URLSearchParams, Date, RegExp, decodeURIComponent });
+runInContext(extractFn('readCookie'), fbx);
+runInContext(extractFn('synthFbc'), fbx);
+runInContext(extractFn('fbqToken'), fbx);
+
+eq('pixel: күүки уншина', fbx.readCookie('a=1; _fbp=fb.1.99.7; b=2', '_fbp'), 'fb.1.99.7');
+eq('pixel: эхний күүки ч уншигдана', fbx.readCookie('_fbp=x; a=1', '_fbp'), 'x');
+eq('pixel: байхгүй күүки → хоосон', fbx.readCookie('a=1', '_fbp'), '');
+eq('pixel: хоосон мөр → унахгүй', fbx.readCookie(null, '_fbp'), '');
+// ⚠ Нэрийн ХЭСЭГ таарах ёсгүй: `x_fbp` нь `_fbp` БИШ.
+eq('pixel: нэрийн дундаас таарахгүй', fbx.readCookie('zz_fbp=bad; _fbp=good', '_fbp'), 'good');
+
+eq('pixel: fbclid → fbc', fbx.synthFbc('AbC-1_2', 1700000000000), 'fb.1.1700000000000.AbC-1_2');
+eq('pixel: fbclid байхгүй → хоосон', fbx.synthFbc('', 1), '');
+eq('pixel: null → унахгүй', fbx.synthFbc(null, 1), '');
+// ⛔ Токен эвдэх тэмдэгт ХАСАГДАНА — note-ийн бүх токен үүнээс шалтгаалж эвдэрнэ.
+eq('pixel: fbc-ээс ⟦⟧| хасагдана', fbx.synthFbc('a⟦b⟧c|d', 5), 'fb.1.5.abcd');
+
+eq('pixel: FBQ токен', fbx.fbqToken('fb.1.1.p', 'fb.1.2.c'), '⟦FBQ|fb.1.1.p|fb.1.2.c⟧');
+eq('pixel: зөвхөн fbp', fbx.fbqToken('fb.1.1.p', ''), '⟦FBQ|fb.1.1.p|⟧');
+eq('pixel: хоёулаа хоосон → токенгүй', fbx.fbqToken('', ''), '');
+eq('pixel: null → токенгүй', fbx.fbqToken(null, null), '');
+eq('pixel: токен цэвэрлэгдэнэ', fbx.fbqToken('a|b', '⟦c⟧'), '⟦FBQ|ab|c⟧');
+
+// SCAN: Pixel үндсэн код хуудсанд БАЙХ ёстой (id-г андуурвал юу ч бүртгэгдэхгүй).
+ok('SCAN: Pixel суусан', /fbq\('init','1546687400103761'\);fbq\('track','PageView'\);/.test(SRC));
+// SCAN: гурван мөч бүртгэгдэнэ.
+ok('SCAN: ViewContent буудаг', /fbEvent\('ViewContent', fbItem\(p\)\);/.test(SRC));
+ok('SCAN: AddToCart буудаг', /fbEvent\('AddToCart', fbItem\(p\)\);/.test(SRC));
+ok('SCAN: Lead буудаг', /fbEvent\('Lead',/.test(SRC));
+// ⛔ Purchase-ыг САЙТААС илгээхгүй — сервер (CAPI) мөнгө орсны дараа илгээнэ.
+//    Хоёуланг нь илгээвэл нэг захиалга ХОЁР удаа тоологдож зарын үр дүн
+//    хоёр дахин их харагдана.
+ok('SCAN: сайт Purchase илгээхгүй', !/fbEvent\('Purchase'/.test(SRC));
+// ⛔ ₮ дүн Pixel рүү явуулахгүй — Meta MNT валютыг дэмждэггүй тул чимээгүй
+//    хаягддаг. Дүн зөвхөн сервер талд, ам.доллар болж явна.
+ok('SCAN: Pixel-д MNT дүн явуулахгүй',
+   !/fbEvent\([^)]*currency/.test(SRC) && !/fbItem[\s\S]{0,200}?currency/.test(SRC));
+// SCAN: note-д FBQ токен нэмэгдэнэ — эс бөгөөс CAPI хэнийг ч тулгаж чадахгүй.
+ok('SCAN: note-д FBQ токен нэмэгдэнэ',
+   /const _fq = fbqToken\(readCookie\(document\.cookie, '_fbp'\)/.test(SRC)
+   && /if \(_fq\) s = \(s \? s \+ ' ' : ''\) \+ _fq;/.test(SRC));
+// SCAN: fbq байхгүй үед сайт УНАХГҮЙ (adblock, iOS, офлайн).
+ok('SCAN: Pixel сайтыг унагаахгүй',
+   /function fbEvent[\s\S]{0,400}?if \(typeof fbq !== 'function'\) return;[\s\S]{0,300}?catch \(e\) \{\}/.test(SRC));
+
 /* ── Дүн ──────────────────────────────────────────────────────────────────── */
 if (fails.length) {
   console.log(`❌ LOGIC FAIL — ${pass} тэнцсэн, ${fails.length} унасан`);
