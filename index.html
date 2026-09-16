@@ -11,6 +11,17 @@
   gtag('js', new Date());
   gtag('config', 'G-2S1WC92568');
 </script>
+<!-- Meta Pixel (mevent.mn) — зарын үр дүнг Facebook-т заана -->
+<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('init','1546687400103761');fbq('track','PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none" alt=""
+src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></noscript>
 <title>Арга хэмжээний тоног төхөөрөмж түрээс | M-Event Улаанбаатар</title>
 <meta name="description" content="Хурим, төрсөн өдөр, эвентэд сандал, ширээ, майхан, тайз, гэрэлтүүлэг түрээслэнэ. 150+ төрлийн бараа, онлайн захиалга, Улаанбаатар доторх хүргэлт. Утас: 7755-1010." />
 <meta name="keywords" content="эвент түрээс, арга хэмжээний тоног төхөөрөмж түрээс, сандал ширээ түрээс, майхан түрээс, тайз түрээс, гэрэлтүүлэг түрээс, хуримын чимэглэл түрээс, Улаанбаатар" />
@@ -1986,10 +1997,61 @@ function storedAttrib() {
 }
 try { captureAttrib(); } catch (e) {}
 
+// ── META PIXEL-ийн ТУСЛАХУУД (2026-09-16) ──────────────────────────────────
+// Сервер талын Conversions API нь захиалгыг зартай тулгахад браузерын хоёр
+// санамсаргүй id хэрэглэнэ: `_fbp` (хөтчийн) ба `_fbc` (зар дарсан). Хоёулаа
+// Pixel-ийн тавьдаг күүки. Хувийн мэдээлэл БИШ.
+// ⚠ Pixel хаагдсан (adblock/iOS) үед `_fbc` тавигдахгүй тул `fbclid`-ээс
+//   ӨӨРСДӨӨ угсарч нөөцөлнө — эс бөгөөс зар дарж ирсэн хүн тулгагдахгүй.
+const FBC_KEY = 'mv_fbc';
+// Күүкиний мөрөөс утга сугална. Цэвэр функц.
+function readCookie(all, name) {
+  const m = String(all || '').match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
+  try { return m ? decodeURIComponent(m[1]) : ''; } catch (e) { return m ? m[1] : ''; }
+}
+// fbclid → Meta-гийн `fbc` хэлбэр (`fb.1.<цаг>.<id>`). Цэвэр функц.
+function synthFbc(fbclid, ms) {
+  const id = String(fbclid || '').trim().replace(/[⟦⟧|;\s]/g, '').slice(0, 200);
+  return id ? 'fb.1.' + (Number(ms) || 0) + '.' + id : '';
+}
+// ⟦FBQ|fbp|fbc⟧ токен — note-оор дамжиж app_orders-д хүрнэ (backend өөрчлөхгүй).
+// Цэвэр функц.
+function fbqToken(fbp, fbc) {
+  const c = v => String(v || '').replace(/[⟦⟧|]/g, '').slice(0, 255);
+  const p = c(fbp), q = c(fbc);
+  return (p || q) ? '⟦FBQ|' + p + '|' + q + '⟧' : '';
+}
+function captureFbc(search, ms) {
+  try {
+    const cur = synthFbc(new URLSearchParams(String(search || '')).get('fbclid'), ms);
+    if (cur) localStorage.setItem(FBC_KEY, cur);
+  } catch (e) {}
+}
+function storedFbc() { try { return localStorage.getItem(FBC_KEY) || ''; } catch (e) { return ''; } }
+try { captureFbc(location.search, Date.now()); } catch (e) {}
+
 /* ==================== PRODUCT MODAL ==================== */
 function gaEvent(name, params) {
   // Хэмжилт САЙТЫГ УНАГААХГҮЙ: adblock/офлайн үед gtag байхгүй байж болно.
   try { if (typeof gtag === 'function') gtag('event', name, params || {}); } catch (e) {}
+}
+// Meta Pixel үйл явдал. gaEvent-тэй ИЖИЛ мөчид буудаг — хоёр систем нэг үнэн.
+// ⚠ Сайтыг УНАГААХГҮЙ: adblock/офлайн үед fbq байхгүй байж болно.
+// ⛔ ҮНЭ/ВАЛЮТ ЭНД ИЛГЭЭХГҮЙ. Meta нь ₮ (MNT) валютыг ДЭМЖДЭГГҮЙ тул дүн
+//    чимээгүй хаягддаг. Дүн нь ЗӨВХӨН сервер талын Purchase дээр, VPS-ийн
+//    ганц ханшаар (FX_USD_MNT) ам.доллар болж явна — ханшийг энд ДАВХАРДУУЛЖ
+//    бичвэл хоёр эх сурвалж болж зөрнө.
+function fbEvent(name, params, eventId) {
+  try {
+    if (typeof fbq !== 'function') return;
+    if (eventId) fbq('track', name, params || {}, { eventID: String(eventId) });
+    else fbq('track', name, params || {});
+  } catch (e) {}
+}
+function fbItem(p) {
+  return { content_type: 'product',
+           content_ids: [String((p && (p.sku || p.code || p.id)) || '')],
+           content_name: String((p && p.name) || '') };
 }
 function gaItem(p, qty) {
   return { item_id: (p && (p.sku || p.code || p.id)) || '', item_name: (p && p.name) || '',
@@ -1997,6 +2059,7 @@ function gaItem(p, qty) {
 }
 function openProduct(p) {
   gaEvent('view_item', { currency: 'MNT', value: Number(p.price) || 0, items: [gaItem(p, 1)] });
+  fbEvent('ViewContent', fbItem(p));
   const isGroup = !!p._variantGroup;
   const vEl = document.getElementById('m-variants');
   if (isGroup) {
@@ -2230,6 +2293,7 @@ function addToCart(p, qty, openDrawer) {
   else state.cart.push({ id: p.id, name: p.name, photo: p.photo, price: p.price, deposit: 0, stock: availStock(p), qty: qty || 1 });   // барьцаа сайтад биш — менежер шийднэ
   saveCart();
   gaEvent('add_to_cart', { currency: 'MNT', value: (Number(p.price) || 0) * (qty || 1), items: [gaItem(p, qty || 1)] });
+  fbEvent('AddToCart', fbItem(p));
   renderCart();
   renderGrid();
   // ⚠ Энд огноо асуухгүй — сагсанд нэмэх мөчид үзэх урсгалыг таслах нь хамгийн
@@ -2664,6 +2728,11 @@ async function submitOrder() {
       // Зарын атрибуци — хаанаас ирснийг хүнээс асуухгүйгээр авчирна.
       const _at = attribToken(storedAttrib());
       if (_at) s = (s ? s + ' ' : '') + _at;
+      // Pixel-ийн күүки — сервер талын Conversions API энэ хоёроор захиалгыг
+      // зар дарсан хүнтэй тулгана. Аппын cleanAppNote() үүнийг харуулахгүй.
+      const _fq = fbqToken(readCookie(document.cookie, '_fbp'),
+                           readCookie(document.cookie, '_fbc') || storedFbc());
+      if (_fq) s = (s ? s + ' ' : '') + _fq;
       return s;
     })(),
     delivery: dlv,
@@ -2710,6 +2779,11 @@ async function submitOrder() {
     gaEvent('generate_lead', { currency: 'MNT', value: Number((order.totals || {}).grand) || 0,
       transaction_id: String(orderNum), items: (order.items || []).map(it => ({
         item_id: it.sku || it.id || '', item_name: it.name || '', price: Number(it.price) || 0, quantity: Number(it.qty) || 1 })) });
+    // ⚠ Purchase БИШ — төлбөр хийгдээгүй. Purchase-ыг ЗӨВХӨН сервер (CAPI)
+    //   мөнгө орсны дараа илгээнэ; хоёр газраас илгээвэл давхар тоологдоно.
+    fbEvent('Lead', { content_type: 'product',
+      content_ids: (order.items || []).map(it => String(it.sku || it.id || '')) },
+      'lead-' + String(orderNum));
     state.cart = []; saveCart(); renderCart(); renderGrid();
     goStep('success');
   } catch(e) {
