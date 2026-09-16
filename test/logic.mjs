@@ -514,6 +514,53 @@ try {
   console.log('   ⏭ АМЬД гэрээний шалгалт алгасав (сүлжээ/DB хүрэхгүй): ' + e.message);
 }
 
+/* ── Зарын атрибуци ───────────────────────────────────────────────────────── */
+// Хаанаас ирснийг URL-ээс АВТОМАТААР барина. Гараар сонгуулдаг лид суваг аппад
+// 144 захиалгын 4-д нь л бөглөгдсөн байсан — тиймээс автомат байх ёстой.
+const atx = createContext({ URLSearchParams, Date });
+runInContext(extractFn('parseAttrib'), atx);
+runInContext(extractFn('attribToken'), atx);
+runInContext(extractFn('attribFresh'), atx);
+
+eq('атрибуци: fbclid → facebook', atx.parseAttrib('?fbclid=abc123', '2026-09-16').src, 'facebook');
+eq('атрибуци: utm_source давуу', atx.parseAttrib('?fbclid=x&utm_source=google', '2026-09-16').src, 'google');
+eq('атрибуци: кампанит ажил', atx.parseAttrib('?utm_source=fb&utm_campaign=asar', '2026-09-16').camp, 'asar');
+eq('атрибуци: параметргүй → null', atx.parseAttrib('?a=1', '2026-09-16'), null);
+eq('атрибуци: хоосон → null', atx.parseAttrib('', '2026-09-16'), null);
+eq('атрибуци: null → унахгүй', atx.parseAttrib(null, '2026-09-16'), null);
+
+// ⛔ Токены тусгай тэмдэгт ЗААВАЛ хасагдана — эс бөгөөс note-ийн БҮХ токен
+//   (⟦DLV⟧, ⟦CI⟧, ⟦RT⟧) эвдэрч аппын задлагч бүхэлдээ гажина.
+const dirty = atx.parseAttrib('?utm_source=a⟦b⟧c|d', '2026-09-16');
+eq('атрибуци: ⟦⟧| тэмдэгт хасагдана', dirty.src, 'abcd');
+ok('атрибуци: токен цэвэр гарна', atx.attribToken(dirty).split('⟦').length === 2);
+
+eq('атрибуци: facebook → LEAD токен ч гарна',
+   atx.attribToken({ src: 'facebook', camp: 'asar', med: 'cpc' }),
+   '⟦LEAD|fb⟧ ⟦ADS|facebook|asar|cpc⟧');
+eq('атрибуци: google → LEAD токенгүй',
+   atx.attribToken({ src: 'google', camp: '', med: '' }), '⟦ADS|google||⟧');
+eq('атрибуци: хоосон → токенгүй', atx.attribToken(null), '');
+eq('атрибуци: эх сурвалжгүй → токенгүй', atx.attribToken({ camp: 'x' }), '');
+
+// ⚠ Хугацаа: 30 хоногийн дотор хүчинтэй, дараа нь мартана.
+ok('атрибуци: тэр өдөр хүчинтэй', atx.attribFresh({ at: '2026-09-16' }, '2026-09-16', 30));
+ok('атрибуци: 30 хоногт хүчинтэй', atx.attribFresh({ at: '2026-08-17' }, '2026-09-16', 30));
+ok('атрибуци: 31 хоногт хүчингүй', !atx.attribFresh({ at: '2026-08-16' }, '2026-09-16', 30));
+ok('атрибуци: огноогүй → хүчингүй', !atx.attribFresh({}, '2026-09-16', 30));
+ok('атрибуци: null → унахгүй', !atx.attribFresh(null, '2026-09-16', 30));
+
+// SCAN: эхний хүрэлцээ ДАРАГДАХГҮЙ — зар дараад орсон хүн дараа нь шууд
+// хаягаар ирэхэд зарын гавьяа алдагдах ёсгүй.
+ok('SCAN: эхний хүрэлцээ хадгалагдана',
+   /function captureAttrib[\s\S]{0,400}?if \(attribFresh\(old, today\)\) return old;/.test(SRC));
+// SCAN: захиалгын note-д токен ЗААВАЛ нэмэгдэнэ (эс бөгөөс бүх ажил дэмий).
+ok('SCAN: note-д атрибуци нэмэгдэнэ',
+   /const _at = attribToken\(storedAttrib\(\)\);\s*\n\s*if \(_at\) s = \(s \? s \+ ' ' : ''\) \+ _at;/.test(SRC));
+// SCAN: localStorage унавал сайт УНАХГҮЙ (adblock/private горим).
+ok('SCAN: атрибуци сайтыг унагаахгүй',
+   /function captureAttrib[\s\S]{0,600}?catch \(e\) \{ return null; \}/.test(SRC));
+
 /* ── Дүн ──────────────────────────────────────────────────────────────────── */
 if (fails.length) {
   console.log(`❌ LOGIC FAIL — ${pass} тэнцсэн, ${fails.length} унасан`);
