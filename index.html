@@ -1929,6 +1929,63 @@ function updateAvailWarn() {
     <div class="avail-note">Хүсэлт илгээх боломжтой — менежер боломжийг шалгаад хамт зохицуулна. Эсвэл тоо/огноогоо тохируулна уу.</div>`;
 }
 
+/* ==================== ЗАРЫН АТРИБУЦИ ==================== */
+// Хүн хаанаас ирснийг URL-ээс АВТОМАТААР барина — хүнээс юу ч асуухгүй
+// (гараар сонгуулдаг лид суваг аппад 144 захиалгын 4-д нь л бөглөгдсөн).
+// ⚠ ЭХНИЙ ХҮРЭЛЦЭЭ хадгалагдана: зар дараад орж, дараа нь шууд хаягаар эргэж
+//   ирээд захиалбал зарын гавьяа алдагдах ёсгүй. Хугацаа ATTRIB_DAYS хоног.
+// ⚠ Дугаар/хувийн мэдээлэл ХАДГАЛАХГҮЙ — зөвхөн суваг/кампанит ажлын нэр.
+const ATTRIB_KEY = 'mv_attrib';
+const ATTRIB_DAYS = 30;
+
+// URL → {src, camp, med} эсвэл null. Цэвэр функц.
+function parseAttrib(search, today) {
+  let q;
+  try { q = new URLSearchParams(String(search || '')); } catch (e) { return null; }
+  // ⚠ Токены тусгай тэмдэгтийг ЗААВАЛ хасна — эс бөгөөс note-ийн бүх токен эвдэрнэ.
+  const g = k => String(q.get(k) || '').trim().replace(/[⟦⟧|]/g, '').slice(0, 40);
+  const src = g('utm_source') || (g('fbclid') ? 'facebook' : '');
+  if (!src) return null;
+  return { src, camp: g('utm_campaign'), med: g('utm_medium'),
+           at: String(today || new Date().toISOString().slice(0, 10)) };
+}
+
+// Хадгалсан атрибуцийг note-ийн токен болгоно. Цэвэр функц.
+// ⚠ Facebook/Instagram-аас ирсэн бол ⟦LEAD|fb⟧ ч бичнэ — аппын лид сувгийн
+//   хамралт ингэж ГАРААР бөглөхгүйгээр өснө.
+function attribToken(a) {
+  if (!a || !a.src) return '';
+  const fb = /facebook|fb|instagram|ig|meta/i.test(a.src);
+  const t = `⟦ADS|${[a.src, a.camp || '', a.med || ''].join('|')}⟧`;
+  return (fb ? '⟦LEAD|fb⟧ ' : '') + t;
+}
+
+// Хадгалсан нь хүчинтэй юу (хугацаа дуусаагүй). Цэвэр функц.
+function attribFresh(a, today, days) {
+  if (!a || !a.at) return false;
+  const d = (Date.parse(String(today) + 'T00:00:00Z') - Date.parse(String(a.at) + 'T00:00:00Z')) / 86400000;
+  return d >= 0 && d <= (days || ATTRIB_DAYS);
+}
+
+// URL-ээс барьж хадгална (эхний хүрэлцээг ДАРАХГҮЙ).
+function captureAttrib() {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const old = JSON.parse(localStorage.getItem(ATTRIB_KEY) || 'null');
+    if (attribFresh(old, today)) return old;
+    const cur = parseAttrib(location.search, today);
+    if (cur) localStorage.setItem(ATTRIB_KEY, JSON.stringify(cur));
+    return cur || null;
+  } catch (e) { return null; }
+}
+function storedAttrib() {
+  try {
+    const a = JSON.parse(localStorage.getItem(ATTRIB_KEY) || 'null');
+    return attribFresh(a, new Date().toISOString().slice(0, 10)) ? a : null;
+  } catch (e) { return null; }
+}
+try { captureAttrib(); } catch (e) {}
+
 /* ==================== PRODUCT MODAL ==================== */
 function gaEvent(name, params) {
   // Хэмжилт САЙТЫГ УНАГААХГҮЙ: adblock/офлайн үед gtag байхгүй байж болно.
@@ -2604,6 +2661,9 @@ async function submitOrder() {
       const mapsUrl = isDeliv ? ((document.getElementById('f-maps') || {}).value || '').trim() : '';
       if (mapsUrl) ci.maps = mapsUrl.replace(/[⟦⟧]/g, '').slice(0, 400);
       if (Object.keys(ci).length) s = (s ? s + ' ' : '') + `⟦CI|${JSON.stringify(ci)}⟧`;
+      // Зарын атрибуци — хаанаас ирснийг хүнээс асуухгүйгээр авчирна.
+      const _at = attribToken(storedAttrib());
+      if (_at) s = (s ? s + ' ' : '') + _at;
       return s;
     })(),
     delivery: dlv,
