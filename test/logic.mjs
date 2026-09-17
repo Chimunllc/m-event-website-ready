@@ -581,7 +581,9 @@ try {
 /* ── Зарын атрибуци ───────────────────────────────────────────────────────── */
 // Хаанаас ирснийг URL-ээс АВТОМАТААР барина. Гараар сонгуулдаг лид суваг аппад
 // 144 захиалгын 4-д нь л бөглөгдсөн байсан — тиймээс автомат байх ёстой.
-const atx = createContext({ URLSearchParams, Date });
+const atx = createContext({ URLSearchParams, URL, Date });
+runInContext(extractFn('refSource'), atx);
+runInContext(extractFn('leadKeyFor'), atx);
 runInContext(extractFn('parseAttrib'), atx);
 runInContext(extractFn('attribToken'), atx);
 runInContext(extractFn('attribFresh'), atx);
@@ -589,9 +591,35 @@ runInContext(extractFn('attribFresh'), atx);
 eq('атрибуци: fbclid → facebook', atx.parseAttrib('?fbclid=abc123', '2026-09-16').src, 'facebook');
 eq('атрибуци: utm_source давуу', atx.parseAttrib('?fbclid=x&utm_source=google', '2026-09-16').src, 'google');
 eq('атрибуци: кампанит ажил', atx.parseAttrib('?utm_source=fb&utm_campaign=asar', '2026-09-16').camp, 'asar');
-eq('атрибуци: параметргүй → null', atx.parseAttrib('?a=1', '2026-09-16'), null);
-eq('атрибуци: хоосон → null', atx.parseAttrib('', '2026-09-16'), null);
-eq('атрибуци: null → унахгүй', atx.parseAttrib(null, '2026-09-16'), null);
+// ⚠ 2026-09-17-ээс: зарын тэмдэггүй ч ИРСЭН ХУУДСААС таана. Өмнө нь ийм
+//   зочин ТЭМДЭГГҮЙ үлдэж, «Google-ээс ирсэн үү, шууд орсон уу» гэдгийг
+//   ХЭЗЭЭ Ч мэдэх боломжгүй байв.
+eq('атрибуци: тэмдэггүй → шууд', atx.parseAttrib('?a=1', '2026-09-16', '').src, 'direct');
+eq('атрибуци: тэмдэггүй нь СУЛ дохио', atx.parseAttrib('', '2026-09-16', '').weak, true);
+eq('атрибуци: fbclid нь ХҮЧТЭЙ', atx.parseAttrib('?fbclid=x', '2026-09-16', '').weak, false);
+eq('атрибуци: null → унахгүй', atx.parseAttrib(null, '2026-09-16', '').src, 'direct');
+
+/* ── Ирсэн хуудсаар таних ─────────────────────────────────────────────────── */
+eq('эх сурвалж: Google', atx.refSource('https://www.google.com/search?q=x'), 'google');
+eq('эх сурвалж: Google MN', atx.refSource('https://www.google.mn/'), 'google');
+eq('эх сурвалж: Facebook', atx.refSource('https://l.facebook.com/'), 'facebook');
+eq('эх сурвалж: Instagram', atx.refSource('https://www.instagram.com/'), 'instagram');
+eq('эх сурвалж: Bing → хайлт', atx.refSource('https://www.bing.com/'), 'google');
+eq('эх сурвалж: хоосон → шууд', atx.refSource(''), 'direct');
+eq('эх сурвалж: буруу хаяг → шууд', atx.refSource('огт хаяг биш'), 'direct');
+eq('эх сурвалж: бусад сайт', atx.refSource('https://www.unegui.mn/x'), 'unegui.mn');
+// ⛔ ӨӨРИЙН САЙТААС ирсэн нь эх сурвалж БИШ — дотоод шилжилт бүрд «referral»
+//    гэж бичвэл бүх захиалга «mevent.mn-ээс ирсэн» болно.
+eq('эх сурвалж: өөрийн сайт → тоохгүй', atx.refSource('https://mevent.mn/turees/asar/'), '');
+eq('эх сурвалж: www өөрийн сайт', atx.refSource('https://www.mevent.mn/'), '');
+
+/* ── LEAD түлхүүр аппын жагсаалттай таарна ────────────────────────────────── */
+// ⛔ Танихгүй утга бичвэл аппад «мэдэхгүй» болж хамралт өсөхгүй.
+eq('лид: facebook → fb', atx.leadKeyFor('facebook'), 'fb');
+eq('лид: instagram → ig', atx.leadKeyFor('instagram'), 'ig');
+eq('лид: google → site', atx.leadKeyFor('google'), 'site');
+eq('лид: direct → site', atx.leadKeyFor('direct'), 'site');
+eq('лид: танихгүй → хоосон', atx.leadKeyFor('unegui.mn'), '');
 
 // ⛔ Токены тусгай тэмдэгт ЗААВАЛ хасагдана — эс бөгөөс note-ийн БҮХ токен
 //   (⟦DLV⟧, ⟦CI⟧, ⟦RT⟧) эвдэрч аппын задлагч бүхэлдээ гажина.
@@ -602,8 +630,10 @@ ok('атрибуци: токен цэвэр гарна', atx.attribToken(dirty).
 eq('атрибуци: facebook → LEAD токен ч гарна',
    atx.attribToken({ src: 'facebook', camp: 'asar', med: 'cpc' }),
    '⟦LEAD|fb⟧ ⟦ADS|facebook|asar|cpc⟧');
-eq('атрибуци: google → LEAD токенгүй',
-   atx.attribToken({ src: 'google', camp: '', med: '' }), '⟦ADS|google||⟧');
+eq('атрибуци: google → LEAD|site',
+   atx.attribToken({ src: 'google', camp: '', med: '' }), '⟦LEAD|site⟧ ⟦ADS|google||⟧');
+eq('атрибуци: танихгүй эх сурвалж → зөвхөн ADS',
+   atx.attribToken({ src: 'unegui.mn', camp: '', med: 'referrer' }), '⟦ADS|unegui.mn||referrer⟧');
 eq('атрибуци: хоосон → токенгүй', atx.attribToken(null), '');
 eq('атрибуци: эх сурвалжгүй → токенгүй', atx.attribToken({ camp: 'x' }), '');
 
@@ -616,14 +646,20 @@ ok('атрибуци: null → унахгүй', !atx.attribFresh(null, '2026-09-
 
 // SCAN: эхний хүрэлцээ ДАРАГДАХГҮЙ — зар дараад орсон хүн дараа нь шууд
 // хаягаар ирэхэд зарын гавьяа алдагдах ёсгүй.
+// ⛔ ХҮЧТЭЙ дохио (зарын тэмдэг) нь хадгалсан СУЛ дохиог ДАРЖ БИЧНЭ — эс
+//    бөгөөс шууд орж үзсэн хүн «direct» гэж 30 хоног тогтож, дараа нь зар
+//    дарж ирэхэд зарын гавьяа бүрмөсөн алдагдана.
+ok('SCAN: хүчтэй дохио сулыг дарна',
+   /cur && !cur\.weak && old && old\.weak/.test(SRC));
+ok('SCAN: ирсэн хуудас уншигдана', /parseAttrib\(location\.search, today, document\.referrer\)/.test(SRC));
 ok('SCAN: эхний хүрэлцээ хадгалагдана',
-   /function captureAttrib[\s\S]{0,400}?if \(attribFresh\(old, today\)\) return old;/.test(SRC));
+   /function captureAttrib[\s\S]{0,900}?if \(keepOld\) return old;/.test(SRC));
 // SCAN: захиалгын note-д токен ЗААВАЛ нэмэгдэнэ (эс бөгөөс бүх ажил дэмий).
 ok('SCAN: note-д атрибуци нэмэгдэнэ',
    /const _at = attribToken\(storedAttrib\(\)\);\s*\n\s*if \(_at\) s = \(s \? s \+ ' ' : ''\) \+ _at;/.test(SRC));
 // SCAN: localStorage унавал сайт УНАХГҮЙ (adblock/private горим).
 ok('SCAN: атрибуци сайтыг унагаахгүй',
-   /function captureAttrib[\s\S]{0,600}?catch \(e\) \{ return null; \}/.test(SRC));
+   /function captureAttrib[\s\S]{0,1200}?catch \(e\) \{ return null; \}/.test(SRC));
 
 /* ── Meta Pixel ───────────────────────────────────────────────────────────── */
 // Pixel нь Facebook-т «хэн худалдаж авдаг вэ» гэдгийг заана. Үүнгүйгээр зар
