@@ -674,6 +674,48 @@ ok('SCAN: note-д FBQ токен нэмэгдэнэ',
 ok('SCAN: Pixel сайтыг унагаахгүй',
    /function fbEvent[\s\S]{0,400}?if \(typeof fbq !== 'function'\) return;[\s\S]{0,300}?catch \(e\) \{\}/.test(SRC));
 
+/* ── 25. NAP — хаяг/утас 4 газар ЯГ ИЖИЛ (2026-09-17) ─────────────────────── */
+// Орон нутгийн хайлтад Google нь сайт дээрх хаяг/утсыг Business Profile-тайгаа
+// тулгадаг. Зөрвөл «энэ ижил бизнес мөн үү?» гэж эргэлзэж эрэмбийг бууруулна.
+// Хаяг index.html дотор ГУРВАН газар бичигдсэн (JSON-LD, хөл, CONFIG) тул
+// нэгийг нь засаад нөгөөг мартах нь амархан — энэ тест түүнийг хаана.
+const LB = (() => {
+  for (const m of SRC.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+    try { const d = JSON.parse(m[1]); if (d && d['@type'] === 'LocalBusiness') return d; } catch (_) {}
+  }
+  return null;
+})();
+ok('NAP: LocalBusiness JSON-LD байна', !!LB);
+
+const pickupAddr = (SRC.match(/PICKUP_ADDRESS:\s*'([^']+)'/) || [])[1] || '';
+const footAddr = (SRC.match(/<div class="fcontact">[\s\S]*?<span>([^<]+)<\/span>/) || [])[1] || '';
+eq('NAP: хөлний хаяг = CONFIG.PICKUP_ADDRESS', footAddr.trim(), pickupAddr.trim());
+
+// Гудамжны нэр нь бүтэн хаягт байх ёстой — «Улаанбаатар хот, БЗД» гэх мэт
+// товчилсон хаяг Google-ийн бүртгэлтэй тулгагдахгүй.
+const street = (LB && LB.address && LB.address.streetAddress) || '';
+ok('NAP: JSON-LD-д гудамжны хаяг бий', /Ногоон зоорь/.test(street), street);
+ok('NAP: JSON-LD гудамж нь CONFIG-ийн хаягт багтана',
+  !!street && pickupAddr.includes(street.split(',')[0].trim()), `${street} ⊄ ${pickupAddr}`);
+ok('NAP: шуудангийн код бий', !!(LB && LB.address && LB.address.postalCode));
+
+// Газрын зургийн цэг хоёр газар — зөрвөл хүн өөр байшин руу явна.
+const mapQ = (SRC.match(/PICKUP_MAP:\s*'[^']*query=([\d.]+),([\d.]+)/) || []);
+if (mapQ.length === 3 && LB && LB.geo) {
+  eq('NAP: JSON-LD өргөрөг = PICKUP_MAP', String(LB.geo.latitude), mapQ[1]);
+  eq('NAP: JSON-LD уртраг = PICKUP_MAP', String(LB.geo.longitude), mapQ[2]);
+} else {
+  ok('NAP: PICKUP_MAP-д координат бий', false, 'query=lat,lng олдсонгүй');
+}
+
+// Ажлын цаг: JSON-LD нь тарифын нөөц утгатай нийцнэ (тариф нь DB-ээс ирдэг ч
+// JSON-LD нь статик тул нөөц утгаас хазайвал хоёр өөр цаг зарлагдана).
+const wh = (SRC.match(/let WORK_START = (\d+), WORK_END = (\d+)/) || []);
+if (wh.length === 3 && LB && LB.openingHours) {
+  const want = `Mo-Su ${String(wh[1]).padStart(2, '0')}:00-${String(wh[2]).padStart(2, '0')}:00`;
+  eq('NAP: JSON-LD ажлын цаг = WORK_START/WORK_END', LB.openingHours, want);
+}
+
 /* ── Дүн ──────────────────────────────────────────────────────────────────── */
 if (fails.length) {
   console.log(`❌ LOGIC FAIL — ${pass} тэнцсэн, ${fails.length} унасан`);
