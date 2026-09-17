@@ -1954,25 +1954,53 @@ const ATTRIB_KEY = 'mv_attrib';
 const ATTRIB_DAYS = 30;
 
 // URL → {src, camp, med} эсвэл null. Цэвэр функц.
-function parseAttrib(search, today) {
+// Хаанаас ирснийг ХАЯГААС эсвэл ИРСЭН ХУУДСААС тодорхойлно. Цэвэр функц.
+// ⚠ `weak` = зөвхөн referrer-ээс таасан (сул дохио). Зарын тэмдэгтэй (utm/fbclid)
+//   хүчтэй дохио ирвэл сулыг ДАРЖ БИЧНЭ — эс бөгөөс шууд орж үзсэн хүн «direct»
+//   гэж 30 хоног тогтож, дараа нь зар дарж ирэхэд зарын гавьяа алдагдана.
+function refSource(referrer) {
+  let h;
+  try { h = new URL(String(referrer || '')).hostname.toLowerCase(); } catch (e) { h = ''; }
+  if (!h) return 'direct';
+  // ⚠ Өөрийн сайт руугаа буцаж орох нь эх сурвалж БИШ (дотоод шилжилт).
+  if (/(^|\.)mevent\.mn$/.test(h)) return '';
+  if (/(^|\.)(google|googleusercontent)\./.test(h)) return 'google';
+  if (/(^|\.)(instagram|cdninstagram)\./.test(h)) return 'instagram';
+  if (/(^|\.)(facebook|fb)\./.test(h) || h === 'l.facebook.com') return 'facebook';
+  if (/(^|\.)(bing|yahoo|duckduckgo|yandex)\./.test(h)) return 'google';
+  return h.replace(/^www\./, '').slice(0, 40);
+}
+function parseAttrib(search, today, referrer) {
   let q;
-  try { q = new URLSearchParams(String(search || '')); } catch (e) { return null; }
+  try { q = new URLSearchParams(String(search || '')); } catch (e) { q = null; }
   // ⚠ Токены тусгай тэмдэгтийг ЗААВАЛ хасна — эс бөгөөс note-ийн бүх токен эвдэрнэ.
-  const g = k => String(q.get(k) || '').trim().replace(/[⟦⟧|]/g, '').slice(0, 40);
-  const src = g('utm_source') || (g('fbclid') ? 'facebook' : '');
-  if (!src) return null;
-  return { src, camp: g('utm_campaign'), med: g('utm_medium'),
-           at: String(today || new Date().toISOString().slice(0, 10)) };
+  const g = k => !q ? '' : String(q.get(k) || '').trim().replace(/[⟦⟧|]/g, '').slice(0, 40);
+  const at = String(today || new Date().toISOString().slice(0, 10));
+  const strong = g('utm_source') || (g('fbclid') ? 'facebook' : '');
+  if (strong) return { src: strong, camp: g('utm_campaign'), med: g('utm_medium'), at, weak: false };
+  // Зарын тэмдэггүй бол ирсэн хуудсаас таана — Google хайлт, шууд, бусад сайт.
+  const ref = refSource(referrer);
+  return ref ? { src: ref, camp: '', med: 'referrer', at, weak: true } : null;
 }
 
 // Хадгалсан атрибуцийг note-ийн токен болгоно. Цэвэр функц.
 // ⚠ Facebook/Instagram-аас ирсэн бол ⟦LEAD|fb⟧ ч бичнэ — аппын лид сувгийн
 //   хамралт ингэж ГАРААР бөглөхгүйгээр өснө.
+// ⚠ ⟦LEAD|…⟧-ийн түлхүүр нь аппын `LEAD_SOURCES`-д БАЙГАА утга байх ёстой
+//   (fb · ig · site · repeat · referral · partner · other) — танихгүй утга
+//   бичвэл аппад «мэдэхгүй» болж хамралт өсөхгүй.
+function leadKeyFor(src) {
+  const s = String(src || '').toLowerCase();
+  if (/instagram|^ig$/.test(s)) return 'ig';
+  if (/facebook|^fb$|meta/.test(s)) return 'fb';
+  if (/google|bing|yahoo|duckduckgo|yandex|^direct$/.test(s)) return 'site';
+  return '';
+}
 function attribToken(a) {
   if (!a || !a.src) return '';
-  const fb = /facebook|fb|instagram|ig|meta/i.test(a.src);
+  const k = leadKeyFor(a.src);
   const t = `⟦ADS|${[a.src, a.camp || '', a.med || ''].join('|')}⟧`;
-  return (fb ? '⟦LEAD|fb⟧ ' : '') + t;
+  return (k ? `⟦LEAD|${k}⟧ ` : '') + t;
 }
 
 // Хадгалсан нь хүчинтэй юу (хугацаа дуусаагүй). Цэвэр функц.
@@ -1987,10 +2015,14 @@ function captureAttrib() {
   try {
     const today = new Date().toISOString().slice(0, 10);
     const old = JSON.parse(localStorage.getItem(ATTRIB_KEY) || 'null');
-    if (attribFresh(old, today)) return old;
-    const cur = parseAttrib(location.search, today);
+    const cur = parseAttrib(location.search, today, document.referrer);
+    // ⛔ ХҮЧТЭЙ дохио (utm/fbclid) нь хадгалсан СУЛ дохиог ДАРЖ БИЧНЭ. Эс бөгөөс
+    //    эхлээд шууд орж үзсэн хүн «direct» гэж 30 хоног тогтож, дараа нь зар
+    //    дарж ирэхэд зарын гавьяа бүрмөсөн алдагдана.
+    const keepOld = attribFresh(old, today) && !(cur && !cur.weak && old && old.weak);
+    if (keepOld) return old;
     if (cur) localStorage.setItem(ATTRIB_KEY, JSON.stringify(cur));
-    return cur || null;
+    return cur || old || null;
   } catch (e) { return null; }
 }
 function storedAttrib() {
