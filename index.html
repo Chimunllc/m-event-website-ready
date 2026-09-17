@@ -828,12 +828,17 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
   .toast svg { width: 17px; height: 17px; color: #66D19E; flex: 0 0 auto; }
 
-  /* МОБАЙЛ HERO — брэнд мессеж + итгэлийн чип */
-  .m-hero { display: none; padding: 6px 0 14px; }
-  .m-hero h2 { font-family: var(--font-display); font-size: 22px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; color: var(--brand); margin-bottom: 6px; }
-  .m-hero p { font-size: var(--fs-md); color: var(--muted); line-height: 1.5; margin-bottom: 12px; }
-  .m-hero-chips { display: flex; flex-wrap: wrap; gap: 7px; }
-  .m-hero-chips span { font-size: var(--fs-xs); font-weight: 600; color: var(--brand); background: var(--brand-soft); padding: 5px 11px; border-radius: 100px; }
+  /* МОБАЙЛ HERO — брэнд мессеж + итгэлийн чип (ЗӨВХӨН мобайлд, доор display:block).
+     ⚠ Дээд хэсэг нь бараанаас илүү зай эзлэхгүй байх нь ГОЛ шаардлага: гарчиг
+     НЭГ мөр, чип НЭГ эгнээ. Өмнө нь 2 мөр гарчиг + 2 мөр тайлбар + 2 эгнээ чип
+     байсан тул эхний дэлгэцэд бараа огт харагддаггүй байв. */
+  .m-hero { display: none; padding: 6px 0 12px; }
+  .m-hero h2 { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 800; letter-spacing: -.02em; line-height: 1.25; color: var(--brand); margin-bottom: 8px; }
+  /* Чип НЭГ эгнээнд — хоёр мөр болвол дээд хэсэг 30px өснө. Багтахгүйг хэвтээ
+     гүйлгэнэ (`.cat-chips`-тэй ижил хэв маяг; баримт өөрөө хэвтээ гүйхгүй). */
+  .m-hero-chips { display: flex; gap: 7px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+  .m-hero-chips::-webkit-scrollbar { display: none; }
+  .m-hero-chips span { flex: 0 0 auto; white-space: nowrap; font-size: var(--fs-xs); font-weight: 600; color: var(--brand); background: var(--brand-soft); padding: 5px 11px; border-radius: 100px; }
 
   /* ТҮРЭЭСИЙН НӨХЦӨЛ (эвхэгддэг) */
   .terms { max-width: 700px; margin: 8px auto 0; }
@@ -874,6 +879,8 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
     .grid { grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 20px 14px; }
     .card-name { font-size: var(--fs-sm); }
     .card-add { width: 40px; height: 40px; font-size: 19px; }
+    /* Гарчгийн зай — мобайлд 44px хэмнэнэ (баримт эхний дэлгэцэд бараа гаргана) */
+    .grid-head { margin-bottom: 14px; padding-bottom: 12px; }
     .grid-head h1 { font-size: 21px; }
     .modal-grid { grid-template-columns: 1fr; }
     .modal-img { aspect-ratio: 16 / 10; }
@@ -946,6 +953,9 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
     .btn-3d .b3-lbl { display: none; }
     .icon-btn { padding: 0 7px; gap: 5px; }
     .cart-btn { padding: 0 11px; gap: 7px; }
+    /* 148px-ийн доод хэмжээ 320px-д багтахгүй (2*148+14 = 310 > 288) тул грид
+       НЭГ багана болж, нэг бараа бүтэн дэлгэц эзэлж байв. 132px = 2 багана. */
+    .grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
   }
 </style>
 </head>
@@ -1013,7 +1023,6 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
     <!-- Мобайл hero — брэнд мессеж + итгэлийн чип -->
     <div class="m-hero">
       <h2>Арга хэмжээгээ нэг дороос бүрдүүл</h2>
-      <p>Сандал, ширээ, майхан, тайз, гэрэлтүүлэг — онлайнаар захиалаад товлосон өдөр хүлээн ав.</p>
       <div class="m-hero-chips">
         <span>✓ 1 цагт баталгаажуулна</span>
         <span>🚚 Хот дотор хүргэлт</span>
