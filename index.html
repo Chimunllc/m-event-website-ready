@@ -61,7 +61,9 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
   "email": "info@mevent.mn",
   "image": "https://mevent.mn/og-image.png",
   "priceRange": "₮₮",
-  "address": { "@type": "PostalAddress", "addressLocality": "Улаанбаатар", "addressRegion": "Баянзүрх дүүрэг", "addressCountry": "MN" },
+  "address": { "@type": "PostalAddress", "streetAddress": "Ногоон зоорь 1-13, 11-р хороо", "addressLocality": "Улаанбаатар", "addressRegion": "Баянзүрх дүүрэг", "postalCode": "13182", "addressCountry": "MN" },
+  "geo": { "@type": "GeoCoordinates", "latitude": 47.885732, "longitude": 107.101499 },
+  "openingHours": "Mo-Su 09:00-18:00",
   "areaServed": "Улаанбаатар",
   "sameAs": ["https://www.facebook.com/mevent.rent", "https://www.instagram.com/mevent77551010/"]
 }
@@ -1126,7 +1128,9 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
     <div class="fcontact">
       <a href="tel:+97677551010">+976 7755-1010</a>
       <a href="mailto:info@mevent.mn">info@mevent.mn</a>
-      <span>Улаанбаатар хот, БЗД</span>
+      <!-- ⚠ Хаяг нь Google Business Profile, дээрх JSON-LD, CONFIG.PICKUP_ADDRESS
+           гуравтай ЯГ ИЖИЛ байх ёстой (NAP consistency) — test/logic.mjs шалгана. -->
+      <span>Улаанбаатар, Баянзүрх дүүрэг, 11-р хороо, Ногоон зоорь 1-13</span>
     </div>
     <!-- Сошиал холбоос — ⚠ бодит хаягаа CONFIG.SOCIAL-д тохируулна уу -->
     <div class="foot-social" id="foot-social"></div>
