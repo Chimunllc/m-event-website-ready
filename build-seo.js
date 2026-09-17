@@ -571,8 +571,10 @@ if (catClosed) console.log(`  🔒 хоосорсон ${catClosed} ангилл�
 /* ---------- 3) sitemap.xml + robots.txt ---------- */
 const today = new Date().toISOString().slice(0, 10);
 let sm = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-  + '  <url><loc>' + SITE + '/</loc><lastmod>' + today + '</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>\n'
-  + '  <url><loc>' + SITE + '/stage-3d.html</loc><lastmod>' + today + '</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>\n';
+  + '  <url><loc>' + SITE + '/</loc><lastmod>' + today + '</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>\n';
+// ⚠ stage-3d.html ЗОРИУД sitemap-д БАЙХГҮЙ — сайтаас холбоос нь хасагдсан тул
+// хайлтаас орж ирсэн хүн буцах замгүй хуудсанд гацна. Файл нь байрандаа хэвээр:
+// дахин ашиглах бол толгойн товч + энэ мөрийг хоёуланг нь буцааж нэм.
 // Ангиллын хуудас нь барааны хуудаснаас ДЭЭГҮҮР (0.9) — хайлтын хэмжээ тэнд байна.
 cats.forEach(c => {
   sm += '  <url><loc>' + catUrl(c) + '</loc><lastmod>' + today + '</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>\n';
