@@ -1362,8 +1362,24 @@ function errFingerprint(msg, src) {
   }
   return (h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0')).slice(0, 12);
 }
+// ⛔ ГАДНЫ КОДЫН АЛДААГ БҮРТГЭХГҮЙ. Facebook/Instagram-ийн дотоод браузер хуудсанд
+//    ӨӨРИЙН скрипт шахдаг (`iabjs://…`, `webkit-masked-url://…`) ба тэр нь өөрөө
+//    унадаг. Бид засаж ЧАДАХГҮЙ — гэтэл Issue үүсч, жинхэнэ алдаа живнэ
+//    (fp f11405417bbb: «Unexpected end of input» @ iabjs://iab_inner_frame_ota).
+//    ⚠ Шүүлт нь `схем://` хэлбэрт Л хамаарна — `/index.html:120` гэсэн манай
+//    байрлалыг «схем» гэж андуурвал жинхэнэ алдаа чимээгүй алга болно.
+//    ⚠ Аппын `_errIsNoise`-тэй ИЖИЛ дүрэм — нэгийг нь заавал нөгөөтэй нь зэрэг зас.
+var ERR_FOREIGN_SRC = /^(?!https?:)[a-z][a-z0-9+.-]*:\/\//i;
+function errIsNoise(msg, src) {
+  var m = String(msg || '');
+  if (!m || m === 'Script error.') return true;
+  if (/ResizeObserver loop/i.test(m)) return true;
+  if (ERR_FOREIGN_SRC.test(String(src || ''))) return true;
+  return false;
+}
 function reportErr(msg, src, stack) {
   try {
+    if (errIsNoise(msg, src)) return;                   // гадны/хор хөнөөлгүй чимээ
     if (_errCount >= 10) return;                        // нэг зочноос дээд тал нь 10
     const key = String(msg || '').slice(0, 120) + '|' + String(src || '').slice(0, 80);
     if (_errSeen.has(key)) return;
