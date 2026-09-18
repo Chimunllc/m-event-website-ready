@@ -572,8 +572,10 @@ try {
     asVar(/let WORK_START = [^\n]+/);
     asVar(/let DELIVERY_CITY_FEE = [^\n]+/);
     asVar(/let DELIVERY_PER_KM = [^\n]+/);
+    asVar(/let DELIVERY_CITY_ONE_FEE = [^\n]+/);
     eq('АМЬД: хүргэлтийн нөөц үнэ тохиргоотой таарна', tCtx.DELIVERY_CITY_FEE, Number(v.delivery_city_fee));
     eq('АМЬД: км тарифын нөөц утга таарна', tCtx.DELIVERY_PER_KM, Number(v.delivery_per_km));
+    eq('АМЬД: нэг талын хүргэлтийн нөөц үнэ таарна', tCtx.DELIVERY_CITY_ONE_FEE, Number(v.delivery_city_one_fee));
     eq('АМЬД: ажлын цагийн нөөц утга таарна', tCtx.WORK_START, Number(v.work_start));
     eq('АМЬД: хямдралын шатны тоо таарна', tCtx.RENTAL_TIERS.length, v.tiers.length);
     const same = tCtx.RENTAL_TIERS.every((t, i) =>

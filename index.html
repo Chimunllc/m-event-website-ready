@@ -1087,7 +1087,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
 <section class="trust">
   <div class="trust-inner">
     <div class="trust-item reveal"><div class="tv">150+</div><div class="tl">төрлийн бараа нэг дороос</div></div>
-    <div class="trust-item reveal"><div class="tv">Хот дотор</div><div class="tl">хүргэлт 150,000₮-с</div></div>
+    <div class="trust-item reveal"><div class="tv">Хот дотор</div><div class="tl">хүргэлт 80,000₮-с</div></div>
     <div class="trust-item reveal"><div class="tv">−20%</div><div class="tl">2+ хоног түрээслэвэл</div></div>
     <div class="trust-item reveal"><div class="tv">1 цаг</div><div class="tl">дотор баталгаажуулна</div></div>
   </div>
@@ -1226,10 +1226,15 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
             <span class="dlv-t">Өөрөө авах<span class="dlv-sub">Манай агуулахаас</span></span>
             <span class="dlv-price free">Үнэгүй</span>
           </button>
+          <button type="button" class="dlv-opt" data-zone="city1">
+            <span class="dlv-ico">🚚</span>
+            <span class="dlv-t">Хот дотор — нэг тал<span class="dlv-sub">Зөвхөн хүргэж өгнө (буцаахаа өөрөө авчирна)</span></span>
+            <span class="dlv-price" data-dlvprice="city1">80,000₮</span>
+          </button>
           <button type="button" class="dlv-opt" data-zone="city">
             <span class="dlv-ico">🚚</span>
-            <span class="dlv-t">Хот дотор<span class="dlv-sub">Хүргэж өгөөд буцааж авна</span></span>
-            <span class="dlv-price">150,000₮</span>
+            <span class="dlv-t">Хот дотор — очих+буцах<span class="dlv-sub">Хүргэж өгөөд буцааж авна</span></span>
+            <span class="dlv-price" data-dlvprice="city">150,000₮</span>
           </button>
           <button type="button" class="dlv-opt" data-zone="out">
             <span class="dlv-ico">🚚</span>
@@ -1239,7 +1244,8 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
         </div>
         <select id="f-delivzone" hidden aria-hidden="true" tabindex="-1">
           <option value="pickup">Өөрөө авах</option>
-          <option value="city">Хот дотор</option>
+          <option value="city1">Хот дотор — нэг тал</option>
+          <option value="city">Хот дотор — очих+буцах</option>
           <option value="out">Хотоос гадна</option>
         </select>
         <div class="dlv-detail" id="f-dlv-detail" hidden></div>
@@ -1433,10 +1439,12 @@ const state = {
 /* ==================== ХҮРГЭЛТ ====================
    ТАРИФ = app_config['tariffs']-аас (loadTariffs), доорх нь fallback. Апп app.js мөн энэ app_config-оос
    татна — тарифын нэг эх сурвалж. [[tariff_two_repos_sync]] */
-let DELIVERY_CITY_FEE = 150000;   // ₮ хот дотор (fallback)
+let DELIVERY_CITY_FEE = 150000;       // ₮ хот дотор, очих+буцах (fallback)
+let DELIVERY_CITY_ONE_FEE = 80000;    // ₮ хот дотор, НЭГ тал (fallback)
 let DELIVERY_PER_KM = 5000;       // ₮ нэг талын км тутам (fallback)
 function calcDeliveryFee(zone, km) {
   if (zone === 'city') return DELIVERY_CITY_FEE;
+  if (zone === 'city1') return DELIVERY_CITY_ONE_FEE;
   if (zone === 'out') return Math.max(0, (Math.round(Number(km) || 0)) * 2 * DELIVERY_PER_KM);
   return 0;   // pickup
 }
@@ -1651,12 +1659,19 @@ async function loadTariffs() {
     const v = rows[0] && rows[0].value;
     if (!v || typeof v !== 'object') return;
     if (Number(v.delivery_city_fee) > 0) DELIVERY_CITY_FEE = Number(v.delivery_city_fee);
+    if (Number(v.delivery_city_one_fee) > 0) DELIVERY_CITY_ONE_FEE = Number(v.delivery_city_one_fee);
     if (Number(v.delivery_per_km) > 0) DELIVERY_PER_KM = Number(v.delivery_per_km);
     if (Number(v.offhours_fee) > 0) OFFHOURS_FEE = Number(v.offhours_fee);
     if (v.work_start != null && Number(v.work_start) >= 0 && Number(v.work_start) <= 23) WORK_START = Number(v.work_start);
     if (v.work_end != null && Number(v.work_end) >= 0 && Number(v.work_end) <= 23) WORK_END = Number(v.work_end);
     if (Array.isArray(v.tiers) && v.tiers.length) RENTAL_TIERS = v.tiers.map(x => ({ min: Number(x.min) || 1, pct: Number(x.pct) || 0, label: x.label || '' })).sort((a, b) => b.min - a.min);
   } catch (e) { /* fallback хэвээр */ }
+  paintDlvPrices();   // тариф ирсэн бол картын үнийг шинэчилнэ
+}
+// Хүргэлтийн картын үнэ = тарифаас (HTML-д хатуу бичээстэй утга нь зөвхөн анхны харагдац).
+function paintDlvPrices() {
+  const put = (z, v) => { const el = document.querySelector(`[data-dlvprice="${z}"]`); if (el) el.textContent = fmt(v); };
+  put('city1', DELIVERY_CITY_ONE_FEE); put('city', DELIVERY_CITY_FEE);
 }
 // Барааны/бүлгийн түрээсийн давтамж (бүлэг = гишүүдийн хамгийн их нь).
 function popOf(p) {
@@ -2713,7 +2728,7 @@ async function submitOrder() {
   const name = document.getElementById('f-name').value.trim();
   const phone = document.getElementById('f-phone').value.trim();
   const dlv = syncDelivery();
-  const isDeliv = dlv.zone === 'city' || dlv.zone === 'out';
+  const isDeliv = dlv.zone === 'city' || dlv.zone === 'city1' || dlv.zone === 'out';
   const address = document.getElementById('f-address').value.trim();
   if (!name) { alert('Нэрээ оруулна уу'); return; }
   if (!phone || phone.replace(/\D/g, '').length < 8) { alert('Утасны дугаар буруу'); return; }
