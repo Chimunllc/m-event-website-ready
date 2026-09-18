@@ -420,6 +420,19 @@ ok('SCAN: unhandledrejection сонсогч бүртгэгдсэн', /addEventLi
 ok('SCAN: алдаа мэдээлэгч өөрөө унахгүй (catch байна)',
    /function reportErr[\s\S]{0,1400}catch \(e\) \{ \/\* зориуд чимээгүй \*\/ \}/.test(SRC));
 
+// Гадны код — засах боломжгүй. Бүртгэвэл Issue үүсч жинхэнэ алдаа живнэ.
+// (fp f11405417bbb: Facebook-ийн дотоод браузер өөрийн скриптээ шахаад унагасан.)
+runInContext(extractFn('errIsNoise'), efp);
+runInContext('var ERR_FOREIGN_SRC = ' + /^(?!https?:)[a-z][a-z0-9+.-]*:\/\//i.toString() + ';', efp);
+ok('алдаа: in-app браузерын шахсан код тоохгүй (fp f11405417bbb)',
+   efp.errIsNoise('Uncaught SyntaxError: Unexpected end of input', 'iabjs://iab_inner_frame_ota'));
+ok('алдаа: өргөтгөлийн алдаа тоохгүй', efp.errIsNoise('x', 'chrome-extension://a/x.js'));
+ok('алдаа: cross-origin «Script error.» тоохгүй', efp.errIsNoise('Script error.', ''));
+ok('алдаа: манай https байрлалыг барина', !efp.errIsNoise('boom', 'https://mevent.mn/index.html'));
+ok('алдаа: `/index.html:120`-г схем гэж андуурахгүй', !efp.errIsNoise('boom', '/index.html:120'));
+ok('SCAN: reportErr эхлээд чимээг шүүнэ',
+   /function reportErr[\s\S]{0,120}errIsNoise\(msg, src\)\) return;/.test(SRC));
+
 /* ── 20. ГЭРЭЭ: сайт зөвхөн НИЙТИЙН харагдацаас уншина ───────────────────── */
 // ⚠ Сайт өмнө нь `products` хүснэгтээс шууд уншиж, «юу харагдах» дүрмээ ӨӨРӨӨ
 //   бичдэг байсан. Тэр дүрэм аппд ба build-seo.js-д мөн тусад нь бичигдсэн тул
