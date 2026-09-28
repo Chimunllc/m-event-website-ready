@@ -357,15 +357,22 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
   }
   .card:hover .card-img { box-shadow: var(--shadow-md); border-color: var(--border-strong); }
   .card-img img { width: 100%; height: 100%; object-fit: contain; transition: transform .35s ease; }
+  /* Бичлэгийн тэмдэг — УЛБАР БИШ, саармаг (2026-09-28).
+     ⛔ Улбар = зөвхөн conversion (сагсны «+», үнийн CTA). Барааны 32% нь
+        бичлэгтэй тул тэмдэг улбар байхад каталог улбараар дүүрч, «+» товч
+        ялгарахаа больж, хэрэглэгч тэмдгийг товч гэж андуурдаг байв.
+     ⛔ ДҮРС ГАНЦААРАА ОЙЛГОГДОХГҮЙ — «Бичлэг» гэсэн ҮГ нь заавал. Хүн ▶
+        тэмдгийг юу гэж ойлгохоо мэдэхгүй байсан нь бодит гомдол. */
   .card-video-badge {
-    position: absolute; top: 12px; right: 12px; z-index: 2;
-    width: 30px; height: 30px; border-radius: 50%;
-    display: inline-flex; align-items: center; justify-content: center;
-    background: var(--accent); box-shadow: 0 3px 10px rgba(233,84,0,.35);
-    transition: transform .2s ease;
+    position: absolute; top: 10px; left: 10px; z-index: 2;
+    display: inline-flex; align-items: center; gap: 5px;
+    height: 24px; padding: 0 9px 0 8px; border-radius: 100px;
+    background: rgba(23,23,27,.74); color: #fff;
+    font-size: var(--fs-xs); font-weight: 700; line-height: 1;
+    box-shadow: 0 2px 8px -3px rgba(23,23,27,.5);
+    pointer-events: none;
   }
-  .card:hover .card-video-badge { transform: scale(1.08); }
-  .card-video-badge svg { width: 13px; height: 13px; display: block; margin-left: 1px; }
+  .card-video-badge svg { width: 10px; height: 10px; display: block; flex: 0 0 auto; }
   .card:hover .card-img img { transform: scale(1.04); }
   .card-img.placeholder::after {
     content: ""; position: absolute; inset: 0;
@@ -1913,7 +1920,7 @@ function cardHtml(p, idx) {
   const eager = (idx != null && idx < 6);
   const imgAttrs = eager ? 'loading="eager" fetchpriority="high"' : 'loading="lazy" fetchpriority="low"';
   const photo = p.photo ? `<img src="${escapeHtml(p.photo)}" alt="${escapeHtml(p.name)}" ${imgAttrs} decoding="async" sizes="(max-width:720px) 45vw, 232px" onerror="this.closest('.card-img').classList.add('placeholder');this.remove()">` : '';
-  const videoBadge = /^https?:\/\//.test((p && p.media_url) || '') ? '<span class="card-video-badge" title="Бичлэгтэй"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M8 6.3v11.4l9-5.7-9-5.7z"/></svg></span>' : '';
+  const videoBadge = /^https?:\/\//.test((p && p.media_url) || '') ? '<span class="card-video-badge"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M8 6.3v11.4l9-5.7-9-5.7z"/></svg>Бичлэг</span>' : '';
   const outOfStock = p.type !== 'service' && availStock(p) === 0;
   const variantHint = isGroup ? `🎨 ${p.variants.length} хувилбар` : '';
   const _sb = stockBadgeHtml(p);
