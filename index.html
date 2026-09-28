@@ -84,6 +84,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
     --accent: #E95400;        /* orange — гол conversion CTA */
     --accent-hover: #CF4A00;
     --accent-soft: #FCEBE1;   /* orange tint */
+    --accent-ink: #A83B00;    /* улбар бичвэр — --accent-soft дэвсгэр дээр AA (5.4:1) */
     --price: #0B1F3A;
     --foot-muted: #A9B7C7;   /* хөлний бичвэр — navy дэвсгэр дээр */
     --danger: #C2453B;
@@ -711,7 +712,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
     max-width: 1400px; margin: 0 auto;
     display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   }
-  .datebar .db-ico { width: 17px; height: 17px; color: var(--brand); flex: 0 0 auto; }
+  .datebar .db-ico { width: 17px; height: 17px; color: var(--accent); flex: 0 0 auto; }
   .datebar .db-lbl { font-size: var(--fs-sm); color: var(--muted); font-weight: 600; }
   .datebar .db-val { font-size: var(--fs-md); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
   .datebar .db-edit {
@@ -720,11 +721,12 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
     color: var(--text); cursor: pointer; white-space: nowrap; transition: border-color .15s, background .15s;
   }
   .datebar .db-edit:hover { border-color: var(--brand); background: var(--brand-soft); }
-  .datebar .db-hint { display: none; font-size: var(--fs-sm); color: var(--brand); font-weight: 600; }
+  .datebar .db-hint { display: none; font-size: var(--fs-sm); color: var(--accent-ink); font-weight: 600; }
   /* Хэрэглэгч огноогоо ухамсартай сонгоогүй үе — анхаарал татна, гэхдээ хаахгүй */
-  .datebar.db-unset { background: var(--brand-soft); border-bottom-color: var(--brand); }
+  .datebar.db-unset { background: var(--accent-soft); border-bottom-color: var(--accent); }
   .datebar.db-unset .db-hint { display: inline; }
-  .datebar.db-unset .db-edit { border-color: var(--brand); color: var(--brand); }
+  .datebar.db-unset .db-edit { border-color: var(--accent); color: var(--accent-ink); }
+  .datebar.db-unset .db-edit:hover { border-color: var(--accent-hover); background: #fff; }
   .datebar .db-short {
     display: none; font-size: var(--fs-xs); font-weight: 700; color: #7A560F;
     background: #FBF0DC; border: 1px solid #E6C878; border-radius: 100px; padding: 5px 12px;
