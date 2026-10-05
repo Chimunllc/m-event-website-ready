@@ -767,6 +767,23 @@ if (wh.length === 3 && LB && LB.openingHours) {
   eq('NAP: JSON-LD ажлын цаг = WORK_START/WORK_END', LB.openingHours, want);
 }
 
+/* ── 26. Ажлын бус цаг = ЦАГ БҮРТ (2026-10-05) ───────────────────────────── */
+/* ⛔ Хавтгай «авах/өгөх бүрт» байсныг болив — 19:00-д ба 23:00-д буцаахыг ижил
+   үнээр бодох нь буруу. ⚠ Аппын `offHoursSpan`-тай ЯГ ИЖИЛ томьёо байх ёстой;
+   зөрвөл суваг хооронд өөр үнэ гарна. */
+const ohx = createContext({ WORK_START: 9, WORK_END: 18 });
+runInContext(extractFn('offHoursSpan'), ohx);
+const ohSpan = (t) => runInContext(`offHoursSpan(${JSON.stringify(t)})`, ohx);
+eq('бус цаг: 21:00 = 3', ohSpan('21:00'), 3);
+eq('бус цаг: 07:00 = 2', ohSpan('07:00'), 2);
+eq('бус цаг: 23:00 = 5', ohSpan('23:00'), 5);
+eq('бус цаг: 12:00 = 0', ohSpan('12:00'), 0);
+eq('бус цаг: 18:00 хил дээр = 0', ohSpan('18:00'), 0);
+eq('бус цаг: 09:00 хил дээр = 0', ohSpan('09:00'), 0);
+eq('бус цаг: хоосон = 0', ohSpan(''), 0);
+const ohFee = (SRC.match(/OFFHOURS_FEE = (\d+)/) || [])[1];
+eq('бус цаг: нөөц тариф 10,000₮/цаг (апптай ижил)', Number(ohFee), 10000);
+
 /* ── Дүн ──────────────────────────────────────────────────────────────────── */
 if (fails.length) {
   console.log(`❌ LOGIC FAIL — ${pass} тэнцсэн, ${fails.length} унасан`);
