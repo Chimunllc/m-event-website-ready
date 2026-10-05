@@ -783,6 +783,17 @@ eq('бус цаг: 09:00 хил дээр = 0', ohSpan('09:00'), 0);
 eq('бус цаг: хоосон = 0', ohSpan(''), 0);
 const ohFee = (SRC.match(/OFFHOURS_FEE = (\d+)/) || [])[1];
 eq('бус цаг: нөөц тариф 10,000₮/цаг (апптай ижил)', Number(ohFee), 10000);
+/* ⛔ ЭХНИЙ ЦАГ ҮНЭТЭЙ (2026-10-05): 1-р цаг 20,000₮, цааш 10,000₮/цаг.
+   ⚠ Аппын `offHoursFeeFor`-тэй ЯГ ИЖИЛ томьёо байх ёстой. */
+const ohFirst = (SRC.match(/OFFHOURS_FIRST_FEE = (\d+)/) || [])[1];
+eq('бус цаг: эхний цагийн нөөц тариф 20,000₮ (апптай ижил)', Number(ohFirst), 20000);
+const ffx = createContext({ OFFHOURS_FEE: 10000, OFFHOURS_FIRST_FEE: 20000, Math });
+runInContext(extractFn('offHoursFeeFor'), ffx);
+const ff = (h) => runInContext(`offHoursFeeFor(${h})`, ffx);
+eq('хөлс: 0 цаг = 0', ff(0), 0);
+eq('хөлс: 1 цаг = 20,000', ff(1), 20000);
+eq('хөлс: 3 цаг = 40,000', ff(3), 40000);
+eq('хөлс: 5 цаг = 60,000', ff(5), 60000);
 
 /* ── Дүн ──────────────────────────────────────────────────────────────────── */
 if (fails.length) {
