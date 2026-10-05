@@ -2406,9 +2406,19 @@ function rentalDiscount(days) {
   return { min: 1, pct: 0, label: '' };
 }
 // Ажлын цаг 09:00–18:00. Үүнээс гадуур авах/өгөх бүрт нэмэгдэл. Тариф = app_config['tariffs'] (fallback доор).
-let WORK_START = 9, WORK_END = 18, OFFHOURS_FEE = 20000;
+let WORK_START = 9, WORK_END = 18, OFFHOURS_FEE = 10000;   // ₮/ЦАГ (2026-10-05: хавтгай 20,000/бүр байсан)
 function isOffHours(t) { const h = parseInt(String(t || '').slice(0, 2), 10); return isNaN(h) ? false : (h < WORK_START || h > WORK_END); }
-function offHoursCount() { return (isOffHours(state.dates.timeStart) ? 1 : 0) + (isOffHours(state.dates.timeEnd) ? 1 : 0); }
+/* ⛔ ЦАГ БҮРТ, «авах/өгөх бүрт» БИШ (2026-10-05). 19:00-д ба 23:00-д буцаахыг
+   ижил үнээр бодох нь буруу — шөнө дунд ажиллуулах нь хэдэн цагаар нь үнэтэй.
+   ⚠ Аппын `offHoursSpan`-тай ЯГ ИЖИЛ томьёо байх ёстой. */
+function offHoursSpan(t) {
+  var h = parseInt(String(t || '').slice(0, 2), 10);
+  if (isNaN(h)) return 0;
+  if (h < WORK_START) return WORK_START - h;
+  if (h > WORK_END) return h - WORK_END;
+  return 0;
+}
+function offHoursCount() { return offHoursSpan(state.dates.timeStart) + offHoursSpan(state.dates.timeEnd); }
 // ⚠ Сагс localStorage-д хадгалагддаг — үнийг тэндээс БҮҮ ИТГЭ (2026-09-03).
 // Консолоор price=0 болгоод илгээвэл total_mnt 0 болж орлогод буруу бүртгэгддэг байв.
 // Каталог ачаалагдсан бол мөр бүрийн үнийг АМЬД утгаар дарж бичнэ.
@@ -2477,7 +2487,7 @@ function renderCart() {
   if (t.delivery > 0) { delivRow.style.display = ''; document.getElementById('t-deliv').textContent = fmt(t.delivery); }
   else { delivRow.style.display = 'none'; }
   const ohRow = document.getElementById('t-offhours-row');
-  if (t.offHoursFee > 0) { ohRow.style.display = ''; document.getElementById('t-offhours').textContent = `${t.offHours} × ${fmt(OFFHOURS_FEE)} = ${fmt(t.offHoursFee)}`; }
+  if (t.offHoursFee > 0) { ohRow.style.display = ''; document.getElementById('t-offhours').textContent = `${t.offHours} цаг × ${fmt(OFFHOURS_FEE)} = ${fmt(t.offHoursFee)}`; }
   else { ohRow.style.display = 'none'; }
   document.getElementById('t-grand').textContent = fmt(t.grand);
 }
@@ -2590,12 +2600,13 @@ function renderTimes() {
 }
 function renderOffHoursNote() {
   var el = document.getElementById('dp-offhours'); if (!el) return;
-  var so = isOffHours(state.dates.timeStart), eo = isOffHours(state.dates.timeEnd), n = (so ? 1 : 0) + (eo ? 1 : 0);
-  var base = `Ажлын цаг <b>09:00–18:00</b>. Үүнээс гадуур авах/өгөх бүрт +${fmt(OFFHOURS_FEE)}.`;
+  // ⚠ `n` нь ЦАГИЙН ТОО (хоёр цэгийн нийлбэр), «хэдэн цэг» БИШ
+  var so = isOffHours(state.dates.timeStart), eo = isOffHours(state.dates.timeEnd), n = offHoursCount();
+  var base = `Ажлын цаг <b>09:00–18:00</b>. Үүнээс гадуур өнгөрсөн <b>цаг тутамд</b> +${fmt(OFFHOURS_FEE)}.`;
   if (n > 0) {
     var who = [so ? 'авах' : '', eo ? 'буцаах' : ''].filter(Boolean).join(', ');
     el.className = 'dp-note dp-note-warn';
-    el.innerHTML = `${base}<br><b>Таны ${who} цаг ажлын бус цагт байна → +${fmt(n * OFFHOURS_FEE)} нэмэгдэнэ.</b>`;
+    el.innerHTML = `${base}<br><b>Таны ${who} цаг ажлын бус цагт байна → ${n} цаг × ${fmt(OFFHOURS_FEE)} = +${fmt(n * OFFHOURS_FEE)} нэмэгдэнэ.</b>`;
   } else {
     el.className = 'dp-note';
     el.innerHTML = base;
