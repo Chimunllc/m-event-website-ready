@@ -424,12 +424,17 @@ ok('SCAN: алдаа мэдээлэгч өөрөө унахгүй (catch бай�
 // (fp f11405417bbb: Facebook-ийн дотоод браузер өөрийн скриптээ шахаад унагасан.)
 runInContext(extractFn('errIsNoise'), efp);
 runInContext('var ERR_FOREIGN_SRC = ' + /^(?!https?:)[a-z][a-z0-9+.-]*:\/\//i.toString() + ';', efp);
+runInContext('var ERR_FOREIGN_MSG = ' + /webkit\.messageHandlers|messageHandlers|iabjs|__fbNative/i.toString() + ';', efp);
 ok('алдаа: in-app браузерын шахсан код тоохгүй (fp f11405417bbb)',
    efp.errIsNoise('Uncaught SyntaxError: Unexpected end of input', 'iabjs://iab_inner_frame_ota'));
 ok('алдаа: өргөтгөлийн алдаа тоохгүй', efp.errIsNoise('x', 'chrome-extension://a/x.js'));
 ok('алдаа: cross-origin «Script error.» тоохгүй', efp.errIsNoise('Script error.', ''));
 ok('алдаа: манай https байрлалыг барина', !efp.errIsNoise('boom', 'https://mevent.mn/index.html'));
 ok('алдаа: `/index.html:120`-г схем гэж андуурахгүй', !efp.errIsNoise('boom', '/index.html:120'));
+// In-app браузер INLINE код шахдаг тул src нь манай хаяг болдог — схемээр барихгүй (fp 0f6bea95f208)
+ok('алдаа: in-app браузерын гүүрийн алдаа тоохгүй (fp 0f6bea95f208)',
+   efp.errIsNoise("undefined is not an object (evaluating 'window.webkit.messageHandlers')", 'https://mevent.mn/?fbclid=x'));
+ok('алдаа: манай жинхэнэ алдаа шүүгдэхгүй', !efp.errIsNoise('TypeError: x is not a function', 'https://mevent.mn/index.html'));
 ok('SCAN: reportErr эхлээд чимээг шүүнэ',
    /function reportErr[\s\S]{0,120}errIsNoise\(msg, src\)\) return;/.test(SRC));
 

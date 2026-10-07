@@ -1385,11 +1385,18 @@ function errFingerprint(msg, src) {
 //    байрлалыг «схем» гэж андуурвал жинхэнэ алдаа чимээгүй алга болно.
 //    ⚠ Аппын `_errIsNoise`-тэй ИЖИЛ дүрэм — нэгийг нь заавал нөгөөтэй нь зэрэг зас.
 var ERR_FOREIGN_SRC = /^(?!https?:)[a-z][a-z0-9+.-]*:\/\//i;
+// ⛔ IN-APP БРАУЗЕРЫН ГҮҮРИЙН АЛДАА (2026-10-07, fp 0f6bea95f208). Facebook-ийн
+//    дотоод браузер хуудсанд INLINE код шахдаг тул `src` нь манай хаяг болж
+//    (`ERR_FOREIGN_SRC` барихгүй) «window.webkit.messageHandlers undefined»
+//    алдаа манайх мэт бүртгэгддэг байв. Манай код `window.webkit`-д хүрдэггүй.
+//    ⚠ Аппын `ERR_FOREIGN_MSG`-тэй ИЖИЛ — нэгийг нь зэрэг зас.
+var ERR_FOREIGN_MSG = /webkit\.messageHandlers|messageHandlers|iabjs|__fbNative/i;
 function errIsNoise(msg, src) {
   var m = String(msg || '');
   if (!m || m === 'Script error.') return true;
   if (/ResizeObserver loop/i.test(m)) return true;
   if (ERR_FOREIGN_SRC.test(String(src || ''))) return true;
+  if (ERR_FOREIGN_MSG.test(m)) return true;
   return false;
 }
 function reportErr(msg, src, stack) {
