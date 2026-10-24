@@ -366,11 +366,69 @@ cd.state.products = [C_TENT, C_BED, C_STOVE, { ...C_PKG, bundle_days: 3 }];
 ok('карт: «3 хоногийн үнэ» (багц), «/хоног» БИШ', /3 хоногийн үнэ<\/small>/.test(cd.cardHtml(cd.state.products[3], 0)) && !/\/хоног/.test(cd.cardHtml(cd.state.products[3], 0)));
 ok('карт: энгийн бараа «/хоног» хэвээр', /\/хоног<\/small>/.test(cd.cardHtml(C_TENT, 0)));
 // SCAN
-ok('SCAN: сайт багцын N-ийг каталогоос авна (API select-д bundle_days)', /setup_fee,bundle_days&order=name\.asc/.test(SRC));
+ok('SCAN: сайт багцын N-ийг каталогоос авна (API select-д bundle_days)', /setup_fee,bundle_days(,bundle_addons)?&order=name\.asc/.test(SRC));
 ok('SCAN: захиалгад ⟦BD|sku|N⟧ токен бичнэ (n8n мөрийн bdays-ийг хаядаг)', /⟦BD\|\$\{p\.sku\}\|\$\{n\}⟧/.test(SRC));
 ok('SCAN: сагс ба илгээх мөр itemRentLine/bdays ашиглана', /subtotal \+= itemRentLine\(x, days\)/.test(SRC) && /bdays: itemBundleDays\(x\)/.test(SRC));
 ok('SCAN: `price × qty × days`-ийг гараар бичихгүй (itemRentLine дуудна)', !/x\.price \* x\.qty \* days/.test(SRC));
 ok('SCAN: сагсны үнийг каталогоос дарж бичихдээ bdays-ийг ч шинэчилнэ', /if \(_bd\) x\.bdays = _bd; else delete x\.bdays;/.test(SRC));
+
+/* ── 16c-2. БАГЦЫН «САНАЛ БОЛГОХ НЭМЭЛТ» (2026-10-24, CEO: «шууд нэмэх биш нэмэлтээр санал болгодог байя») ───────
+   Сагсанд багц орвол «нэмж авах уу?» санал гарна; ТОВЧ ДАРАХАД л тусдаа мөр болно. Үнэ нь багцын N хоногийг багтаасан,
+   олон хоногийн авто хямдралаас гарна — аппын `orderAddonSuggestions`/`addonOrderItem`-тэй ИЖИЛ. */
+const ad = createContext({ state: null, availStock: (p) => (p.__stock == null ? 5 : p.__stock), alert: () => {}, document: { getElementById: () => null },
+  saveCart() {}, renderCart() {}, renderGrid() {}, gaEvent() {}, fbEvent() {}, gaItem: () => ({}), fbItem: () => ({}), escapeHtml: (x) => String(x), fmt: (n) => String(n) });
+runInContext('const BUNDLE_DAYS_MAX = 30;', ad);
+for (const fn of ['productBundleDays', 'itemBundleDays', 'itemRentLine', 'itemsBundleSubtotal', 'packageAddons', 'cartProductOf', 'cartAddonRule', 'addonCap', 'addonSuggestions', 'syncCartPrices', 'addAddonToCart']) runInContext(extractFn(fn), ad);
+runInContext('const PACKAGE_ADDONS_MAX = 5;', ad);
+const AD_PKG = { id: 'p-328', sku: 'M-328', name: 'Өвлийн майхан багц', type: 'package', price: 390000, bundle_days: 3, bundle_items: [{ sku: 'M-089', qty: 1 }], bundle_addons: [{ sku: 'M-078', qty: 2, price: 50000 }] };
+const AD_BAG = { id: 'p-078', sku: 'M-078', name: 'Өвлийн мишок', type: 'rental', price: 44000 };
+const AD_TENT = { id: 'p-089', sku: 'M-089', name: 'Майхан', type: 'rental', price: 132000 };
+const adSet = (cart, prods) => { ad.state = { cart, products: prods || [AD_PKG, AD_BAG, AD_TENT], dates: { start: '2026-12-01', end: '2026-12-04' } }; return ad.state; };
+const pkgLine = (q) => ({ id: 'p-328', name: AD_PKG.name, price: 390000, qty: q || 1, bdays: 3 });
+// normalizer
+eq('нэмэлт: уншигдана', JSON.stringify(ad.packageAddons(AD_PKG)), JSON.stringify([{ sku: 'M-078', qty: 2, price: 50000 }]));
+eq('нэмэлт: багц биш/NULL → хоосон', ad.packageAddons(AD_BAG).length + ad.packageAddons({ ...AD_PKG, bundle_addons: null }).length + ad.packageAddons(null).length, 0);
+eq('нэмэлт: бүрэлдэхүүн · давхар · үнэгүй · хоосон sku хасагдана', JSON.stringify(ad.packageAddons({ ...AD_PKG, bundle_addons: [{ sku: 'M-089', qty: 1, price: 5000 }, { sku: 'M-078', qty: 0, price: 1000.4 }, { sku: 'M-078', qty: 9, price: 1 }, { sku: 'Z', price: 0 }, { sku: '', price: 5 }, null] })), JSON.stringify([{ sku: 'M-078', qty: 1, price: 1000 }]));
+eq('нэмэлт: 5-аас дээшийг тасална', ad.packageAddons({ ...AD_PKG, bundle_addons: Array.from({ length: 9 }, (_, i) => ({ sku: 'Q' + i, qty: 1, price: 1 })) }).length, 5);
+// санал
+adSet([pkgLine()]);
+let sg = ad.addonSuggestions();
+eq('санал: багц орвол нэмэлт санал болно (авто нэмэгдэхгүй)', JSON.stringify([sg.length, sg[0] && sg[0].qty, ad.state.cart.length]), JSON.stringify([1, 2, 1]));
+adSet([pkgLine(2)]); eq('санал: 2 багц → 4 ширхэг', ad.addonSuggestions()[0].qty, 4);
+adSet([pkgLine(), { id: 'p-078', qty: 1, price: 44000 }]); eq('санал: мишок аль хэдийн сагсанд бол санал алга', ad.addonSuggestions().length, 0);
+adSet([{ id: 'p-089', qty: 1, price: 132000 }]); eq('санал: багцгүй сагсанд санал алга', ad.addonSuggestions().length, 0);
+adSet([pkgLine()], [AD_PKG, { ...AD_BAG, __stock: 0 }, AD_TENT]); eq('санал: сул үлдэгдэлгүй бол санал болгохгүй', ad.addonSuggestions().length, 0);
+adSet([pkgLine()], [AD_PKG, { ...AD_BAG, __stock: 1 }, AD_TENT]); eq('санал: сул үлдэгдлээр хязгаарлагдана (2 → 1)', ad.addonSuggestions()[0].qty, 1);
+adSet([pkgLine()], [AD_PKG, AD_TENT]); eq('санал: каталогт байхгүй нэмэлт санал болгохгүй', ad.addonSuggestions().length, 0);
+// товч дарахад
+adSet([pkgLine()]); ad.addAddonToCart('M-078');
+const addLine = ad.state.cart[1];
+eq('нэмэх: тусдаа мөр — нэмэлтийн үнэ, багцын N, багцын id', JSON.stringify([ad.state.cart.length, addLine.id, addLine.price, addLine.bdays, addLine.addonOf, addLine.qty]), JSON.stringify([2, 'p-078', 50000, 3, 'p-328', 2]));
+eq('нэмэх: давхар дарвал дахин нэмэгдэхгүй (санал алга)', (ad.addAddonToCart('M-078'), ad.state.cart.length), 2);
+eq('мөнгө: 3 хоног 390,000 + 100,000', ad.itemsBundleSubtotal(ad.state.cart, 3), 490000);
+eq('мөнгө: 4 хоног — нэмэлт 133,333 (багц 520,000), авто хямдралаас гарсан', ad.itemsBundleSubtotal(ad.state.cart, 4), 520000 + 133333);
+// syncCartPrices: localStorage-ийн үнэд БҮҮ ИТГЭ
+ad.state.cart[1].price = 1; ad.state.cart[1].bdays = 99; ad.state.cart[0].price = 1;
+ad.syncCartPrices();
+eq('sync: нэмэлтийн үнэ/хоног багцын нэмэлтээс сэргэнэ (өөрчилсөн localStorage-д итгэхгүй)', JSON.stringify([ad.state.cart[1].price, ad.state.cart[1].bdays, ad.state.cart[0].price]), JSON.stringify([50000, 3, 390000]));
+ad.state.cart[1].qty = 9; ad.syncCartPrices();
+eq('sync: нэмэлтийн тоо багцын тоогоор (1 багц × 2) хязгаарлагдана', ad.state.cart[1].qty, 2);
+eq('addonCap: багцын тоо × нэг багцад', (ad.state.cart[0].qty = 3, ad.addonCap(ad.state.cart[1])), 6);
+ad.state.cart[0].qty = 1;
+ad.state.cart.splice(0, 1);   // багц сагснаас гарав
+ad.syncCartPrices();
+eq('sync: багц гарвал нэмэлт ЭНГИЙН мөр болно (багцын үнэ/хоног алга)', JSON.stringify([ad.state.cart[0].addonOf, ad.state.cart[0].bdays, ad.state.cart[0].price]), JSON.stringify([undefined, undefined, 44000]));
+// SCAN
+ok('SCAN: API select-д bundle_addons', /setup_fee,bundle_days,bundle_addons&order=name\.asc/.test(SRC));
+eq('SCAN: нэмэлт ГАНЦ товчоор нэмэгдэнэ (function + onclick). Өөр газраас дуудвал ШУУД нэмэхгүй гэсэн дүрэм эвдэрнэ', (SRC.match(/addAddonToCart\(/g) || []).length, 2);
+eq('SCAN: addonSuggestions зөвхөн харуулах ба нэмэх гэсэн хоёр газар', (SRC.match(/addonSuggestions\(\)/g) || []).length, 3);   // функц + renderCartAddons + addAddonToCart
+ok('SCAN: захиалгын мөрд нэмэлтийн үнэ (каталогийн энгийн үнэ БИШ)', /price: x\.addonOf \? \(Number\(x\.price\) \|\| 0\) : \(Number\(p\.price\) \|\| 0\)/.test(SRC));
+ok('SCAN: багц нэмэхэд ⟦BD⟧ токен нэмэлт мөрд ч бичигдэнэ (bdays-тай мөр бүр)', /state\.cart\.forEach\(x => \{ const n = itemBundleDays\(x\), p = _resolve\(x\) \|\| \{\}; if \(n && p\.sku\)/.test(SRC));
+ok('SCAN: багцын нэмэлт энгийн үнээр давхарлагдахгүй (addToCart хамгаалалт)', /if \(ex && ex\.addonOf\) \{ alert/.test(SRC));
+ok('SCAN: багц гарахад нэмэлтийн үнэ дахин бодогдоно (removeFromCart → syncCartPrices)', /state\.cart = state\.cart\.filter\(x => x\.id !== id\);\s*syncCartPrices\(\)/.test(SRC));
+const catSql = readFileSync(join(ROOT, 'db', 'public_catalog.sql'), 'utf8');
+ok('SCAN: public_catalog харагдац bundle_addons-ийг ТӨГСГӨЛД нэмсэн', /b\.bundle_days,[\s\S]*b\.bundle_addons\nfrom base b;/.test(catSql) && /p\.bundle_days, p\.bundle_addons,/.test(catSql));
+ok('SCAN: renderCartAddons мөр НЭМДЭГГҮЙ (зөвхөн санал харуулна)', !/state\.cart\.push/.test(extractFn('renderCartAddons')));
 
 /* ── 16d. БАГЦТАЙ ОГНОО: N хоног ӨГӨГДМӨЛӨӨР, албадахгүй (2026-10-24, CEO) ────────────────────────────
    Багцын үнэ 3 хоногт ижил тул огноо 1 хоног (өнөөдөр→маргааш) байвал хүн 3 хоногийн үнээр 1 хоног авна.

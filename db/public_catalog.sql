@@ -51,7 +51,7 @@ with base as (
          p.type, p.price, p.deposit, p.description,
          p.photo, p.media_url, p.bundle_items,
          p.variant_group, p.variant_label, p.setup_fee, p.updated_at,
-         p.photos, p.bundle_days,
+         p.photos, p.bundle_days, p.bundle_addons,
          -- Түрээслэх боломжтой нөөц = M-Event салбарын тоо − эвдэрсэн − засварт.
          greatest(0, coalesce(p.qty_mevent, 0)
                    - coalesce(p.broken, 0)
@@ -86,7 +86,10 @@ select b.sku, b.id, b.code, b.name, b.category, b.all_categories,
        b.photos,
        -- Багцын «N хоногийн үнэ» (NULL/1 = өдрийн үнэ). ⚠ Шинэ багана ТӨГСГӨЛД (create or replace view).
        -- Тооцоо: сайтын itemRentLine = аппын itemRentLine (хоног ≤ N → үнэ, илүү хоног = үнэ ÷ N, авто хямдралгүй).
-       b.bundle_days
+       b.bundle_days,
+       -- Багцын «санал болгох нэмэлт» [{sku, qty, price}] (2026-10-24; апп: db/product_bundle_addons.sql). price = 1 ширхгийн үнэ, багцын N хоногийг
+       -- багтаасан. Багцын нөөц/үнэд ОРОХГҮЙ — сагсанд багц орвол сайт «нэмж авах уу?» гэж санал болгоно. ⚠ ТӨГСГӨЛД (create or replace view).
+       b.bundle_addons
 from base b;
 
 comment on view public.public_catalog is
