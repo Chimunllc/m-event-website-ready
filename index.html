@@ -783,8 +783,6 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
     .datebar .db-hint { order: 10; flex: 1 0 100%; font-size: var(--fs-xs); }
     .datebar .db-hint-long { display: none; }
   }
-  .gt-avail { display: inline-flex; align-items: center; gap: 7px; font-size: var(--fs-sm); font-weight: 600; color: var(--text); cursor: pointer; user-select: none; white-space: nowrap; }
-  .gt-avail input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
   /* «📦 Багц» чип — багц/иж бүрдлийг бүх ангилалаас нэг дор. Идэвхтэй үед navy (--brand), бусад үед хүрээтэй. */
   .gt-pkg { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid var(--border-strong); border-radius: 100px; background: #fff; color: var(--text); font-size: var(--fs-sm); font-weight: 600; font-family: inherit; cursor: pointer; white-space: nowrap; min-height: 36px; }
   .gt-pkg[hidden] { display: none; }
@@ -1079,10 +1077,9 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
         <div class="meta" id="grid-meta"></div>
       </div>
       <div class="grid-tools">
-        <button type="button" class="gt-pkg" id="only-pkg" aria-pressed="false" hidden>📦 Багц <span class="gt-pkg-n" id="only-pkg-n"></span></button>
-        <label class="gt-avail"><input type="checkbox" id="only-avail"> Зөвхөн боломжтой</label>
+        <button type="button" class="gt-pkg" id="only-pkg" aria-pressed="false" hidden>Багц <span class="gt-pkg-n" id="only-pkg-n"></span></button>
         <select class="gt-sort" id="sort-sel" aria-label="Эрэмбэлэх">
-          <option value="default">🔥 Их түрээслэгддэг</option>
+          <option value="default">Их түрээслэгддэг</option>
           <option value="name">Нэрээр (А-Я)</option>
           <option value="price-asc">Үнэ: Багаас их</option>
           <option value="price-desc">Үнэ: Ихээс бага</option>
@@ -1480,7 +1477,6 @@ const state = {
   category: 'all',
   search: '',
   sort: 'default',
-  onlyAvail: false,
   onlyPkg: false,   // «📦 Багц» чип — зөвхөн багцыг (бүх ангилалаас) харуулна
   dates: {
     start: localStorage.getItem('d-start') || '',
@@ -1938,10 +1934,9 @@ function sortList(list) {
 // Нэг удаад хэдэн бараа рендерлэх вэ. Бүгдийг нэг дор гаргахад хуудас 28,230px
 // (утасны ~33 дэлгэц) болж, DOM-д 159 карт зэрэг сууж байв.
 const GRID_PAGE = 24;
-// Грид-ийн нэмэлт шүүлтүүд (боломжтой / багц). Тестлэгдэнэ.
+// Грид-ийн нэмэлт шүүлт (багц). «Зөвхөн боломжтой» чагтыг ХАССАН (2026-10-24, CEO) — сул үлдэгдэл карт бүр дээр огнооны дагуу харагддаг. Тестлэгдэнэ.
 function applyGridFilters(list) {
   if (state.onlyPkg) list = list.filter(p => p.type === 'package');
-  if (state.onlyAvail) list = list.filter(p => p.type === 'service' || availStock(p) > 0);
   return list;
 }
 // «📦 Багц» чипийн тоо/төлөв — багц байхгүй бол чип нуугдана (хоосон шүүлт санал болгохгүй).
@@ -1957,7 +1952,7 @@ function renderGrid() {
   list = sortList(list);
   // Шүүлт өөрчлөгдвөл эхний хуудас руу буцна. Дуудлагын газар бүрийг засахын оронд
   // шүүлтийн «гарын үсгээр» таньна — шинэ шүүлт нэмэгдэхэд ч өөрөө ажиллана.
-  const sig = [state.category, state.search, state.sort, state.onlyAvail, state.onlyPkg].join('\u0000');
+  const sig = [state.category, state.search, state.sort, state.onlyPkg].join('\u0000');
   if (sig !== state._gridSig) { state._gridSig = sig; state.shown = GRID_PAGE; }
   if (!(state.shown > 0)) state.shown = GRID_PAGE;
   const page = list.slice(0, state.shown);
@@ -2073,7 +2068,7 @@ function renderDuration() {
   if (bn >= 2) {
     // Багц сагсанд байвал «олон хоногийн хямдрал» ТЭРЭНД ҮЙЛЧЛЭХГҮЙ — худал мэдээлэл гаргахгүй.
     const extra = Math.round((state.cart || []).reduce((s, x) => itemBundleDays(x) ? s + (Number(x.price) || 0) * (Number(x.qty) || 0) / itemBundleDays(x) : s, 0));
-    h += ` · 📦 Багцын үнэ ${bn} хоног хүртэл ижил`
+    h += ` · Багцын үнэ ${bn} хоног хүртэл ижил`
       + (days > bn ? `, илүү хоног тус бүр ${fmt(extra)}` : '')
       + (days < bn ? ` (${bn} хоног авч болно)` : '');
     const hasRegular = (state.cart || []).some(x => !itemBundleDays(x));
@@ -2525,7 +2520,7 @@ function renderCartAddons() {
   const sug = addonSuggestions();
   const xs = crossSellSuggestions();
   const days = diffDays();
-  const pkgHtml = sug.length ? '<div class="cart-addon-t">💡 Нэмж авах уу?</div>' + sug.map(s => {
+  const pkgHtml = sug.length ? '<div class="cart-addon-t">Нэмж авах уу?</div>' + sug.map(s => {
     const n = productBundleDays(s.pkg);
     const amt = itemRentLine({ price: s.addon.price, qty: s.qty, ...(n ? { bdays: n } : {}) }, days);
     return `<div class="cart-addon">
@@ -2535,7 +2530,7 @@ function renderCartAddons() {
       <button type="button" class="cart-addon-btn" onclick="addAddonToCart('${escapeHtml(s.addon.sku)}')">+ Нэмэх<br><b>${fmt(amt)}</b></button>
     </div>`;
   }).join('') : '';
-  const xsHtml = xs.length ? '<div class="cart-addon-t">🛒 Ихэнх захиалагч хамт авдаг</div>' + xs.map(s => {
+  const xsHtml = xs.length ? '<div class="cart-addon-t">Ихэнх захиалагч хамт авдаг</div>' + xs.map(s => {
     const amt = itemRentLine({ price: s.product.price, qty: s.qty }, days);
     return `<div class="cart-addon cart-xs">
       <img src="${escapeHtml(s.product.photo || '')}" alt="" onerror="this.style.background='#f3f4f6';this.src=''">
@@ -3341,7 +3336,6 @@ function initEvents() {
   syncSearchClear();
   // Эрэмбэ + "зөвхөн боломжтой" шүүлт
   const _sort = document.getElementById('sort-sel'); if (_sort) _sort.onchange = (e) => { state.sort = e.target.value; renderGrid(); };
-  const _oa = document.getElementById('only-avail'); if (_oa) _oa.onchange = (e) => { state.onlyAvail = e.target.checked; renderGrid(); };
   // «📦 Багц» чип: асаахад БҮХ ангилалаас багцыг харуулна (ангилал «Бүх бараа» руу буцна), унтраахад «Бүх бараа».
   const _op = document.getElementById('only-pkg');
   if (_op) _op.onclick = () => { state.onlyPkg = !state.onlyPkg; if (state.onlyPkg) state.category = 'all'; render(); };
