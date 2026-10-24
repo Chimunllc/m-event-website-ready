@@ -24,7 +24,7 @@ const path = require('path');
 // өгөгдлийн санд НЭГ УДАА бичигдсэн тул энд шүүлт ч, талбарын жагсаалт ч
 // давхардахгүй. `stock` нь бэлдэгдсэн (qty_mevent − эвдэрсэн − засварт).
 const SELECT = 'sku,id,code,name,category,all_categories,type,price,deposit,stock,'
-  + 'photo,description,bundle_items,variant_group,variant_label,media_url,setup_fee';
+  + 'photo,description,bundle_items,variant_group,variant_label,media_url,setup_fee,bundle_days';
 const URL = 'https://n8n.nomaadcamp.com/db/rest/v1/public_catalog'
   + `?select=${SELECT}&order=name.asc`;
 

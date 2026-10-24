@@ -32,7 +32,7 @@ const BRAND = 'M-Event';
 // байв. Одоо дүрэм өгөгдлийн санд НЭГ УДАА бичигдсэн — энд дахин шүүхгүй.
 // Харагдац нь `stock`-ыг (qty_mevent − эвдэрсэн − засварт) бэлдэж өгнө.
 const DB_URL = 'https://n8n.nomaadcamp.com/db/rest/v1/public_catalog'
-  + '?select=sku,id,code,name,category,all_categories,type,price,deposit,stock,photo,description,bundle_items,media_url,setup_fee'
+  + '?select=sku,id,code,name,category,all_categories,type,price,deposit,stock,photo,description,bundle_items,media_url,setup_fee,bundle_days'
   + '&order=name.asc';
 
 function loadProducts() {
@@ -68,6 +68,14 @@ const all = raw.slice().sort((a, b) => String(a.name).localeCompare(String(b.nam
 
 const esc = s => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = n => (Number(n) || 0).toLocaleString('mn-MN') + '₮';
+// Багцын «N хоногийн үнэ» (2026-10-24): N≥2 бол үнэ нь N хоногийг багтаасан тогтмол дүн, «/хоног» БИШ.
+// ⚠ Сайтын index.html `productBundleDays`-тай ИЖИЛ дүрэм (N<2 = өдрийн үнэ, дээд 30).
+const bundleDays = p => {
+  if (!p || p.type !== 'package') return 0;
+  const n = Math.floor(Number(p.bundle_days) || 0);
+  return n >= 2 ? Math.min(n, 30) : 0;
+};
+const unitTxt = p => bundleDays(p) ? ' (' + bundleDays(p) + ' хоногийн үнэ)' : '/хоног';
 // Бичвэрийг ҮГЭЭР таслана. ⚠ 2026-09-17: өмнө нь `.slice(0,120)` шууд таслаад ард
 // нь «Улаанбаатар…» гэж залгадаг байсан тул 225 барааны 116-д нь Google-ийн илэрц
 // дээр «…зориулсан өндөУлаанбаатар доторх хүргэлт» гэсэн эвдэрсэн өгүүлбэр гарч
@@ -206,7 +214,7 @@ Object.keys(byCat).sort((a, b) => a.localeCompare(b, 'mn')).forEach(cat => {
   const cp = catBySlugName[cat];
   noscriptHtml += '<h3>' + (cp ? '<a href="/turees/' + cp.slug + '/">' + esc(cat) + '</a>' : esc(cat)) + '</h3><ul>';
   byCat[cat].forEach(p => {
-    noscriptHtml += '<li><a href="/products/' + p._slug + '/">' + esc(p.name) + '</a> — ' + fmt(p.price) + '/хоног</li>';
+    noscriptHtml += '<li><a href="/products/' + p._slug + '/">' + esc(p.name) + '</a> — ' + fmt(p.price) + unitTxt(p) + '</li>';
   });
   noscriptHtml += '</ul>';
 });
@@ -238,7 +246,7 @@ fs.mkdirSync(prodDir, { recursive: true });
 function productPage(p) {
   const url = SITE + '/products/' + p._slug + '/';
   const title = p.name + ' түрээс | Арга хэмжээний тоног төхөөрөмж түрээс | ' + BRAND;
-  const desc = clampWords(p.name + ' түрээслэнэ — ' + fmt(p.price) + '/хоног. '
+  const desc = clampWords(p.name + ' түрээслэнэ — ' + fmt(p.price) + unitTxt(p) + '. '
     + (p.description ? clampWords(p.description, 110) + ' ' : (p.category || '') + ' ангилал. ')
     + 'Улаанбаатар доторх хүргэлт. Захиалга: 7755-1010.', 300);
   const img = /^https?:\/\//.test(p.photo || '') ? p.photo : (SITE + '/og-image.png');
@@ -324,10 +332,10 @@ function productPage(p) {
     <div>
       <h1>${esc(p.name)}</h1>
       <div class="cat">${esc(p.category || 'Арга хэмжээний тоног төхөөрөмж')}</div>
-      <div class="price">${fmt(p.price)}<small> /хоног</small></div>
+      <div class="price">${fmt(p.price)}<small> ${bundleDays(p) ? bundleDays(p) + ' хоногийн үнэ' : '/хоног'}</small></div>
       <div class="desc">${esc(p.description || (p.name + ' түрээслэнэ. Дэлгэрэнгүй мэдээлэл, захиалгыг утсаар эсвэл онлайнаар авна уу.'))}</div>
       <a class="cta" href="/?q=${encodeURIComponent(p.name)}">Онлайн захиалах →</a>
-      <div class="note">2+ хоног түрээслэвэл −20%. Улаанбаатар доторх хүргэлт 150,000₮-с. Барьцаа барааны төрлөөс хамаарна.</div>
+      <div class="note">${bundleDays(p) ? 'Багцын үнэ ' + bundleDays(p) + ' хоногийг багтаасан; илүү хоног тус бүр ' + fmt(Math.round(Number(p.price) / bundleDays(p))) + '.' : '2+ хоног түрээслэвэл −20%.'} Улаанбаатар доторх хүргэлт 150,000₮-с. Барьцаа барааны төрлөөс хамаарна.</div>
     </div>
   </div>
   <footer>
@@ -518,7 +526,7 @@ function categoryPage(c) {
 ${c.items.map(p => `    <a class="it" href="/products/${p._slug}/">
       <div class="ph">${/^https?:\/\//.test(p.photo || '') ? `<img src="${esc(p.photo)}" alt="${esc(p.name)} түрээс" loading="lazy">` : ''}</div>
       <div class="nm">${esc(p.name)}</div>
-      <div class="pr">${fmt(p.price)}<small> /хоног</small>${(p.type === 'service' || Number(p.stock) > 0) ? '' : ' <span class="out">· захиалгаар</span>'}</div>
+      <div class="pr">${fmt(p.price)}<small> ${bundleDays(p) ? bundleDays(p) + ' хоногийн үнэ' : '/хоног'}</small>${(p.type === 'service' || Number(p.stock) > 0) ? '' : ' <span class="out">· захиалгаар</span>'}</div>
     </a>`).join('\n')}
   </div>
 

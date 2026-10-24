@@ -51,7 +51,7 @@ with base as (
          p.type, p.price, p.deposit, p.description,
          p.photo, p.media_url, p.bundle_items,
          p.variant_group, p.variant_label, p.setup_fee, p.updated_at,
-         p.photos,
+         p.photos, p.bundle_days,
          -- Түрээслэх боломжтой нөөц = M-Event салбарын тоо − эвдэрсэн − засварт.
          greatest(0, coalesce(p.qty_mevent, 0)
                    - coalesce(p.broken, 0)
@@ -83,7 +83,10 @@ select b.sku, b.id, b.code, b.name, b.category, b.all_categories,
          ), 0)
          else b.unit_stock
        end as stock,
-       b.photos
+       b.photos,
+       -- Багцын «N хоногийн үнэ» (NULL/1 = өдрийн үнэ). ⚠ Шинэ багана ТӨГСГӨЛД (create or replace view).
+       -- Тооцоо: сайтын itemRentLine = аппын itemRentLine (хоног ≤ N → үнэ, илүү хоног = үнэ ÷ N, авто хямдралгүй).
+       b.bundle_days
 from base b;
 
 comment on view public.public_catalog is
