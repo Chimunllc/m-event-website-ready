@@ -421,7 +421,7 @@ eq('sync: багц гарвал нэмэлт ЭНГИЙН мөр болно (б�
 // SCAN
 ok('SCAN: API select-д bundle_addons', /setup_fee,bundle_days,bundle_addons&order=name\.asc/.test(SRC));
 eq('SCAN: нэмэлт ГАНЦ товчоор нэмэгдэнэ (function + onclick). Өөр газраас дуудвал ШУУД нэмэхгүй гэсэн дүрэм эвдэрнэ', (SRC.match(/addAddonToCart\(/g) || []).length, 2);
-eq('SCAN: addonSuggestions зөвхөн харуулах ба нэмэх гэсэн хоёр газар', (SRC.match(/addonSuggestions\(\)/g) || []).length, 3);   // функц + renderCartAddons + addAddonToCart
+eq('SCAN: addonSuggestions зөвхөн харуулах, нэмэх, «хамт авдаг»-аас давхцал хасах гэсэн газар', (SRC.match(/addonSuggestions\(\)/g) || []).length, 4);   // функц + renderCartAddons + addAddonToCart + crossSellSuggestions
 ok('SCAN: захиалгын мөрд нэмэлтийн үнэ (каталогийн энгийн үнэ БИШ)', /price: x\.addonOf \? \(Number\(x\.price\) \|\| 0\) : \(Number\(p\.price\) \|\| 0\)/.test(SRC));
 ok('SCAN: багц нэмэхэд ⟦BD⟧ токен нэмэлт мөрд ч бичигдэнэ (bdays-тай мөр бүр)', /state\.cart\.forEach\(x => \{ const n = itemBundleDays\(x\), p = _resolve\(x\) \|\| \{\}; if \(n && p\.sku\)/.test(SRC));
 ok('SCAN: багцын нэмэлт энгийн үнээр давхарлагдахгүй (addToCart хамгаалалт)', /if \(ex && ex\.addonOf\) \{ alert/.test(SRC));
@@ -429,6 +429,52 @@ ok('SCAN: багц гарахад нэмэлтийн үнэ дахин бодо�
 const catSql = readFileSync(join(ROOT, 'db', 'public_catalog.sql'), 'utf8');
 ok('SCAN: public_catalog харагдац bundle_addons-ийг ТӨГСГӨЛД нэмсэн', /b\.bundle_days,[\s\S]*b\.bundle_addons\nfrom base b;/.test(catSql) && /p\.bundle_days, p\.bundle_addons,/.test(catSql));
 ok('SCAN: renderCartAddons мөр НЭМДЭГГҮЙ (зөвхөн санал харуулна)', !/state\.cart\.push/.test(extractFn('renderCartAddons')));
+
+/* ── 16c-3. «ХАМТ АВДАГ» САНАЛ (2026-10-24, CEO: «сайтад л санал болгох нь хамгийн зөв») ─────────────────────────────────
+   Дүрмийг VPS cron захиалгын ТҮҮХЭЭС бодож `app_config['mevent_cross_sell']`-д бичнэ; сайт зөвхөн уншиж, сагсанд санал болгоно. */
+const xc = createContext({ state: null, XSELL: {}, XS_DISMISSED: new Set(), XSELL_MAX: 3, availStock: (p) => (p.__stock == null ? 50 : p.__stock), Math, Number, String });
+runInContext('const BUNDLE_DAYS_MAX = 30; const PACKAGE_ADDONS_MAX = 5;', xc);
+for (const fn of ['cartProductOf', 'packageAddons', 'addonSuggestions', 'xsellBasket', 'crossSellSuggestions']) runInContext(extractFn(fn), xc);
+const XT = { id: 'u-t', sku: 'M-T', name: 'Цагаан ширээ', type: 'rental', price: 27500 };
+const XC = { id: 'u-c', sku: 'M-C', name: 'Эвхэгддэг сандал', type: 'rental', price: 6600 };
+const XK = { id: 'u-k', sku: 'M-K', name: 'Ширээний бүтээлэг', type: 'rental', price: 8800 };
+const XM = { id: 'u-m', sku: 'M-M', name: 'Мишок', type: 'rental', price: 44000 };
+const XP = { id: 'u-p', sku: 'M-P', name: 'Ширээ сандал багц', type: 'package', price: 150000, bundle_items: [{ sku: 'M-T', qty: 1 }, { sku: 'M-C', qty: 6 }], bundle_addons: [{ sku: 'M-M', qty: 1, price: 30000 }] };
+const xcSet = (cart, rules, prods) => { xc.state = { cart, products: prods || [XT, XC, XK, XM, XP] }; xc.XSELL = rules || { 'M-T': [{ sku: 'M-C', conf: 0.43, n: 120, both: 51, ratio: 3.3 }, { sku: 'M-K', conf: 0.48, n: 120, both: 57, ratio: 1 }] }; xc.XS_DISMISSED.clear(); return xc.state; };
+const xcSku = () => xc.crossSellSuggestions().map(x => x.product.sku).join(',');
+xcSet([{ id: 'u-t', qty: 4, price: 27500 }]);
+eq('хамт авдаг: confidence-ээр (бүтээлэг 48% > сандал 43%)', xcSku(), 'M-K,M-C');
+eq('хамт авдаг: тоо = харьцаа × anchor (ширээ 4 × 3.3 = 13)', xc.crossSellSuggestions().find(x => x.product.sku === 'M-C').qty, 13);
+xcSet([{ id: 'u-t', qty: 4, price: 27500 }, { id: 'u-c', qty: 20, price: 6600 }]);
+eq('хамт авдаг: сагсанд аль хэдийн байгааг санал болгохгүй', xcSku(), 'M-K');
+xcSet([{ id: 'u-p', qty: 1, price: 150000, bdays: 3 }]);
+eq('хамт авдаг: багц бол бүрэлдэхүүнээр (ширээ+сандал аль хэдийн багцад → бүтээлэг л)', xcSku(), 'M-K');
+xcSet([{ id: 'u-t', qty: 2, price: 27500 }, { id: 'u-c', qty: 6, price: 6600, xs: true }]);
+eq('хамт авдаг: санал болгосноор орсон мөр (xs) anchor биш ч «орсон» тооцогдоно', xcSku(), 'M-K');
+xcSet([{ id: 'u-t', qty: 2, price: 27500, xs: true }]);
+eq('хамт авдаг: зөвхөн xs мөртэй сагсанд шинэ санал гарахгүй (гинж холдохгүй)', xcSku(), '');
+xcSet([{ id: 'u-t', qty: 2, price: 27500 }]); xc.XS_DISMISSED.add('M-K');
+eq('хамт авдаг: «✕»-ээр хаасан санал дахин гарахгүй', xcSku(), 'M-C');
+xcSet([{ id: 'u-t', qty: 2, price: 27500 }], null, [XT, XK, { ...XC, __stock: 0 }]);
+eq('хамт авдаг: сул үлдэгдэлгүй бараа санал болохгүй', xcSku(), 'M-K');
+xcSet([{ id: 'u-t', qty: 2, price: 27500 }], null, [XT, XC]);
+eq('хамт авдаг: каталогт харагдахгүй бараа санал болохгүй', xcSku(), 'M-C');
+xcSet([{ id: 'u-t', qty: 40, price: 27500 }], null, [XT, { ...XC, __stock: 7 }, XK]);
+eq('хамт авдаг: тоо сул үлдэгдлээр хязгаарлагдана (132 → 7)', xc.crossSellSuggestions().find(x => x.product.sku === 'M-C').qty, 7);
+xcSet([{ id: 'u-p', qty: 1, price: 150000, bdays: 3 }], { 'M-T': [{ sku: 'M-M', conf: 0.5, ratio: 1 }, { sku: 'M-K', conf: 0.4, ratio: 1 }] });
+eq('хамт авдаг: багцын нэмэлттэй (мишок) давхцвал нэмэлтийнх ялна, энд дахин санал болгохгүй', xcSku(), 'M-K');
+xcSet([], null); eq('хамт авдаг: хоосон сагсанд санал алга', xcSku(), '');
+xcSet([{ id: 'u-t', qty: 1, price: 27500 }], {}); eq('хамт авдаг: дүрэмгүй (хоосон) үед санал алга', xcSku(), '');
+xcSet([{ id: 'u-t', qty: 1, price: 27500 }], { 'M-T': Array.from({ length: 6 }, (_, i) => ({ sku: 'M-' + i, conf: 0.9 - i / 100, ratio: 1 })) }, [XT, ...Array.from({ length: 6 }, (_, i) => ({ id: 'u' + i, sku: 'M-' + i, name: 'b' + i, type: 'rental', price: 1000 }))]);
+eq('хамт авдаг: нэг удаад дээд тал нь 3', xc.crossSellSuggestions().length, 3);
+// SCAN
+ok('SCAN: дүрмийг `app_config_public`-ээс уншина (сайт түүх уншдаггүй)', /app_config_public\?key=eq\.mevent_cross_sell/.test(SRC));
+ok('SCAN: «хамт авдаг» дүрмийг сайт өөрөө БОДОХГҮЙ (түүх/захиалга уншихгүй)', !/app_orders/.test(extractFn('loadCrossSell')) && !/conf\s*=\s*both/.test(SRC));
+eq('SCAN: нэмэх нь ГАНЦ товчоор (function + onclick)', (SRC.match(/addCrossSell\(/g) || []).length, 2);
+ok('SCAN: ЭНГИЙН үнээр ердийн `addToCart`-аар нэмнэ (тусгай үнэ/хөнгөлөлт БИШ), `xs` тэмдэгтэй', /addToCart\(s\.product, s\.qty, false\);[\s\S]{0,160}ln\.xs = true/.test(SRC));
+ok('SCAN: захиалгад ⟦XS|sku,…⟧ токен бичнэ (хэмжилт)', /⟦XS\|\$\{_xs\.join\(','\)\}⟧/.test(SRC));
+ok('SCAN: loadCrossSell эхлэлд дуудагдана', /loadTariffs\(\), loadCrossSell\(\)\]/.test(SRC));
+ok('SCAN: renderCartAddons мөр НЭМДЭГГҮЙ (зөвхөн харуулна)', !/state\.cart\.push|addToCart\(/.test(extractFn('renderCartAddons')));
 
 /* ── 16d. БАГЦТАЙ ОГНОО: N хоног ӨГӨГДМӨЛӨӨР, албадахгүй (2026-10-24, CEO) ────────────────────────────
    Багцын үнэ 3 хоногт ижил тул огноо 1 хоног (өнөөдөр→маргааш) байвал хүн 3 хоногийн үнээр 1 хоног авна.
