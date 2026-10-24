@@ -293,6 +293,35 @@ setup([P_TABLE], [], DATES, true);
 ok('татагдсан үед хэвийн тоо харагдана',
   /7ш боломжтой/.test(av.stockBadgeHtml(P_TABLE)), av.stockBadgeHtml(P_TABLE));
 
+/* ── 16b. БАГЦЫН КАРТ — багц нь энгийн бараатай ЯЛГАГДАНА (2026-10-24, CEO) ───────────────
+   Багц = хэд хэдэн бараа нэг үнээр. Картаас нэг харцаар: «📦 Багц» тэмдэг, «дотор нь» мөр, «багц» нэгж.
+   Эс бөгөөс «4-6 хүний өвлийн майхан зуухтай багц 390,000₮» нь нэг үнэтэй майхан мэт харагдана. */
+const cd = createContext({ state: null, fmt: (n) => String(n), asarInfo: () => null });
+for (const fn of ['escapeHtml', '_prodOfItem', 'bookedForProduct', 'availStock', 'stockBadgeHtml', 'packageParts', 'cardHtml']) runInContext(extractFn(fn), cd);
+runInContext("const _normName = (s) => String(s || '').toLowerCase().replace(/\\s+/g, ' ').trim();", cd);
+const C_TENT = { sku: 'M-089', id: 'u1', name: 'Өвлийн майхан 4-6 хүний', type: 'rental', stock: 21, price: 132000 };
+const C_BED = { sku: 'M-064', id: 'u2', name: 'Аяны ор', type: 'rental', stock: 557, price: 27500 };
+const C_STOVE = { sku: 'M-060', id: 'u3', name: 'Аяны зуух', type: 'rental', stock: 21, price: 44000 };
+const C_PKG = { sku: 'M-328', id: 'u4', name: '4-6 хүний өвлийн майхан зуухтай багц', type: 'package', stock: 0, price: 390000,
+  bundle_items: [{ sku: 'M-089', qty: 1 }, { sku: 'M-064', qty: 4 }, { sku: 'M-060', qty: 1 }] };
+cd.state = { products: [C_TENT, C_BED, C_STOVE, C_PKG], orders: [], dates: {}, availOk: true, cart: [] };
+eq('багц: бүрэлдэхүүн нэр, тоотой', JSON.stringify(cd.packageParts(C_PKG)), JSON.stringify([{ qty: 1, name: 'Өвлийн майхан 4-6 хүний' }, { qty: 4, name: 'Аяны ор' }, { qty: 1, name: 'Аяны зуух' }]));
+eq('багц: бараанд бүрэлдэхүүн байхгүй', cd.packageParts(C_TENT).length, 0);
+eq('багц: хоосон оролт унахгүй', cd.packageParts(null).length, 0);
+eq('багц: каталогт олдохгүй бүрэлдэхүүнийг орхино', cd.packageParts({ type: 'package', bundle_items: [{ sku: 'M-064', qty: 2 }, { sku: 'ALGA', qty: 1 }] }).length, 1);
+const cardPkg = cd.cardHtml(C_PKG, 0), cardGood = cd.cardHtml(C_TENT, 0);
+ok('багц карт: «Багц» тэмдэг зургийн буланд', /class="card-pkg-badge"/.test(cardPkg) && /Багц<\/span>/.test(cardPkg));
+ok('багц карт: «дотор нь» мөр (3 зүйл, тоотой нэр)', /class="card-bundle"[^>]*>3 зүйл: Өвлийн майхан 4-6 хүний · 4× Аяны ор · Аяны зуух/.test(cardPkg), cardPkg.match(/card-bundle[^<]*/)?.[0]);
+ok('багц карт: нөөцийн нэгж «багц» (ш БИШ)', /21 багц боломжтой/.test(cardPkg) && !/ш боломжтой/.test(cardPkg), cardPkg.match(/stock-badge[^<]*</)?.[0]);
+ok('багц карт: хандалтын шошго «(багц)»', /aria-label="4-6 хүний өвлийн майхан зуухтай багц \(багц\)/.test(cardPkg));
+ok('энгийн бараа: тэмдэг, «дотор нь» мөр БАЙХГҮЙ', !/card-pkg-badge/.test(cardGood) && !/card-bundle/.test(cardGood));
+ok('энгийн бараа: «ш боломжтой» хэвээр', /21ш боломжтой/.test(cardGood), cardGood.match(/stock-badge[^<]*</)?.[0]);
+ok('багц карт: бичлэгтэй бол тэмдэг ДАВХЦАХГҮЙ (CSS-ээр доош)', /\.card-pkg-badge \+ \.card-video-badge \{ top: 40px; \}/.test(SRC) && cd.cardHtml({ ...C_PKG, media_url: 'https://x/y.mp4' }, 0).indexOf('card-pkg-badge') < cd.cardHtml({ ...C_PKG, media_url: 'https://x/y.mp4' }, 0).indexOf('card-video-badge'));
+cd.state.products = [C_TENT, C_BED, { ...C_STOVE, stock: 0 }, C_PKG];
+ok('багц карт: бүрэлдэхүүн дуусвал «Дууссан»', /stock-badge out/.test(cd.cardHtml(C_PKG, 0)));
+ok('SCAN: дэлгэрэнгүй хуудас packageParts ашиглана (картын ИЖИЛ эх сурвалж)', /const parts = packageParts\(p\)\.map/.test(SRC));
+ok('SCAN: «Багц» тэмдэг улбар БИШ (улбар = conversion)', /\.card-pkg-badge \{[^}]*background: var\(--brand\)/.test(SRC));
+
 /* SCAN: нэрээр тулгах хуучин функц эргэж ирэхгүй */
 ok('SCAN: bookedFor(name) буцаж ирээгүй', !/function bookedFor\s*\(\s*name\s*\)/.test(SRC));
 
