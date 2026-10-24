@@ -2002,9 +2002,22 @@ function renderDuration() {
   if (!state.dates.start || !state.dates.end) { el.innerHTML = 'Огноогоо сонгоно уу.'; return; }
   const days = diffDays();
   let h = `<b style="font-weight:700;">${days} хоног</b> түрээслэнэ`;
-  h += days >= 2
-    ? ` · <span style="font-weight:700;">−${Math.round(rentalDiscount(days).pct * 100)}% олон хоногийн хямдрал орно</span>`
-    : ` · 2+ хоног түрээслэвэл 20% хямдрал`;
+  const bn = bundleStayDays();
+  if (bn >= 2) {
+    // Багц сагсанд байвал «олон хоногийн хямдрал» ТЭРЭНД ҮЙЛЧЛЭХГҮЙ — худал мэдээлэл гаргахгүй.
+    const extra = Math.round((state.cart || []).reduce((s, x) => itemBundleDays(x) ? s + (Number(x.price) || 0) * (Number(x.qty) || 0) / itemBundleDays(x) : s, 0));
+    h += ` · 📦 Багцын үнэ ${bn} хоног хүртэл ижил`
+      + (days > bn ? `, илүү хоног тус бүр ${fmt(extra)}` : '')
+      + (days < bn ? ` (${bn} хоног авч болно)` : '');
+    const hasRegular = (state.cart || []).some(x => !itemBundleDays(x));
+    if (hasRegular) h += days >= 2
+      ? ` · бусад бараанд −${Math.round(rentalDiscount(days).pct * 100)}% олон хоногийн хямдрал`
+      : ` · бусад бараанд 2+ хоногт 20% хямдрал`;
+  } else {
+    h += days >= 2
+      ? ` · <span style="font-weight:700;">−${Math.round(rentalDiscount(days).pct * 100)}% олон хоногийн хямдрал орно</span>`
+      : ` · 2+ хоног түрээслэвэл 20% хямдрал`;
+  }
   el.innerHTML = h;
 }
 // Сонгосон огноонд сагсны бараа хүрэлцэх эсэх (зөөлөн анхааруулга)
@@ -2414,6 +2427,7 @@ function addToCart(p, qty, openDrawer) {
   if (ex) ex.qty = newQty;
   else state.cart.push({ id: p.id, name: p.name, photo: p.photo, price: p.price, deposit: 0, stock: availStock(p), qty: qty || 1, ...(productBundleDays(p) ? { bdays: productBundleDays(p) } : {}) });   // барьцаа сайтад биш — менежер шийднэ
   saveCart();
+  if (applyBundleStayDefault()) refreshDateViews();   // багц нэмэхэд огноо (баталгаажаагүй бол) N хоног болно
   gaEvent('add_to_cart', { currency: 'MNT', value: (Number(p.price) || 0) * (qty || 1), items: [gaItem(p, qty || 1)] });
   fbEvent('AddToCart', fbItem(p));
   renderCart();
@@ -2435,6 +2449,13 @@ function setCartQty(id, qty) {
 function removeFromCart(id) {
   state.cart = state.cart.filter(x => x.id !== id);
   saveCart();
+  // Багц гарвал (огноог хүн батлаагүй, N хоног автоматаар тавигдсан байсан бол) анхдагч 1 хоног руу буцаана
+  if (state.endAuto && !state.datesChosen && !bundleStayDays() && state.dates.start) {
+    state.dates.end = addDaysYmd(state.dates.start, 1); state.endAuto = false;
+    try { localStorage.setItem('d-end', state.dates.end); } catch (_) {}
+    refreshDateViews();
+    return;
+  }
   renderCart();
   renderGrid();
 }
@@ -2584,6 +2605,21 @@ var MN_WD = ['Да', 'Мя', 'Лх', 'Пү', 'Ба', 'Бя', 'Ня'];           
 var MN_WD_FULL = ['Ням', 'Даваа', 'Мягмар', 'Лхагва', 'Пүрэв', 'Баасан', 'Бямба'];
 function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function parseYmd(s) { var p = String(s).slice(0, 10).split('-'); return new Date(+p[0], (+p[1]) - 1, +p[2]); }
+function addDaysYmd(iso, n) { var d = parseYmd(iso); d.setDate(d.getDate() + n); return ymd(d); }
+/* БАГЦЫН ХОНОГ → ОГНОО (2026-10-24, CEO). Багцын үнэ N хоногт ижил (жиш. 390,000₮ = 3 хоног) тул сагсанд багц байвал огноо
+   ӨГӨГДМӨЛӨӨР N хоног сонгогдоно (өнөөдөр→маргааш 1 хоног биш) — эс бөгөөс хүн 3 хоногийн үнээр 1 хоног авч, үлдсэн 2 хоногоо алдана.
+   Албадахгүй: төгсгөл өдрийг дахин товшиж өөрчилнө. Хүн огноогоо БАТЛАСАН (`datesChosen`) бол ХӨНДӨХГҮЙ — зөвхөн бичвэрээр сануулна.
+   Сагсанд өөр өөр хоногтой хэд хэдэн багц байвал хамгийн УРТ хоног. */
+function bundleStayDays() { return (state.cart || []).reduce((m, x) => Math.max(m, itemBundleDays(x)), 0); }
+function applyBundleStayDefault() {
+  const n = bundleStayDays();
+  if (n < 2 || state.datesChosen || !state.dates.start) return false;
+  state.dates.end = addDaysYmd(state.dates.start, n);
+  state.endAuto = 'default';   // анхдагч (хүн хараахан юу ч дараагүй) — дараагийн товшилт шинэ ЭХЛЭХ өдөр болно, төгсгөл БИШ
+  try { localStorage.setItem('d-end', state.dates.end); } catch (_) {}
+  return true;
+}
+function refreshDateViews() { renderDatePicker(); renderDateSummary(); renderDuration(); updateAvailWarn(); renderGrid(); renderCart(); updateDateLabels(); }
 // Хадгалсан огноо хуучирсан эсэх (ISO мөрийг шууд харьцуулна — цагийн бүсээс
 // хамаарахгүй). localStorage-д үлдсэн ӨНГӨРСӨН огноо нь буцаж ирсэн зочинд
 // календарийг өнгөрсөн сар дээр нээж, өнгөрсөн өдрөөр үнэ бодуулж байв
@@ -2636,17 +2672,25 @@ function renderDatePicker() {
   host.querySelectorAll('.dp-day:not(.dp-past)').forEach(b => b.onclick = () => pickDay(b.dataset.day));
 }
 function pickDay(iso) {
-  var s = state.dates.start, e = state.dates.end;
-  if (!s || e) { state.dates.start = iso; state.dates.end = ''; }     // шинэ сонголт эхэлнэ
-  else if (parseYmd(iso) < parseYmd(s)) { state.dates.start = iso; }  // эрт өдөр → шинэ гарах
-  else { state.dates.end = iso; }                                     // хожуу/ижил → буцах
+  var s = state.dates.start, e = state.dates.end, n = bundleStayDays(), d = parseYmd(iso);
+  // `endAuto === 'tap'` = ХҮН эхлэх өдрөө дарсны дараа тавигдсан N хоног → дараагийн нэг товшилт төгсгөлийг солино.
+  // `'default'` (сагсанд багц нэмэхэд тавигдсан) бол ХҮН ЮУ Ч ДАРААГҮЙ — эхний товшилт эхлэх өдөр байх ёстой, төгсгөл БИШ.
+  if (state.endAuto === 'tap' && s && e && d > parseYmd(s)) {  // автоматаар тавигдсан төгсгөлийг нэг товшилтоор солино
+    state.dates.end = iso; state.endAuto = false;
+  } else if (!s || e) {                                       // шинэ сонголт эхэлнэ
+    state.dates.start = iso; state.dates.end = ''; state.endAuto = false;
+    if (n >= 2) { state.dates.end = addDaysYmd(iso, n); state.endAuto = 'tap'; }   // багцтай бол N хоног урьдчилан
+  } else if (d < parseYmd(s)) {                               // эрт өдөр → шинэ гарах
+    state.dates.start = iso; state.endAuto = false;
+    if (n >= 2) { state.dates.end = addDaysYmd(iso, n); state.endAuto = 'tap'; }
+  } else { state.dates.end = iso; }                           // хожуу/ижил → буцах
   localStorage.setItem('d-start', state.dates.start || '');
   localStorage.setItem('d-end', state.dates.end || '');
   if (state.dates.start && state.dates.end) {
     state.datesChosen = true;
     try { localStorage.setItem('d-chosen', '1'); } catch (_) {}
   }
-  renderDatePicker(); renderDateSummary(); renderDuration(); updateAvailWarn(); renderGrid(); renderCart(); updateDateLabels();
+  refreshDateViews();
 }
 function renderDateSummary() {
   var host = document.getElementById('dp-summary'); if (!host) return;
@@ -2719,6 +2763,7 @@ function goStep(s) {
   // бүх алхам нуугдаж сагс хоосон харагддаг байсан — 'cart' руу буулгана.
   if (typeof s !== 'string' || !document.getElementById('step-' + s)) s = 'cart';
   state.step = s;
+  if (s === 'dates' && applyBundleStayDefault()) refreshDateViews();   // сагсанд багц байвал огноо (баталгаажаагүй бол) N хоног
   document.querySelectorAll('.checkout-step').forEach(el => el.classList.remove('active'));
   document.getElementById('step-' + s).classList.add('active');
   const btn = document.getElementById('checkout-btn');

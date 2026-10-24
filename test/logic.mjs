@@ -372,6 +372,91 @@ ok('SCAN: сагс ба илгээх мөр itemRentLine/bdays ашиглана'
 ok('SCAN: `price × qty × days`-ийг гараар бичихгүй (itemRentLine дуудна)', !/x\.price \* x\.qty \* days/.test(SRC));
 ok('SCAN: сагсны үнийг каталогоос дарж бичихдээ bdays-ийг ч шинэчилнэ', /if \(_bd\) x\.bdays = _bd; else delete x\.bdays;/.test(SRC));
 
+/* ── 16d. БАГЦТАЙ ОГНОО: N хоног ӨГӨГДМӨЛӨӨР, албадахгүй (2026-10-24, CEO) ────────────────────────────
+   Багцын үнэ 3 хоногт ижил тул огноо 1 хоног (өнөөдөр→маргааш) байвал хүн 3 хоногийн үнээр 1 хоног авна.
+   Сагсанд багц байвал огноо N хоног болно; төгсгөлийг нэг товшилтоор солино; батлагдсан огноог ХӨНДӨХГҮЙ. */
+function mkPick(cart, dates, chosen = false) {
+  const store = {};
+  const c = createContext({
+    state: { cart, dates: { ...dates }, datesChosen: chosen, endAuto: false },
+    localStorage: { setItem: (k, v) => { store[k] = v; }, getItem: (k) => store[k] ?? null, removeItem: (k) => { delete store[k]; } },
+    renderDatePicker() {}, renderDateSummary() {}, renderDuration() {}, updateAvailWarn() {}, renderGrid() {}, renderCart() {}, updateDateLabels() {},
+  });
+  runInContext('const BUNDLE_DAYS_MAX = 30;', c);
+  for (const fn of ['ymd', 'parseYmd', 'addDaysYmd', 'itemBundleDays', 'bundleStayDays', 'applyBundleStayDefault', 'refreshDateViews', 'pickDay']) runInContext(extractFn(fn), c);
+  return c;
+}
+const PK3 = { id: 'M-328', price: 390000, qty: 1, bdays: 3 };
+const dt = (c) => c.state.dates.start + '→' + c.state.dates.end;
+{
+  const c = mkPick([{ ...PK3 }], { start: '', end: '' });
+  c.pickDay('2026-12-01');
+  eq('багцтай: эхлэх өдрийг дарахад төгсгөл автоматаар +3 хоног', dt(c), '2026-12-01→2026-12-04');
+  ok('багцтай: автомат сонголт «батлагдсан» тооцогдоно (хоёр огноо бий)', c.state.datesChosen === true && c.state.endAuto === 'tap');
+  c.pickDay('2026-12-06');
+  eq('багцтай: дараагийн нэг товшилт төгсгөлийг СОЛИНО (албадахгүй)', dt(c), '2026-12-01→2026-12-06');
+  eq('багцтай: гараар сольсны дараа автомат тугийг арилгана', c.state.endAuto, false);
+  c.pickDay('2026-12-10');
+  eq('багцтай: гараар сонгосны дараах товшилт шинэ сонголт эхэлнэ (+3 хоног)', dt(c), '2026-12-10→2026-12-13');
+  c.pickDay('2026-12-08');
+  eq('багцтай: автомат төгсгөлтэй үед ӨМНӨХ өдрийг дарвал шинэ эхлэх (+3)', dt(c), '2026-12-08→2026-12-11');
+  c.pickDay('2026-12-08');
+  eq('багцтай: эхлэхтэй ИЖИЛ өдрийг дарвал шинэ эхлэх (төгсгөл болохгүй)', dt(c), '2026-12-08→2026-12-11');
+}
+{
+  const c = mkPick([{ price: 3000, qty: 5 }], { start: '', end: '' });
+  c.pickDay('2026-12-01');
+  eq('багцгүй: хуучин зан — эхлэх өдөр, төгсгөл хоосон', dt(c), '2026-12-01→');
+  eq('багцгүй: автомат туг байхгүй', c.state.endAuto, false);
+  c.pickDay('2026-12-03');
+  eq('багцгүй: хоёр дахь товшилт төгсгөл', dt(c), '2026-12-01→2026-12-03');
+  c.pickDay('2026-12-09');
+  eq('багцгүй: гурав дахь товшилт шинэ сонголт', dt(c), '2026-12-09→');
+  c.pickDay('2026-12-05');
+  eq('багцгүй: эрт өдөр → шинэ эхлэх (хуучин шигээ)', dt(c), '2026-12-05→');
+}
+eq('хоног: хэд хэдэн багцын хамгийн УРТ нь', mkPick([{ bdays: 2 }, { bdays: 5 }, { price: 1 }], {}).bundleStayDays(), 5);
+eq('хоног: багцгүй сагс 0', mkPick([{ price: 1 }], {}).bundleStayDays(), 0);
+{
+  const c = mkPick([{ ...PK3 }], { start: '2026-12-01', end: '2026-12-02' }, false);
+  ok('анхдагч: баталгаажаагүй огноо багц нэмэхэд N хоног болно', c.applyBundleStayDefault() === true && dt(c) === '2026-12-01→2026-12-04' && c.state.endAuto === 'default');
+  // ⛔ Анхдагч төгсгөлтэй үед ХҮН эхлэх өдрөө сольж байна — эхний товшилт эхлэх өдөр, төгсгөл БИШ
+  c.pickDay('2026-12-10');
+  eq('анхдагч: анхдагч N хоногтой үед эхний товшилт шинэ ЭХЛЭХ өдөр (+3 хоног), төгсгөл БИШ', dt(c), '2026-12-10→2026-12-13');
+  eq('анхдагч: тэр товшилтын дараа л «нэг товшилтоор төгсгөл солих» идэвхжинэ', c.state.endAuto, 'tap');
+  const k = mkPick([{ ...PK3 }], { start: '2026-12-01', end: '2026-12-02' }, true);
+  ok('анхдагч: ХҮНИЙ БАТЛАСАН огноог ХӨНДӨХГҮЙ', k.applyBundleStayDefault() === false && dt(k) === '2026-12-01→2026-12-02');
+  const g = mkPick([{ price: 5, qty: 1 }], { start: '2026-12-01', end: '2026-12-02' }, false);
+  ok('анхдагч: багцгүй сагсанд юу ч хийхгүй', g.applyBundleStayDefault() === false && dt(g) === '2026-12-01→2026-12-02');
+  const u = mkPick([{ ...PK3 }], { start: '', end: '' }, false);
+  ok('анхдагч: эхлэх огноо байхгүй бол юу ч хийхгүй (унахгүй)', u.applyBundleStayDefault() === false);
+}
+// Сануулга бичвэр (renderDuration)
+function hintFor(cart, days) {
+  const el = { innerHTML: '' };
+  const c = createContext({ state: { cart, dates: { start: '2026-12-01', end: addDaysStr('2026-12-01', days) }, endAuto: false }, document: { getElementById: () => el }, fmt: (n) => Math.round(n).toLocaleString('en-US') + '₮', diffDays: () => days });
+  runInContext('const BUNDLE_DAYS_MAX = 30; const RENTAL_TIERS = [{ min: 7, pct: 0.40, label: "7+" }, { min: 2, pct: 0.20, label: "Олон" }];', c);
+  for (const fn of ['itemBundleDays', 'bundleStayDays', 'rentalDiscount', 'renderDuration']) runInContext(extractFn(fn), c);
+  c.renderDuration();
+  return el.innerHTML;
+}
+function addDaysStr(iso, n) { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+{
+  const h4 = hintFor([{ ...PK3 }], 4);
+  ok('сануулга: багцтай — «Багцын үнэ 3 хоног хүртэл ижил» + илүү хоногийн үнэ', /Багцын үнэ 3 хоног хүртэл ижил/.test(h4) && /илүү хоног тус бүр 130,000₮/.test(h4), h4);
+  ok('сануулга: багцад «олон хоногийн хямдрал» ХУДАЛ ЗАРЛАХГҮЙ', !/олон хоногийн хямдрал орно/.test(h4) && !/20% хямдрал/.test(h4) && !/бусад бараа/.test(h4), h4);
+  const h1 = hintFor([{ ...PK3 }], 1);
+  ok('сануулга: 3-аас цөөн хоногт «3 хоног авч болно»', /3 хоног авч болно/.test(h1) && !/илүү хоног/.test(h1), h1);
+  const h3 = hintFor([{ ...PK3 }], 3);
+  ok('сануулга: яг N хоногт илүү тайлбар гарахгүй', !/илүү хоног/.test(h3) && !/авч болно/.test(h3), h3);
+  const hm = hintFor([{ ...PK3 }, { price: 3000, qty: 5 }], 4);
+  ok('сануулга: багц + энгийн бараа — бусад бараанд −20% гэж тусад нь', /бусад бараанд −20% олон хоногийн хямдрал/.test(hm), hm);
+  const hn = hintFor([{ price: 3000, qty: 5 }], 4);
+  ok('сануулга: багцгүй сагс ӨМНӨХ ШИГ', /−20% олон хоногийн хямдрал орно/.test(hn) && !/Багц/.test(hn), hn);
+}
+ok('SCAN: багц нэмэх, багц гаргах, алхам «dates» нээхэд огноог тааруулна', /if \(applyBundleStayDefault\(\)\) refreshDateViews\(\);/.test(SRC) && /s === 'dates' && applyBundleStayDefault\(\)/.test(SRC) && /state\.endAuto && !state\.datesChosen && !bundleStayDays\(\)/.test(SRC));
+ok('SCAN: pickDay автомат төгсгөлийг зөвхөн ХҮНИЙ эхлэх товшилтын дараа солино', /state\.endAuto === 'tap' && s && e && d > parseYmd\(s\)/.test(SRC) && /state\.endAuto = 'default'/.test(SRC));
+
 /* SCAN: нэрээр тулгах хуучин функц эргэж ирэхгүй */
 ok('SCAN: bookedFor(name) буцаж ирээгүй', !/function bookedFor\s*\(\s*name\s*\)/.test(SRC));
 
