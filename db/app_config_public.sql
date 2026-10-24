@@ -10,7 +10,7 @@
 --   · org_overrides        — ажилтны 8 оронтой утсаар түлхүүрлэсэн бүтэц
 --   · stock_count, worker_type_overrides, rh_roi_fix, next_arrival …
 --
--- Сайтад хэрэгтэй нь ердөө 3 түлхүүр. Тэдгээрийг л гаргаж, үндсэн хүснэгтийг
+-- Сайтад хэрэгтэй нь ердөө 4 түлхүүр (4-р нь `mevent_cross_sell` — «хамт авдаг» санал, 2026-10-24; захиалгын түүхээс VPS-ийн cron бодно, зөвхөн sku хос + хувь). Тэдгээрийг л гаргаж, үндсэн хүснэгтийг
 -- нийтээс хаасан (`db/anon-grants.sql`, chimun-tasks репод).
 --
 -- ⚠ Эзнийхээ эрхээр ажиллана (`security_invoker` тавиагүй) тул үндсэн хүснэгт
@@ -25,7 +25,7 @@ begin;
 create or replace view public.app_config_public as
   select key, value, updated_at
   from public.app_config
-  where key in ('tariffs', 'mevent_category_groups', 'mevent_popularity');
+  where key in ('tariffs', 'mevent_category_groups', 'mevent_popularity', 'mevent_cross_sell');
 
 comment on view public.app_config_public is
   'mevent.mn уншдаг тохиргооны түлхүүрүүд. app_config нийтэд ХААЛТТАЙ (хувийн данс, актласан хөрөнгө, ажилтны утас дотор нь байдаг). Сайтад шинэ түлхүүр хэрэгтэй бол ЗӨВХӨН энд нэмнэ.';
