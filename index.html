@@ -785,6 +785,12 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
   }
   .gt-avail { display: inline-flex; align-items: center; gap: 7px; font-size: var(--fs-sm); font-weight: 600; color: var(--text); cursor: pointer; user-select: none; white-space: nowrap; }
   .gt-avail input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  /* «📦 Багц» чип — багц/иж бүрдлийг бүх ангилалаас нэг дор. Идэвхтэй үед navy (--brand), бусад үед хүрээтэй. */
+  .gt-pkg { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid var(--border-strong); border-radius: 100px; background: #fff; color: var(--text); font-size: var(--fs-sm); font-weight: 600; font-family: inherit; cursor: pointer; white-space: nowrap; min-height: 36px; }
+  .gt-pkg[hidden] { display: none; }
+  .gt-pkg-n { color: var(--muted); font-weight: 600; }
+  .gt-pkg[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .gt-pkg[aria-pressed="true"] .gt-pkg-n { color: #fff; opacity: .8; }
   .gt-sort {
     padding: 8px 30px 8px 13px; border: 1px solid var(--border-strong); border-radius: 100px;
     background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%235C5C63' stroke-width='2'%3E%3Cpath d='M3 5l4 4 4-4'/%3E%3C/svg%3E") no-repeat right 11px center;
@@ -1073,6 +1079,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
         <div class="meta" id="grid-meta"></div>
       </div>
       <div class="grid-tools">
+        <button type="button" class="gt-pkg" id="only-pkg" aria-pressed="false" hidden>📦 Багц <span class="gt-pkg-n" id="only-pkg-n"></span></button>
         <label class="gt-avail"><input type="checkbox" id="only-avail"> Зөвхөн боломжтой</label>
         <select class="gt-sort" id="sort-sel" aria-label="Эрэмбэлэх">
           <option value="default">🔥 Их түрээслэгддэг</option>
@@ -1474,6 +1481,7 @@ const state = {
   search: '',
   sort: 'default',
   onlyAvail: false,
+  onlyPkg: false,   // «📦 Багц» чип — зөвхөн багцыг (бүх ангилалаас) харуулна
   dates: {
     start: localStorage.getItem('d-start') || '',
     end: localStorage.getItem('d-end') || '',
@@ -1761,6 +1769,7 @@ function popOf(p) {
 function catGroupOf(cat) { const g = CAT_GROUPS.find(x => x.subs.includes(cat)); return g ? g.name : null; }
 function setCategory(c) {
   state.category = c;
+  state.onlyPkg = false;   // ангилал сонгоход «Багц» шүүлт арилна (эс бөгөөс сонгосон ангилал хоосон харагдана)
   const g = catGroupOf(c);
   if (g) { state.openGroups = state.openGroups || new Set(); state.openGroups.add(g); }   // дэд категори сонгоход бүлгийг нээнэ
   if (document.body.classList.contains('cat-open')) {
@@ -1913,24 +1922,47 @@ function sortList(list) {
   else if (state.sort === 'price-desc') arr.sort((a, b) => pr(b) - pr(a));
   else if (state.sort === 'avail') arr.sort((a, b) => availStock(b) - availStock(a));
   else if (state.sort === 'name') arr.sort((a, b) => String(a.name).localeCompare(String(b.name), 'mn'));
-  // default = 🔥 их түрээслэгддэг (захиалгын тоогоор), тэнцвэл нэрээр
-  else arr.sort((a, b) => { const d = popOf(b) - popOf(a); return d !== 0 ? d : String(a.name).localeCompare(String(b.name), 'mn'); });
+  // default = 🔥 их түрээслэгддэг (захиалгын тоогоор), тэнцвэл нэрээр.
+  // ⭐ БАГЦ АНГИЛАЛДАА ЭХЭНД (2026-10-24, CEO): өвлийн майхантай 105 захиалгад харилцагч майхан, ор, зууханг тусад нь цуглуулсан атал бэлэн иж бүрдэл
+  //   (багц) түүнд харагдаагүй. Ангилал сонгосон үед л (Бүх бараанд түгээмэл бараа эхэнд хэвээр) — багцын борлуулалт ердийн бараанаас цөөн тул
+  //   түүхээр (`popOf`) эрэмбэлбэл ҮРГЭЛЖ доош унадаг.
+  else {
+    const pkgFirst = state.category !== 'all';
+    arr.sort((a, b) => {
+      if (pkgFirst) { const d0 = (b.type === 'package') - (a.type === 'package'); if (d0 !== 0) return d0; }
+      const d = popOf(b) - popOf(a); return d !== 0 ? d : String(a.name).localeCompare(String(b.name), 'mn');
+    });
+  }
   return arr;
 }
 // Нэг удаад хэдэн бараа рендерлэх вэ. Бүгдийг нэг дор гаргахад хуудас 28,230px
 // (утасны ~33 дэлгэц) болж, DOM-д 159 карт зэрэг сууж байв.
 const GRID_PAGE = 24;
-function renderGrid() {
-  let list = withVariants(filteredProducts());
+// Грид-ийн нэмэлт шүүлтүүд (боломжтой / багц). Тестлэгдэнэ.
+function applyGridFilters(list) {
+  if (state.onlyPkg) list = list.filter(p => p.type === 'package');
   if (state.onlyAvail) list = list.filter(p => p.type === 'service' || availStock(p) > 0);
+  return list;
+}
+// «📦 Багц» чипийн тоо/төлөв — багц байхгүй бол чип нуугдана (хоосон шүүлт санал болгохгүй).
+function paintPkgChip() {
+  const el = document.getElementById('only-pkg'); if (!el) return;
+  const n = (state.products || []).filter(p => p.type === 'package').length;
+  el.hidden = !n && !state.onlyPkg;
+  el.setAttribute('aria-pressed', state.onlyPkg ? 'true' : 'false');
+  const c = document.getElementById('only-pkg-n'); if (c) c.textContent = n ? String(n) : '';
+}
+function renderGrid() {
+  let list = applyGridFilters(withVariants(filteredProducts()));
   list = sortList(list);
   // Шүүлт өөрчлөгдвөл эхний хуудас руу буцна. Дуудлагын газар бүрийг засахын оронд
   // шүүлтийн «гарын үсгээр» таньна — шинэ шүүлт нэмэгдэхэд ч өөрөө ажиллана.
-  const sig = [state.category, state.search, state.sort, state.onlyAvail].join('\u0000');
+  const sig = [state.category, state.search, state.sort, state.onlyAvail, state.onlyPkg].join('\u0000');
   if (sig !== state._gridSig) { state._gridSig = sig; state.shown = GRID_PAGE; }
   if (!(state.shown > 0)) state.shown = GRID_PAGE;
   const page = list.slice(0, state.shown);
-  document.getElementById('grid-title').textContent = state.category === 'all' ? 'Бүх бараа' : state.category;
+  document.getElementById('grid-title').textContent = state.onlyPkg ? 'Багц, иж бүрдэл' : (state.category === 'all' ? 'Бүх бараа' : state.category);
+  paintPkgChip();
   document.getElementById('grid-meta').textContent = list.length + ' бараа';
   const more = document.getElementById('grid-more');
   const grid = document.getElementById('grid');
@@ -1939,7 +1971,7 @@ function renderGrid() {
     const catActive = state.category !== 'all';
     grid.innerHTML = `<div class="empty">Илэрц олдсонгүй${(state.search && catActive) ? `<br><button class="reset-cat" id="reset-cat">Бүх бараанаас хайх</button>` : ''}</div>`;
     const rc = document.getElementById('reset-cat');
-    if (rc) rc.onclick = () => { state.category = 'all'; render(); };
+    if (rc) rc.onclick = () => { state.category = 'all'; state.onlyPkg = false; render(); };
     return;
   }
   grid.innerHTML = page.map((p, i) => cardHtml(p, i)).join('');
@@ -3310,6 +3342,9 @@ function initEvents() {
   // Эрэмбэ + "зөвхөн боломжтой" шүүлт
   const _sort = document.getElementById('sort-sel'); if (_sort) _sort.onchange = (e) => { state.sort = e.target.value; renderGrid(); };
   const _oa = document.getElementById('only-avail'); if (_oa) _oa.onchange = (e) => { state.onlyAvail = e.target.checked; renderGrid(); };
+  // «📦 Багц» чип: асаахад БҮХ ангилалаас багцыг харуулна (ангилал «Бүх бараа» руу буцна), унтраахад «Бүх бараа».
+  const _op = document.getElementById('only-pkg');
+  if (_op) _op.onclick = () => { state.onlyPkg = !state.onlyPkg; if (state.onlyPkg) state.category = 'all'; render(); };
   // Огноо сонгох товч → drawer-ийн огнооны алхам
   const _gtDate = document.getElementById('gt-date'); if (_gtDate) _gtDate.onclick = () => showDrawer('dates', { dateOnly: true });
   // Сагсны FAB + дээш буцах

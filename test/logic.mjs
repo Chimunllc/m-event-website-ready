@@ -476,6 +476,28 @@ ok('SCAN: захиалгад ⟦XS|sku,…⟧ токен бичнэ (хэмжи�
 ok('SCAN: loadCrossSell эхлэлд дуудагдана', /loadTariffs\(\), loadCrossSell\(\)\]/.test(SRC));
 ok('SCAN: renderCartAddons мөр НЭМДЭГГҮЙ (зөвхөн харуулна)', !/state\.cart\.push|addToCart\(/.test(extractFn('renderCartAddons')));
 
+/* ── 16c-4. БАГЦ АНГИЛАЛДАА ЭХЭНД + «📦 Багц» ЧИП (2026-10-24, CEO) ─────────────────────────────────────────────────────
+   Өвлийн майхантай 105 захиалгад харилцагч майхан, ор, зууханг тусад нь цуглуулсан атал бэлэн иж бүрдэл (багц) түүнд харагдаагүй. */
+const pg = createContext({ state: null, POP: {}, availStock: (p) => (p.__stock == null ? 5 : p.__stock), String, Number, Math });
+for (const fn of ['popOf', 'sortList', 'applyGridFilters']) runInContext(extractFn(fn), pg);
+const PT1 = { sku: 'M-A', name: 'Майхан А', type: 'rental', category: 'Майхан' }, PT2 = { sku: 'M-C', name: 'Майхан Ц', type: 'rental', category: 'Майхан' };
+const PPK = { sku: 'M-P', name: 'Өвлийн багц', type: 'package', category: 'Майхан' }, PSV = { sku: 'M-S', name: 'Хүргэлт', type: 'service', category: 'Майхан' };
+const pgSet = (st) => { pg.state = { category: 'Майхан', sort: 'default', onlyAvail: false, onlyPkg: false, ...st }; pg.POP = { 'M-A': 50, 'M-C': 10, 'M-P': 0 }; return pg.state; };
+const pgNames = (list) => list.map(x => x.sku).join(',');
+pgSet({}); eq('эрэмбэ: ангилал сонгоход багц ЭХЭНД (түүхээр 0 байсан ч)', pgNames(pg.sortList([PT1, PT2, PPK])), 'M-P,M-A,M-C');
+pgSet({ category: 'all' }); eq('эрэмбэ: «Бүх бараа»-нд түгээмэл бараа эхэнд хэвээр (багц дарахгүй)', pgNames(pg.sortList([PT1, PT2, PPK])), 'M-A,M-C,M-P');
+pgSet({ sort: 'name' }); eq('эрэмбэ: хэрэглэгч эрэмбийг гараар сонговол багц эхэнд албадахгүй', pgNames(pg.sortList([PT1, PT2, PPK])), 'M-A,M-C,M-P');
+pgSet({ sort: 'price-asc' }); eq('эрэмбэ: үнээр эрэмбэлэхэд багц албадагдахгүй', pgNames(pg.sortList([{ ...PT1, price: 30 }, { ...PPK, price: 99 }, { ...PT2, price: 10 }])), 'M-C,M-A,M-P');
+pgSet({}); eq('эрэмбэ: хэд хэдэн багц дотроо түүх (тэнцвэл нэрээр: Б < Ө)', pgNames(pg.sortList([PT1, { ...PPK, sku: 'M-Q', name: 'Б багц' }, PPK])), 'M-Q,M-P,M-A');
+eq('шүүлт: «Багц» чип зөвхөн багцыг үлдээнэ', pgNames((pgSet({ onlyPkg: true }), pg.applyGridFilters([PT1, PPK, PSV, PT2]))), 'M-P');
+eq('шүүлт: чип унтраалттай бол бүгд', pgNames((pgSet({}), pg.applyGridFilters([PT1, PPK, PSV]))), 'M-A,M-P,M-S');
+eq('шүүлт: «Багц» + «Зөвхөн боломжтой» хамт (сул үлдэгдэлгүй багц хасагдана)', pgNames((pgSet({ onlyPkg: true, onlyAvail: true }), pg.applyGridFilters([{ ...PPK, __stock: 0 }, { ...PPK, sku: 'M-Q' }]))), 'M-Q');
+// SCAN
+ok('SCAN: «📦 Багц» чип ба handler байна, асаахад бүх ангилал руу (category = all)', /id="only-pkg"/.test(SRC) && /state\.onlyPkg = !state\.onlyPkg; if \(state\.onlyPkg\) state\.category = 'all'/.test(SRC));
+ok('SCAN: ангилал сонгоход / хайлт цэвэрлэхэд «Багц» шүүлт арилна (хоосон жагсаалт гарахгүй)', /state\.category = c;\s*state\.onlyPkg = false;/.test(SRC) && /state\.category = 'all'; state\.onlyPkg = false; render\(\);/.test(SRC));
+ok('SCAN: гридийн шүүлтийн «гарын үсэг»-т onlyPkg орсон (шүүлт солигдоход эхний хуудас руу буцна)', /state\.onlyAvail, state\.onlyPkg\]\.join/.test(SRC));
+ok('SCAN: чипийн CSS токен ашигладаг, багц байхгүй бол чип нуугдана', /\.gt-pkg\[aria-pressed="true"\] \{ background: var\(--brand\)/.test(SRC) && /el\.hidden = !n && !state\.onlyPkg/.test(SRC));
+
 /* ── 16d. БАГЦТАЙ ОГНОО: N хоног ӨГӨГДМӨЛӨӨР, албадахгүй (2026-10-24, CEO) ────────────────────────────
    Багцын үнэ 3 хоногт ижил тул огноо 1 хоног (өнөөдөр→маргааш) байвал хүн 3 хоногийн үнээр 1 хоног авна.
    Сагсанд багц байвал огноо N хоног болно; төгсгөлийг нэг товшилтоор солино; батлагдсан огноог ХӨНДӨХГҮЙ. */
