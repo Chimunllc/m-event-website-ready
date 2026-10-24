@@ -297,7 +297,8 @@ ok('татагдсан үед хэвийн тоо харагдана',
    Багц = хэд хэдэн бараа нэг үнээр. Картаас нэг харцаар: «📦 Багц» тэмдэг, «дотор нь» мөр, «багц» нэгж.
    Эс бөгөөс «4-6 хүний өвлийн майхан зуухтай багц 390,000₮» нь нэг үнэтэй майхан мэт харагдана. */
 const cd = createContext({ state: null, fmt: (n) => String(n), asarInfo: () => null });
-for (const fn of ['escapeHtml', '_prodOfItem', 'bookedForProduct', 'availStock', 'stockBadgeHtml', 'packageParts', 'cardHtml']) runInContext(extractFn(fn), cd);
+runInContext('const BUNDLE_DAYS_MAX = 30;', cd);
+for (const fn of ['escapeHtml', '_prodOfItem', 'bookedForProduct', 'availStock', 'stockBadgeHtml', 'packageParts', 'productBundleDays', 'priceUnitFor', 'cardHtml']) runInContext(extractFn(fn), cd);
 runInContext("const _normName = (s) => String(s || '').toLowerCase().replace(/\\s+/g, ' ').trim();", cd);
 const C_TENT = { sku: 'M-089', id: 'u1', name: 'Өвлийн майхан 4-6 хүний', type: 'rental', stock: 21, price: 132000 };
 const C_BED = { sku: 'M-064', id: 'u2', name: 'Аяны ор', type: 'rental', stock: 557, price: 27500 };
@@ -321,6 +322,55 @@ cd.state.products = [C_TENT, C_BED, { ...C_STOVE, stock: 0 }, C_PKG];
 ok('багц карт: бүрэлдэхүүн дуусвал «Дууссан»', /stock-badge out/.test(cd.cardHtml(C_PKG, 0)));
 ok('SCAN: дэлгэрэнгүй хуудас packageParts ашиглана (картын ИЖИЛ эх сурвалж)', /const parts = packageParts\(p\)\.map/.test(SRC));
 ok('SCAN: «Багц» тэмдэг улбар БИШ (улбар = conversion)', /\.card-pkg-badge \{[^}]*background: var\(--brand\)/.test(SRC));
+
+/* ── 16c. БАГЦЫН «N ХОНОГИЙН ҮНЭ» — АППЫН `itemRentLine`-тэй ЯГ ИЖИЛ (2026-10-24, CEO) ─────────────────
+   Багцын үнэ N хоногийг багтаасан тогтмол дүн; илүү хоног = үнэ ÷ N; олон хоногийн авто хямдралд ороогүй.
+   ⚠ Апп ба сайт ӨӨР дүн гаргавал харилцагч сайтад харсан үнээсээ өөр үнийн санал авна — тиймээс ИЖИЛ тоо тулгана. */
+const bd = createContext({ state: null });
+runInContext('const BUNDLE_DAYS_MAX = 30;', bd);
+for (const fn of ['productBundleDays', 'itemBundleDays', 'itemRentLine', 'itemsBundleSubtotal', 'priceUnitFor']) runInContext(extractFn(fn), bd);
+const TENT3 = { price: 390000, qty: 1, bdays: 3 };
+eq('N хоног хүртэл үнэ тогтмол', JSON.stringify([1, 2, 3].map(d => bd.itemRentLine(TENT3, d))), JSON.stringify([390000, 390000, 390000]));
+eq('илүү хоног = үнэ ÷ N', JSON.stringify([4, 5, 6, 9].map(d => bd.itemRentLine(TENT3, d))), JSON.stringify([520000, 650000, 780000, 1170000]));
+eq('тоо ширхэгээр үржинэ', bd.itemRentLine({ ...TENT3, qty: 2 }, 6), 1560000);
+eq('хуваагдахгүй үнэ 1₮-д бөөрөнхийлөгдөнө', bd.itemRentLine({ price: 790000, qty: 1, bdays: 3 }, 4), Math.round(790000 * 4 / 3));
+for (const d of [1, 2, 5, 30]) eq('bdays-гүй мөр ӨМНӨХ ШИГ өдрийн үнэ (' + d + ' хоног)', bd.itemRentLine({ price: 27500, qty: 4 }, d), 27500 * 4 * d);
+eq('N=1 нь өдрийн үнэ', bd.itemRentLine({ price: 100, qty: 2, bdays: 1 }, 3), 600);
+eq('N 30-аас дээш бол 30-д хязгаарлагдана', bd.itemRentLine({ price: 100, qty: 1, bdays: 99 }, 3), 100);
+eq('productBundleDays: багцын N', bd.productBundleDays({ type: 'package', bundle_days: 3 }), 3);
+eq('productBundleDays: багц биш бараанд хамаарахгүй', bd.productBundleDays({ type: 'rental', bundle_days: 3 }), 0);
+eq('productBundleDays: null = өдрийн үнэ', bd.productBundleDays({ type: 'package', bundle_days: null }), 0);
+eq('нэгж: багц «3 хоногийн үнэ»', bd.priceUnitFor({ type: 'package', bundle_days: 3 }), '3 хоногийн үнэ');
+eq('нэгж: N-гүй багц/бараа «/хоног»', bd.priceUnitFor({ type: 'package' }) + bd.priceUnitFor({ type: 'rental' }), '/хоног/хоног');
+eq('багцын хэсэг тусдаа', bd.itemsBundleSubtotal([TENT3, { price: 3000, qty: 50 }], 4), 520000);
+// cartTotals: авто хямдрал ЗӨВХӨН багцаас бусад мөрөнд (аппын recalc-тай ИЖИЛ: 4 хоног = 520,000 + 600,000, хямдрал 20% × 600,000)
+const ct = createContext({ state: { cart: [{ ...TENT3 }, { price: 3000, qty: 50 }], dates: { start: '2026-11-01', end: '2026-11-05' }, delivery: { fee: 0 } }, parseYmd: (s) => new Date(s + 'T00:00:00Z') });
+runInContext('const BUNDLE_DAYS_MAX = 30; const RENTAL_TIERS = [{ min: 30, pct: 0.55, label: "Сарын" }, { min: 7, pct: 0.40, label: "7+" }, { min: 2, pct: 0.20, label: "Олон хоногийн" }]; function offHoursCount() { return 0; } function offHoursFeeTotal() { return 0; }', ct);
+for (const fn of ['productBundleDays', 'itemBundleDays', 'itemRentLine', 'itemsBundleSubtotal', 'rentalDiscount', 'diffDays', 'cartTotals']) runInContext(extractFn(fn), ct);
+const t4 = ct.cartTotals();
+eq('сагс: 4 хоног — дэд дүн 520,000 + 600,000', t4.subtotal, 1120000);
+eq('сагс: багцын хэсэг', t4.bundleSubtotal, 520000);
+eq('сагс: авто хямдрал зөвхөн багцаас бусад (600,000 × 20%)', t4.multiDayDiscount, 120000);
+eq('сагс: нийт = дэд дүн − хямдрал', t4.grand, 1000000);
+ct.state.dates.end = '2026-11-03';
+const t2 = ct.cartTotals();
+eq('сагс: 2 хоног — багц 390,000 тогтмол + сандал 300,000, хямдрал 20% × 300,000', JSON.stringify([t2.subtotal, t2.multiDayDiscount, t2.grand]), JSON.stringify([690000, 60000, 630000]));
+ct.state.dates.end = '2026-11-02';
+const t1 = ct.cartTotals();
+eq('сагс: 1 хоног — хямдралгүй', JSON.stringify([t1.subtotal, t1.multiDayDiscount, t1.grand]), JSON.stringify([540000, 0, 540000]));
+ct.state.cart = [{ price: 3000, qty: 50 }]; ct.state.dates.end = '2026-11-05';
+const tn = ct.cartTotals();
+eq('сагс: багцгүй сагс ӨМНӨХ ШИГ (4 хоног, 600,000 − 20%)', JSON.stringify([tn.subtotal, tn.bundleSubtotal, tn.multiDayDiscount]), JSON.stringify([600000, 0, 120000]));
+// Карт: нэгж
+cd.state.products = [C_TENT, C_BED, C_STOVE, { ...C_PKG, bundle_days: 3 }];
+ok('карт: «3 хоногийн үнэ» (багц), «/хоног» БИШ', /3 хоногийн үнэ<\/small>/.test(cd.cardHtml(cd.state.products[3], 0)) && !/\/хоног/.test(cd.cardHtml(cd.state.products[3], 0)));
+ok('карт: энгийн бараа «/хоног» хэвээр', /\/хоног<\/small>/.test(cd.cardHtml(C_TENT, 0)));
+// SCAN
+ok('SCAN: сайт багцын N-ийг каталогоос авна (API select-д bundle_days)', /setup_fee,bundle_days&order=name\.asc/.test(SRC));
+ok('SCAN: захиалгад ⟦BD|sku|N⟧ токен бичнэ (n8n мөрийн bdays-ийг хаядаг)', /⟦BD\|\$\{p\.sku\}\|\$\{n\}⟧/.test(SRC));
+ok('SCAN: сагс ба илгээх мөр itemRentLine/bdays ашиглана', /subtotal \+= itemRentLine\(x, days\)/.test(SRC) && /bdays: itemBundleDays\(x\)/.test(SRC));
+ok('SCAN: `price × qty × days`-ийг гараар бичихгүй (itemRentLine дуудна)', !/x\.price \* x\.qty \* days/.test(SRC));
+ok('SCAN: сагсны үнийг каталогоос дарж бичихдээ bdays-ийг ч шинэчилнэ', /if \(_bd\) x\.bdays = _bd; else delete x\.bdays;/.test(SRC));
 
 /* SCAN: нэрээр тулгах хуучин функц эргэж ирэхгүй */
 ok('SCAN: bookedFor(name) буцаж ирээгүй', !/function bookedFor\s*\(\s*name\s*\)/.test(SRC));
