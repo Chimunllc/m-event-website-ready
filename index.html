@@ -1116,7 +1116,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
         <div class="step-num">02</div>
         <div class="step-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2.2l2.3 12.4a1.6 1.6 0 0 0 1.6 1.3h8.8a1.6 1.6 0 0 0 1.6-1.3L21 7H5.3"/></svg></div>
         <h3>Захиалгаа илгээ</h3>
-        <p>Нэр, утас, хүргэлтийн мэдээллээ бөглөж илгээнэ. Байгууллага бол НӨАТ-ын мэдээллээ нэмнэ.</p>
+        <p>Нэр, утас, хүргэлтийн мэдээллээ бөглөж илгээнэ. Байгууллага бол байгууллагынхаа мэдээллийг нэмнэ.</p>
       </div>
       <div class="step reveal">
         <div class="step-num">03</div>
@@ -1308,7 +1308,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
       </div>
       <div class="form-grid" id="f-org-wrap" style="display:none;">
         <div class="form-group"><label for="f-company">Байгууллагын нэр <span class="req">*</span></label><input id="f-company" placeholder="ХХК-ийн нэр"></div>
-        <div class="form-group"><label for="f-register">Байгууллагын регистр <span class="req">*</span></label><input id="f-register" type="text" inputmode="numeric" placeholder="1234567"><small style="color:var(--muted);">Нэхэмжлэх, НӨАТ-ын баримтад шаардлагатай</small></div>
+        <div class="form-group"><label for="f-register">Байгууллагын регистр <span class="req">*</span></label><input id="f-register" type="text" inputmode="numeric" placeholder="1234567"><small style="color:var(--muted);">Нэхэмжлэх гаргахад шаардлагатай</small></div>
       </div>
       <div class="form-group"><label for="f-note">Нэмэлт тайлбар</label><textarea id="f-note" placeholder="Setup-ийн дэлгэрэнгүй, тусгай хүсэлт..."></textarea></div>
     </div>
@@ -3098,7 +3098,7 @@ async function submitOrder() {
   if (!email) { alert('Email хаягаа оруулна уу — үнийн санал, баталгаажуулалтыг тэр хаяг руу илгээнэ'); document.getElementById('f-email').focus(); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { alert('Email буруу байна'); document.getElementById('f-email').focus(); return; }
   if (isDeliv && !address) { alert('Хүргэлтийн хаяг шаардлагатай'); return; }
-  // Байгууллага сонговол нэр + РД заавал (нэхэмжлэх/НӨАТ-д шаардлагатай)
+  // Байгууллага сонговол нэр + РД заавал (нэхэмжлэх гаргахад шаардлагатай)
   const custType = (document.getElementById('f-custtype') || {}).value || 'person';
   const company = document.getElementById('f-company').value.trim();
   const register = document.getElementById('f-register').value.trim();
