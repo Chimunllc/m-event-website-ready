@@ -668,6 +668,12 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
   .dlv-price.free { color: var(--muted); font-weight: 700; }
   /* Сонгосон хувилбарын дэлгэрэнгүй — сонголттойгоо холбоотой нь харагдана */
   .dlv-detail { border-left: 2px solid var(--brand); margin: 10px 0 0 6px; padding-left: 12px; }
+  /* Угсралт, суурилуулалт — хүргэлтийн дор асаах/унтраах карт. Дөрвөлжин тэмдэг = нэмэлт
+     сонголт (дугуй картууд нь «аль нэгийг» сонгодог). Хүргэлттэй үед л харагдана. */
+  .dlv-opt.dlv-setup { align-items: flex-start; }
+  .dlv-chk { width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; border: 1.5px solid var(--border-strong); border-radius: 6px;
+    background: var(--panel); display: inline-flex; align-items: center; justify-content: center; color: transparent; font-size: var(--fs-sm); font-weight: 800; line-height: 1; }
+  .dlv-opt.on .dlv-chk { background: var(--brand); border-color: var(--brand); color: #fff; }
   .pickup-box { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
   .pickup-h { font-weight: 700; font-size: var(--fs-sm); margin-bottom: 5px; }
   .pickup-a { font-size: var(--fs-sm); line-height: 1.5; color: var(--muted); }
@@ -1296,6 +1302,13 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
         </select>
         <div class="dlv-detail" id="f-dlv-detail" hidden></div>
       </div>
+      <div class="form-group" id="f-setup-wrap" style="display:none;">
+        <button type="button" class="dlv-opt dlv-setup" id="f-setup" aria-pressed="false">
+          <span class="dlv-chk" aria-hidden="true">✓</span>
+          <span class="dlv-t">🔧 Угсралт, суурилуулалт<span class="dlv-sub">Манай баг газар дээр нь угсарч, эвентийн дараа буулгана. Хөлс нь барааны тоо ширхгээр, доод хэмжээ 50,000₮</span></span>
+          <span class="dlv-price" id="f-setup-price">+50,000₮-с</span>
+        </button>
+      </div>
       <div class="form-group" id="f-delivkm-wrap" style="display:none;"><label for="f-delivkm">Нэг талын зай (км)</label><input id="f-delivkm" type="number" inputmode="numeric" min="0" placeholder="Жишээ: 100"><small style="color:var(--muted);">Очих+буцах = км × 2 × 5,000₮</small></div>
       <div class="form-group" id="f-address-wrap" style="display:none;"><label for="f-address">Хүргэлтийн хаяг <span class="req">*</span></label><input id="f-address" autocomplete="street-address" placeholder="Дүүрэг, хороо, байр, давхар"></div>
       <div class="form-group" id="f-maps-wrap" style="display:none;"><label for="f-maps">📍 Байршлын линк</label><input id="f-maps" inputmode="url" placeholder="Google Maps линк (заавал биш)"><small style="color:var(--muted);">Жолооч төөрөхгүй — линк тавьвал хүргэлт хурдан</small></div>
@@ -1329,6 +1342,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
       <div class="total-row"><span>Дэд дүн</span><span id="t-subtotal">0₮</span></div>
       <div class="total-row" id="t-discount-row" style="display:none;color:var(--success);"><span id="t-discount-label">Олон хоногийн хямдрал</span><span id="t-discount">0₮</span></div>
       <div class="total-row" id="t-deliv-row" style="display:none;"><span>🚚 Хүргэлт</span><span id="t-deliv">0₮</span></div>
+      <div class="total-row" id="t-setup-row" style="display:none;"><span>🔧 Угсралт, суурилуулалт</span><span id="t-setup">0₮</span></div>
       <div class="total-row" id="t-offhours-row" style="display:none;"><span>🌙 Ажлын бус цаг</span><span id="t-offhours">0₮</span></div>
       <div class="total-row grand"><span>Нийт төлөх</span><span id="t-grand">0₮</span></div>
     </div>
@@ -1487,6 +1501,7 @@ const state = {
   currentProduct: null,
   step: 'cart',
   delivery: { zone: 'pickup', km: 0, fee: 0 },   // хүргэлт (default очиж авах)
+  setup: false,   // угсралт, суурилуулалт хийлгэх үү (зөвхөн хүргэлттэй үед үйлчилнэ)
 };
 
 /* ==================== ХҮРГЭЛТ ====================
@@ -1508,6 +1523,50 @@ function syncDelivery() {
   const km = zone === 'out' ? (Number(document.getElementById('f-delivkm').value) || 0) : 0;
   state.delivery = { zone, km, fee: calcDeliveryFee(zone, km) };
   return state.delivery;
+}
+
+/* ==================== УГСРАЛТ, СУУРИЛУУЛАЛТ ====================
+   Аппын захиалгын формын «🔧 Суурилуулалт / угсралт хийнэ» чагттай ЯГ ИЖИЛ: хөлс = барааны тоо × нэгж хөлс,
+   доод хэмжээтэй; нэгж хөлс = каталогийн `setup_fee` (>0 бол), эс бол нэрээр таамагласан default.
+   ⚠ Аппын `SETUP_MIN_FEE` / `SETUP_RATE_DEFAULT` / `SETUP_RATES` / `setupUnitFee` / `setupFeeForItems`-тэй ИЖИЛ байх ёстой —
+   нэгийг нь засвал нөгөөг нь зэрэг зас (эс бөгөөс сайтын харуулсан дүн аппад өөр гарна).
+   Аппад ⟦SET|1|хөлс⟧ note token-оор очно (⟦DLV⟧-тэй ижил) — дамжлагад «Суурилуулсан»/«Буулгасан» шат нээгдэнэ.
+   ЗӨВХӨН хүргэлттэй захиалгад (аппын дүрэм: өөрөө авах бол суурилуулалт байхгүй). */
+const SETUP_MIN_FEE = 50000;        // ₮ хамгийн бага дүн (баг очих шал)
+const SETUP_RATE_DEFAULT = 1000;    // ₮/ширхэг — тохирох дүрэм олдоогүй бараанд
+const SETUP_RATES = [
+  [/асар|майхан|павильон|шат[её]р|tent/i, 50000],
+  [/тайз|подиум|stage/i, 30000],
+  [/led|дэлгэц|экран|проектор|projector/i, 25000],
+  [/чанга|яригч|колонк|усилитель|sound|дуу авиа/i, 20000],
+  [/гэрэл|гэрэлтүүл|прожектор|лазер|light/i, 15000],
+  [/ширээ|table/i, 2000],
+  [/сандал|chair|пуфик|stool/i, 500],
+];
+function setupRateForName(name) {
+  const s = String(name || '');
+  const hit = SETUP_RATES.find(([re]) => re.test(s));
+  return hit ? hit[1] : SETUP_RATE_DEFAULT;
+}
+function setupUnitFee(it) {
+  const explicit = Number(it && it.setup) || 0;
+  return explicit > 0 ? explicit : setupRateForName(it && it.name);
+}
+function setupFeeForItems(items) {
+  const raw = (Array.isArray(items) ? items : []).reduce((sum, it) => sum + (Number(it && it.qty) || 0) * setupUnitFee(it), 0);
+  return raw > 0 ? Math.max(raw, SETUP_MIN_FEE) : 0;
+}
+// Сагсны хөлс — чагтнаас үл хамааран бодсон дүн (картад «+X₮» гэж харуулна). Мөр бүрийн нэр/`setup_fee`-г АМЬД каталогоос авна.
+function cartSetupQuote() {
+  return setupFeeForItems(state.cart.map(x => {
+    const p = state.products.find(q => String(q.id) === String(x.id)) || state.products.find(q => q.sku && String(q.sku) === String(x.id)) || {};
+    return { name: p.name || x.name, qty: x.qty, setup: p.setup_fee };
+  }));
+}
+// Захиалгад ОРОХ хөлс — зөвхөн чагт тавьсан + хүргэлттэй үед.
+function cartSetupFee() {
+  const z = (state.delivery || {}).zone;
+  return (state.setup && z && z !== 'pickup') ? cartSetupQuote() : 0;
 }
 
 /* ==================== UTILS ==================== */
@@ -1751,6 +1810,17 @@ async function loadTariffs() {
     if (Array.isArray(v.tiers) && v.tiers.length) RENTAL_TIERS = v.tiers.map(x => ({ min: Number(x.min) || 1, pct: Number(x.pct) || 0, label: x.label || '' })).sort((a, b) => b.min - a.min);
   } catch (e) { /* fallback хэвээр */ }
   paintDlvPrices();   // тариф ирсэн бол картын үнийг шинэчилнэ
+}
+// Угсралт, суурилуулалтын карт — хүргэлттэй үед л харагдана, дүн нь сагсаар шинэчлэгдэнэ (өөрөө авах бол чагт хүчингүй).
+function paintSetupCard() {
+  const wrap = document.getElementById('f-setup-wrap'), btn = document.getElementById('f-setup');
+  if (!wrap || !btn) return;
+  const z = (state.delivery || {}).zone;
+  wrap.style.display = (z && z !== 'pickup') ? '' : 'none';
+  btn.classList.toggle('on', !!state.setup);
+  btn.setAttribute('aria-pressed', state.setup ? 'true' : 'false');
+  const q = cartSetupQuote();
+  document.getElementById('f-setup-price').textContent = q > 0 ? '+' + fmt(q) : '+' + fmt(SETUP_MIN_FEE) + '-с';
 }
 // Хүргэлтийн картын үнэ = тарифаас (HTML-д хатуу бичээстэй утга нь зөвхөн анхны харагдац).
 function paintDlvPrices() {
@@ -2759,10 +2829,11 @@ function cartTotals() {
   const tier = rentalDiscount(days);
   const multiDayDiscount = Math.round((subtotal - bundleSubtotal) * tier.pct);
   const delivery = state.delivery.fee || 0;   // хүргэлт (хоногоор үржихгүй)
+  const setup = cartSetupFee();   // угсралт, суурилуулалт (хоногоор үржихгүй, хямдрал хамаарахгүй — хүргэлттэй адил)
   const offHours = offHoursCount();
   const offHoursFee = offHoursFeeTotal();
   // Барьцаа сайтад тооцохгүй — борлуулалтын менежер тохиолдол бүрд шийднэ (хувь хүнд).
-  return { subtotal, bundleSubtotal, deposit: 0, delivery, multiDayDiscount, multiDayPct: tier.pct, multiDayLabel: tier.label, offHours, offHoursFee, grand: subtotal - multiDayDiscount + delivery + offHoursFee, days };
+  return { subtotal, bundleSubtotal, deposit: 0, delivery, setup, multiDayDiscount, multiDayPct: tier.pct, multiDayLabel: tier.label, offHours, offHoursFee, grand: subtotal - multiDayDiscount + delivery + setup + offHoursFee, days };
 }
 function renderCart() {
   const count = state.cart.reduce((s,x)=>s+x.qty, 0);
@@ -2804,6 +2875,10 @@ function renderCart() {
   const delivRow = document.getElementById('t-deliv-row');
   if (t.delivery > 0) { delivRow.style.display = ''; document.getElementById('t-deliv').textContent = fmt(t.delivery); }
   else { delivRow.style.display = 'none'; }
+  const setupRow = document.getElementById('t-setup-row');
+  if (t.setup > 0) { setupRow.style.display = ''; document.getElementById('t-setup').textContent = fmt(t.setup); }
+  else { setupRow.style.display = 'none'; }
+  paintSetupCard();
   const ohRow = document.getElementById('t-offhours-row');
   if (t.offHoursFee > 0) { ohRow.style.display = ''; document.getElementById('t-offhours').textContent = `${t.offHours} цаг = ${fmt(t.offHoursFee)}`; }
   else { ohRow.style.display = 'none'; }
@@ -2817,6 +2892,7 @@ function renderInfoSummary() {
     <div class="row"><span>Хугацаа</span><span>${t.days} хоног</span></div>
     ${t.multiDayDiscount ? `<div class="row" style="color:var(--success);"><span>Олон хоногийн хямдрал (${Math.round(t.multiDayPct * 100)}%${t.bundleSubtotal > 0 ? ', багцаас бусад' : ''})</span><span>−${fmt(t.multiDayDiscount)}</span></div>` : ''}
     ${t.delivery > 0 ? `<div class="row"><span>🚚 Хүргэлт${state.delivery.zone === 'out' ? ` (${state.delivery.km}км × 2)` : ''}</span><span>${fmt(t.delivery)}</span></div>` : ''}
+    ${t.setup > 0 ? `<div class="row"><span>🔧 Угсралт, суурилуулалт</span><span>${fmt(t.setup)}</span></div>` : ''}
     ${t.offHoursFee > 0 ? `<div class="row"><span>🌙 Ажлын бус цаг (${t.offHours})</span><span>${fmt(t.offHoursFee)}</span></div>` : ''}
     <div class="row bold"><span>Нийт төлөх</span><span>${fmt(t.grand)}</span></div>
   `;
@@ -3071,6 +3147,7 @@ function goStep(s) {
         .some(id => { const el = document.getElementById(id); return el && el.style.display !== 'none'; });
       syncDelivery(); renderCart(); renderInfoSummary();
     };
+    document.getElementById('f-setup').onclick = () => { state.setup = !state.setup; renderCart(); renderInfoSummary(); };
     zoneEl.onchange = applyDeliv;
     document.getElementById('f-delivkm').oninput = () => { syncDelivery(); renderCart(); renderInfoSummary(); };
     applyDeliv();
@@ -3148,6 +3225,9 @@ async function submitOrder() {
       if (!isNaN(_sh) && !isNaN(_eh)) s = (s ? s + ' ' : '') + `⟦RT|${_sh}|${_eh}⟧`;
       // Хүргэлтийг ⟦DLV|zone|km|fee⟧ token-оор — апп үүнийг уншиж төлбөр/бүсийг харуулна
       s = (s ? s + ' ' : '') + `⟦DLV|${dlv.zone}|${Math.round(dlv.km) || 0}|${Math.round(dlv.fee) || 0}⟧`;
+      // Угсралт, суурилуулалт — ⟦SET|1|хөлс⟧ (апп setupFlagOf/setupFeeOf-ээр уншина: дамжлагад «Суурилуулсан»/«Буулгасан»
+      // шат нээгдэж, үнийн санал/гэрээнд хөлс гарна). Чагтгүй бол token ОРУУЛАХГҮЙ — аппын өмнөх үйлдэл хэвээр.
+      if (t.setup > 0) s += ` ⟦SET|1|${Math.round(t.setup)}⟧`;
       // Багцын «N хоногийн үнэ» — n8n мөрийн зөвхөн sku/name/qty/price-ыг үлдээдэг тул N нь note-оор дамжина;
       // апп захиалгыг ачаалахдаа мөрд `bdays` болгоно (app.js `applyNoteBundleDays`). n8n-д өөрчлөлт ХЭРЭГГҮЙ.
       state.cart.forEach(x => { const n = itemBundleDays(x), p = _resolve(x) || {}; if (n && p.sku) s += ` ⟦BD|${p.sku}|${n}⟧`; });
