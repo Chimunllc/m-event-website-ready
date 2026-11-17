@@ -346,6 +346,10 @@ eq('багцын хэсэг тусдаа', bd.itemsBundleSubtotal([TENT3, { pric
 // cartTotals: авто хямдрал ЗӨВХӨН багцаас бусад мөрөнд (аппын recalc-тай ИЖИЛ: 4 хоног = 520,000 + 600,000, хямдрал 20% × 600,000)
 const ct = createContext({ state: { cart: [{ ...TENT3 }, { price: 3000, qty: 50 }], dates: { start: '2026-11-01', end: '2026-11-05' }, delivery: { fee: 0 } }, parseYmd: (s) => new Date(s + 'T00:00:00Z') });
 runInContext('const BUNDLE_DAYS_MAX = 30; const RENTAL_TIERS = [{ min: 30, pct: 0.55, label: "Сарын" }, { min: 7, pct: 0.40, label: "7+" }, { min: 2, pct: 0.20, label: "Олон хоногийн" }]; function offHoursCount() { return 0; } function offHoursFeeTotal() { return 0; }', ct);
+// Угсралт, суурилуулалт: index.html-ийн жинхэнэ тогтмол + функцийг ашиглана (cartTotals нь cartSetupFee-г дууддаг)
+const SETUP_BLOCK = SRC.slice(SRC.indexOf('const SETUP_MIN_FEE'), SRC.indexOf('function setupRateForName('));
+runInContext(SETUP_BLOCK, ct);
+for (const fn of ['setupRateForName', 'setupUnitFee', 'setupFeeForItems', 'cartSetupQuote', 'cartSetupFee']) runInContext(extractFn(fn), ct);
 for (const fn of ['productBundleDays', 'itemBundleDays', 'itemRentLine', 'itemsBundleSubtotal', 'rentalDiscount', 'diffDays', 'cartTotals']) runInContext(extractFn(fn), ct);
 const t4 = ct.cartTotals();
 eq('сагс: 4 хоног — дэд дүн 520,000 + 600,000', t4.subtotal, 1120000);
@@ -361,6 +365,47 @@ eq('сагс: 1 хоног — хямдралгүй', JSON.stringify([t1.subtota
 ct.state.cart = [{ price: 3000, qty: 50 }]; ct.state.dates.end = '2026-11-05';
 const tn = ct.cartTotals();
 eq('сагс: багцгүй сагс ӨМНӨХ ШИГ (4 хоног, 600,000 − 20%)', JSON.stringify([tn.subtotal, tn.bundleSubtotal, tn.multiDayDiscount]), JSON.stringify([600000, 0, 120000]));
+
+/* ── 14b. Угсралт, суурилуулалт (2026-11-17, CEO: «захиалга хийхдээ хүргэлт, угсралтаа шийддэг баймаар») ──────────────
+   ⚠ Аппын `setupFeeForItems`-тэй ЯГ ИЖИЛ: тоо × нэгж хөлс (каталогийн `setup_fee` > 0 давуу, эс бол нэрээр), доод хэмжээ 50,000₮.
+   Аппад ⟦SET|1|хөлс⟧ token-оор очно; ЗӨВХӨН хүргэлттэй үед (өөрөө авах бол суурилуулалт байхгүй). */
+const sf = (items) => ct.setupFeeForItems(items);
+eq('угсралт: тогтмол SETUP_MIN_FEE = 50,000 (апптай ижил)', runInContext('SETUP_MIN_FEE', ct), 50000);
+eq('угсралт: тогтмол SETUP_RATE_DEFAULT = 1,000 (апптай ижил)', runInContext('SETUP_RATE_DEFAULT', ct), 1000);
+eq('угсралт: хоосон = 0', sf([]), 0);
+eq('угсралт: тоо 0 = 0 (доод хэмжээ нэмэгдэхгүй)', sf([{ name: 'Сандал', qty: 0 }]), 0);
+eq('угсралт: цөөн бараа → доод хэмжээ 50,000', sf([{ name: 'Сандал', qty: 10 }]), 50000);
+eq('угсралт: нэрээр таамаг — тайз ×2 = 60,000', sf([{ name: 'Тайз 2м', qty: 2 }]), 60000);
+eq('угсралт: тохирох нэр байхгүй → 1,000/ш, доод хэмжээ', sf([{ name: 'Цэцгийн ваар', qty: 30 }]), 50000);
+eq('угсралт: каталогийн setup_fee давуу (асар 120,000)', sf([{ name: 'Асар 6м*12м', qty: 1, setup: 120000 }]), 120000);
+eq('угсралт: setup_fee 700 × 100 сандал = 70,000', sf([{ name: 'Гялгар цагаан сандал', qty: 100, setup: 700 }]), 70000);
+eq('угсралт: setup_fee 0 → нэрээр (сандал 500 × 200)', sf([{ name: 'Сандал', qty: 200, setup: 0 }]), 100000);
+eq('угсралт: олон мөрийн нийлбэр', sf([{ name: 'Тайз', qty: 1, setup: 30000 }, { name: 'LED дэлгэц', qty: 2, setup: 20000 }]), 70000);
+ct.state.products = [{ id: 'c1', sku: 'S-C1', name: 'Гялгар цагаан сандал', setup_fee: 700 }, { id: 'a1', sku: 'S-A1', name: 'Асар 6м*12м', setup_fee: 120000 }];
+ct.state.cart = [{ id: 'c1', name: 'хуучин нэр', price: 1000, qty: 100 }, { id: 'S-A1', name: 'Асар', price: 500000, qty: 1 }];
+eq('угсралт: сагсны мөрийг АМЬД каталогоос тулгаж (id болон sku-аар) бодно', ct.cartSetupQuote(), 70000 + 120000);
+ct.state.setup = false; ct.state.delivery = { zone: 'city', fee: 150000 };
+eq('угсралт: чагтгүй бол хөлс 0', ct.cartSetupFee(), 0);
+ct.state.setup = true; ct.state.delivery = { zone: 'pickup', fee: 0 };
+eq('угсралт: өөрөө авах бол чагт тавьсан ч 0 (аппын дүрэм)', ct.cartSetupFee(), 0);
+ct.state.delivery = { zone: 'city1', fee: 80000 };
+eq('угсралт: хүргэлттэй + чагт = сагсны хөлс', ct.cartSetupFee(), 190000);
+ct.state.delivery = { zone: 'out', km: 40, fee: 400000 };
+eq('угсралт: хотоос гадна ч мөн адил', ct.cartSetupFee(), 190000);
+ct.state.cart = [{ id: 'c1', name: 'x', price: 1000, qty: 10 }]; ct.state.dates = { start: '2026-11-01', end: '2026-11-02' }; ct.state.delivery = { zone: 'city', fee: 150000 };
+const ts = ct.cartTotals();
+eq('угсралт: grand = түрээс + хүргэлт + угсралт (доод хэмжээ)', JSON.stringify([ts.subtotal, ts.delivery, ts.setup, ts.grand]), JSON.stringify([10000, 150000, 50000, 210000]));
+ct.state.setup = false;
+const tsOff = ct.cartTotals();
+eq('угсралт: чагтгүй бол totals ӨМНӨХ ШИГ (setup 0, grand хүргэлттэй)', JSON.stringify([tsOff.setup, tsOff.grand]), JSON.stringify([0, 160000]));
+ct.state.delivery = { fee: 0 }; ct.state.cart = [{ price: 3000, qty: 50 }]; ct.state.dates = { start: '2026-11-01', end: '2026-11-05' };
+// Захиалгын token: сайтын бичсэн хэлбэр аппын `_SET_RE`/`setupFlagOf`/`setupFeeOf`-д яг уншигдах ёстой
+ok('угсралт: submitOrder note-д ⟦SET|1|хөлс⟧ token бичнэ', /if \(t\.setup > 0\) s \+= ` ⟦SET\|1\|\$\{Math\.round\(t\.setup\)\}⟧`;/.test(SRC));
+const APP_SET_RE = /⟦SET\|([01])(?:\|(\d+))?⟧/;   // app.js `_SET_RE`-тэй ижил
+const setTok = '⟦DLV|city|0|150000⟧ ⟦SET|1|' + Math.round(ts.setup) + '⟧';
+const setM = setTok.match(APP_SET_RE);
+ok('угсралт: token аппын _SET_RE-д таарч, флаг=1 + хөлс 50,000', !!setM && setM[1] === '1' && Number(setM[2]) === 50000);
+ok('угсралт: чагт ч, хөлс ч байхгүй бол token ГАРАХГҮЙ (захиалгын урсгал өөрчлөгдөхгүй)', !/s \+= ` ⟦SET\|0/.test(SRC));
 // Карт: нэгж
 cd.state.products = [C_TENT, C_BED, C_STOVE, { ...C_PKG, bundle_days: 3 }];
 ok('карт: «3 хоногийн үнэ» (багц), «/хоног» БИШ', /3 хоногийн үнэ<\/small>/.test(cd.cardHtml(cd.state.products[3], 0)) && !/\/хоног/.test(cd.cardHtml(cd.state.products[3], 0)));
