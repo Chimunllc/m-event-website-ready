@@ -498,10 +498,14 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
     display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
   }
   .qty-row label { font-size: var(--fs-sm); color: var(--muted); }
-  .qty-ctrl { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-  .qty-ctrl button { width: 32px; height: 32px; font-size: var(--fs-input); background: #fff; }
+  .qty-ctrl { display: inline-flex; align-items: center; border: 1.5px solid var(--border-strong); border-radius: 100px; overflow: hidden; background: var(--panel); }
+  .qty-ctrl button { width: 44px; height: 44px; font-size: var(--fs-lg); background: transparent; }
   .qty-ctrl button:hover { background: var(--bg); }
-  .qty-ctrl input { width: 56px; height: 32px; border: none; border-left: 1px solid var(--border); border-right: 1px solid var(--border); text-align: center; }
+  .qty-ctrl input { width: 44px; height: 44px; border: none; background: transparent; text-align: center; font-weight: 700; padding: 0; -moz-appearance: textfield; appearance: textfield; }
+  .qty-ctrl input::-webkit-outer-spin-button, .qty-ctrl input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .modal-x { display: none; position: sticky; top: 12px; z-index: 5; float: right; margin: 12px 12px -48px 0; width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(255,255,255,.92); color: var(--text); box-shadow: 0 1px 4px rgba(23,23,27,.18); align-items: center; justify-content: center; }
+  .modal-x svg { width: 16px; height: 16px; }
   .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
   /* Асрын хэмжээ сонгогч — уртыг гүйлгэж сонгоно, м² болон үнэ шууд шинэчлэгдэнэ */
   .asar-box { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; background: var(--bg); }
@@ -648,6 +652,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
     padding: 14px 20px calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); background: var(--panel);
     box-shadow: 0 -8px 24px -18px rgba(23,23,27,.25);
   }
+  .drawer-foot.cart-empty #totals { display: none; }
   .drawer-foot .btn { min-height: 52px; border-radius: 14px; font-size: var(--fs-sm); }
   .total-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: var(--fs-sm); color: var(--muted); }
   .total-row.grand { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; color: var(--text); margin: 10px 0 14px; padding-top: 12px; border-top: 1px solid var(--border); font-variant-numeric: tabular-nums; }
@@ -901,6 +906,17 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
   }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
   .toast svg { width: 17px; height: 17px; color: #66D19E; flex: 0 0 auto; }
+  /* Анхааруулга (alert-ийн оронд): урт бичвэр багтана, ✓ биш «!» */
+  .toast.warn { border-radius: 16px; align-items: flex-start; line-height: 1.4; width: max-content; }
+  .toast.warn svg { display: none; }
+  .toast.warn::before { content: "!"; flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; background: #F2B544; color: var(--text); font-weight: 800; font-size: var(--fs-sm); line-height: 20px; text-align: center; }
+  .notice-bg { position: fixed; inset: 0; z-index: 310; background: rgba(23,23,27,.5); display: none; align-items: center; justify-content: center; padding: 24px; }
+  .notice-bg.open { display: flex; }
+  .notice { width: 100%; max-width: 380px; background: var(--panel); border-radius: 20px; padding: 24px 22px 20px; box-shadow: var(--shadow-lg); text-align: center; }
+  .notice-ic { width: 48px; height: 48px; margin: 0 auto 14px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; }
+  .notice-ic svg { width: 24px; height: 24px; }
+  .notice-msg { white-space: pre-line; font-size: var(--fs-md); line-height: 1.55; margin-bottom: 20px; text-align: left; max-height: 50vh; overflow-y: auto; }
+  .form-group input.invalid, .form-group textarea.invalid { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(194,69,59,.14); }
 
   /* МОБАЙЛ HERO — брэнд мессеж + итгэлийн чип (ЗӨВХӨН мобайлд, доор display:block).
      ⚠ Дээд хэсэг нь бараанаас илүү зай эзлэхгүй байх нь ГОЛ шаардлага: гарчиг
@@ -959,6 +975,24 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
     .grid-head h1 { font-size: 21px; }
     .modal-grid { grid-template-columns: 1fr; }
     .modal-img { aspect-ratio: 16 / 10; }
+    /* Барааны цонх утсанд доороос гарах хуудас: товч үргэлж харагдана, «Хаах» нь ✕ */
+    .modal-bg { padding: 0; align-items: flex-end; }
+    .modal-x { display: inline-flex; }
+    .modal { border-radius: 22px 22px 0 0; max-height: 92vh; max-height: 92dvh; animation: sheetUp .24s ease; }
+    .modal-content { padding: 18px 18px 0; }
+    .modal-foot { position: sticky; bottom: 0; z-index: 4; display: flex; align-items: center; gap: 10px; background: var(--panel);
+      margin: 0 -18px; padding: 12px 18px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); }
+    .modal-foot .qty-row { margin: 0; flex: 0 0 auto; }
+    .modal-foot .qty-row label { display: none; }
+    .modal-foot .modal-actions { flex: 1 1 auto; }
+    .modal-foot #m-cancel { display: none; }
+    .modal-foot #m-add { width: 100%; min-height: 48px; border-radius: 100px; padding-left: 10px; padding-right: 10px; letter-spacing: .04em; white-space: nowrap; }
+    /* «3 алхам» — утсанд дүрс зүүн талд, нягт мөр (өмнө алхам бүр ~220px өндөр карт) */
+    .step { display: grid; grid-template-columns: 44px 1fr; column-gap: 14px; padding: 16px 18px; }
+    .step-num { display: none; }
+    .step-ic { grid-row: 1 / 3; width: 44px; height: 44px; margin: 0; }
+    .step h3 { margin-bottom: 4px; }
+    .steps { gap: 10px; }
     .header { position: static; }               /* мобайлд header гүйж алга болно — сагс FAB-аар үргэлж хүрнэ */
     .header-row { padding: 12px 16px; gap: 10px; }
     .search-box { display: none; }
@@ -1246,6 +1280,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
 <!-- PRODUCT MODAL -->
 <div class="modal-bg" id="product-modal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-name">
+    <button type="button" class="modal-x" id="m-x" aria-label="Хаах"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     <div class="modal-grid">
       <div class="modal-img" id="m-img"></div>
       <div class="modal-content">
@@ -1265,17 +1300,19 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
           <div class="asar-out" id="m-asar-out"></div>
           <div class="asar-note" id="m-asar-note"></div>
         </div>
-        <div class="qty-row" id="m-qty-row">
-          <label>Тоо ширхэг:</label>
-          <div class="qty-ctrl">
-            <button id="m-qty-down">−</button>
-            <input type="number" id="m-qty" value="1" min="1">
-            <button id="m-qty-up">+</button>
+        <div class="modal-foot">
+          <div class="qty-row" id="m-qty-row">
+            <label for="m-qty">Тоо ширхэг</label>
+            <div class="qty-ctrl">
+              <button type="button" id="m-qty-down" aria-label="Хасах">−</button>
+              <input type="number" id="m-qty" value="1" min="1" inputmode="numeric">
+              <button type="button" id="m-qty-up" aria-label="Нэмэх">+</button>
+            </div>
           </div>
-        </div>
-        <div class="modal-actions">
-          <button class="btn" id="m-cancel">Хаах</button>
-          <button class="btn btn-primary" id="m-add">Сагсанд нэмэх</button>
+          <div class="modal-actions">
+            <button class="btn" id="m-cancel">Хаах</button>
+            <button class="btn btn-primary" id="m-add">Сагсанд нэмэх</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1420,7 +1457,14 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
 </button>
 
 <!-- TOAST -->
-<div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span id="toast-msg">Сагсанд нэмэгдлээ</span></div>
+<div class="notice-bg" id="notice-bg" role="alertdialog" aria-modal="true" aria-labelledby="notice-msg">
+  <div class="notice">
+    <div class="notice-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5"/><path d="M12 16.5v.01"/><circle cx="12" cy="12" r="9"/></svg></div>
+    <div class="notice-msg" id="notice-msg"></div>
+    <button type="button" class="btn btn-primary btn-block" id="notice-ok">Ойлголоо</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span id="toast-msg">Сагсанд нэмэгдлээ</span></div>
 
 <script>
 /* ==================== CONFIG ==================== */
@@ -2921,6 +2965,11 @@ function renderCart() {
     `).join('');
   }
   renderCartAddons();
+  // Хоосон сагсанд дүн (ажлын бус цагийн нэмэгдэл ч) харуулахгүй — төлөх зүйл алга
+  const _foot = document.getElementById('drawer-foot'), _cbtn = document.getElementById('checkout-btn');
+  const _emptyCart = !state.cart.length && state.step === 'cart';
+  if (_foot) _foot.classList.toggle('cart-empty', _emptyCart);
+  if (_cbtn && state.step === 'cart') _cbtn.textContent = _emptyCart ? 'Бараа үзэх' : 'Үргэлжлүүлэх →';
   const t = cartTotals();
   document.getElementById('t-subtotal').textContent = fmt(t.subtotal);
   document.getElementById('t-subtotal-row').style.display = t.subtotal === t.grand ? 'none' : '';
@@ -3133,8 +3182,10 @@ function goStep(s) {
     back.onclick = backTo ? () => goStep(backTo) : null;
   }
   if (s === 'cart') {
-    btn.textContent = 'Үргэлжлүүлэх →';
+    btn.textContent = state.cart.length ? 'Үргэлжлүүлэх →' : 'Бараа үзэх';
+    foot.classList.toggle('cart-empty', !state.cart.length);
     btn.onclick = () => {
+      if (!state.cart.length && foot.classList.contains('cart-empty')) { hideDrawer(); return; }   // «Бараа үзэх»
       if (!state.cart.length) { alert('Сагс хоосон байна'); return; }
       goStep('dates');
     };
@@ -3237,12 +3288,12 @@ async function submitOrder() {
   const dlv = syncDelivery();
   const isDeliv = dlv.zone === 'city' || dlv.zone === 'city1' || dlv.zone === 'out';
   const address = document.getElementById('f-address').value.trim();
-  if (!name) { alert('Нэрээ оруулна уу'); return; }
-  if (!phone || phone.replace(/\D/g, '').length < 8) { alert('Утасны дугаар буруу'); return; }
+  if (!name) { document.getElementById('f-name').focus(); alert('Нэрээ оруулна уу'); return; }
+  if (!phone || phone.replace(/\D/g, '').length < 8) { document.getElementById('f-phone').focus(); alert('Утасны дугаар буруу'); return; }
   const email = document.getElementById('f-email').value.trim();
   if (!email) { alert('И-мэйл хаягаа оруулна уу — захиалгын баталгаажуулалтыг тэр хаяг руу илгээнэ'); document.getElementById('f-email').focus(); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { alert('И-мэйл хаяг буруу байна'); document.getElementById('f-email').focus(); return; }
-  if (isDeliv && !address) { alert('Хүргэлтийн хаяг шаардлагатай'); return; }
+  if (isDeliv && !address) { document.getElementById('f-address').focus(); alert('Хүргэлтийн хаяг шаардлагатай'); return; }
   // Байгууллага сонговол нэр + РД заавал (нэхэмжлэх гаргахад шаардлагатай)
   const custType = (document.getElementById('f-custtype') || {}).value || 'person';
   const company = document.getElementById('f-company').value.trim();
@@ -3272,7 +3323,7 @@ async function submitOrder() {
     return;
   }
   renderCart();
-  if (dlv.zone === 'out' && !dlv.km) { alert('Хотоос гадна: зайг км-ээр оруулна уу'); return; }
+  if (dlv.zone === 'out' && !dlv.km) { document.getElementById('f-delivkm').focus(); alert('Хотоос гадна: зайг км-ээр оруулна уу'); return; }
 
   const order = {
     customer: {
@@ -3377,13 +3428,36 @@ async function submitOrder() {
 }
 
 /* ==================== TOAST / FAB / SCROLL / NAV ==================== */
+/* Браузерын саарал alert цонхны оронд сайтын өөрийн мэдэгдэл.
+   ⚠ Нэр нь зориуд `alert` — бүх дуудлага (20+) хэвээр, блоклохгүй гэдгээрээ л ялгаатай.
+   Нэг мөр = анхааруулгын тууз; олон мөр = «Ойлголоо» товчтой цонх.
+   Маягтын талбар фокуслагдсан бол улаан хүрээгээр тэмдэглэнэ. */
+function alert(msg) {
+  msg = String(msg == null ? '' : msg);
+  setTimeout(() => {
+    const el = document.activeElement;
+    if (el && el.closest && el.closest('#step-info') && /^(INPUT|TEXTAREA)$/.test(el.tagName)) {
+      el.classList.add('invalid');
+      el.addEventListener('input', () => el.classList.remove('invalid'), { once: true });
+      if (el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }, 0);
+  if (msg.indexOf('\n') < 0 && msg.length <= 90) { toast(msg, 'warn'); return; }
+  const bg = document.getElementById('notice-bg'); if (!bg) { toast(msg, 'warn'); return; }
+  document.getElementById('notice-msg').textContent = msg;
+  bg.classList.add('open');
+  const ok = document.getElementById('notice-ok');
+  ok.onclick = bg.onclick = (e) => { if (e.target === bg || e.target === ok) bg.classList.remove('open'); };
+  ok.focus();
+}
 let _toastTimer = null;
-function toast(msg) {
+function toast(msg, kind) {
   const t = document.getElementById('toast'); if (!t) return;
   document.getElementById('toast-msg').textContent = msg || 'Хийгдлээ';
   t.classList.add('show');
+  t.classList.toggle('warn', kind === 'warn');
   clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), kind === 'warn' ? 3600 : 2000);
 }
 function updateCartFab(count) {
   const fab = document.getElementById('cart-fab'); if (!fab) return;
@@ -3527,6 +3601,7 @@ function initEvents() {
 
   // modal
   document.getElementById('m-cancel').onclick = closeProduct;
+  document.getElementById('m-x').onclick = closeProduct;
   document.getElementById('m-qty-up').onclick = () => {
     const i = document.getElementById('m-qty');
     const max = parseInt(i.max) || 999;

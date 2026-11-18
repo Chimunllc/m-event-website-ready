@@ -120,6 +120,10 @@ ok('SCAN: утсанд toast доор — зөвхөн drawer хаалттай �
 ok('SCAN: drawer нээлттэй үед toast доош буухгүй', !/body\.modal-open \.toast \{[^}]*bottom:/.test(SRC) && /body\.modal-open \.toast \{[^}]*top:/.test(SRC));
 ok('SCAN: сагсны тууз цул тавцантай (бараа хагас дарагдахгүй)', /body\.fab-on \.cart-dock/.test(SRC) && /<div class="cart-dock"/.test(SRC));
 
+// Браузерын саарал alert цонх буцаж ирэхгүй — сайтын өөрийн мэдэгдлээр солигдсон.
+ok('SCAN: alert нь сайтын өөрийн мэдэгдэл (браузерын цонх биш)', /\nfunction alert\(msg\) \{/.test(SRC) && !/window\.alert\(/.test(SRC));
+ok('SCAN: хоосон сагсанд дүн харуулахгүй', /\.drawer-foot\.cart-empty #totals \{ display: none; \}/.test(SRC) && /classList\.toggle\('cart-empty'/.test(SRC));
+
 /* ── 8. SCAN: толгойд утасны дугаар ИЛ ────────────────────────────────────── */
 ok('SCAN: толгойн tel холбоос дугаараа бичвэрээр харуулна',
   /<a href="tel:\+97677551010"[\s\S]{0,900}?<span class="ib-num">7755-1010<\/span>/.test(SRC));
