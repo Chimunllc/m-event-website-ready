@@ -519,7 +519,7 @@ function categoryPage(c) {
     <span>${inStock} нь одоо бэлэн</span>
     <span>2+ хоногт −20%</span>
     <span>Хот дотор хүргэлт</span>
-    <span>1 цагт баталгаажуулна</span>
+    <span>Ажлын 1 цагт баталгаажуулна</span>
   </div>
 
   <div class="grid">
