@@ -28,50 +28,83 @@
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Нүүр","item":"https://mevent.mn/"},{"@type":"ListItem","position":2,"name":"Хөгжөөнт тоглоом түрээс","item":"https://mevent.mn/turees/hogjoont-togloom/"}]}</script>
 <style>
   * { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:"Inter",-apple-system,sans-serif; background:#FBFAF7; color:#17171B; line-height:1.6; }
-  .wrap { max-width:1000px; margin:0 auto; padding:20px 20px 60px; }
-  header { display:flex; align-items:center; justify-content:space-between; padding:6px 0 22px; }
-  .brand { font-family:"Manrope"; font-weight:800; font-size:18px; letter-spacing:.04em; text-transform:uppercase; color:#0B1F3A; text-decoration:none; }
-  .brand span { color:#E95400; }
-  .call { background:#0B1F3A; color:#fff; padding:9px 16px; border-radius:100px; font-weight:700; font-size:13px; text-decoration:none; }
-  nav.crumb { font-size:12.5px; color:#5C5C63; margin-bottom:16px; }
+  body { font-family:"Inter",-apple-system,BlinkMacSystemFont,sans-serif; background:#FBFAF7; color:#17171B; line-height:1.6; -webkit-font-smoothing:antialiased; }
+  a { color:inherit; }
+  .top { background:#FBFAF7; border-bottom:1px solid #ECE9E2; }
+  .top-in { max-width:1040px; margin:0 auto; padding:12px 20px; display:flex; align-items:center; gap:10px; }
+  .brand { margin-right:auto; display:block; }
+  .brand img { height:28px; width:auto; display:block; }
+  .tbtn { display:inline-flex; align-items:center; gap:8px; height:44px; padding:0 14px; border-radius:12px; font-family:"Manrope"; font-weight:700; font-size:14px; text-decoration:none; color:#17171B; white-space:nowrap; }
+  .tbtn svg { width:19px; height:19px; flex:0 0 auto; }
+  .tbtn.cart { background:#0B1F3A; color:#fff; }
+  .tbtn .n { background:#fff; color:#0B1F3A; border-radius:100px; min-width:22px; padding:1px 7px; font-size:12px; font-weight:800; text-align:center; }
+  .wrap { max-width:1040px; margin:0 auto; padding:18px 20px 56px; }
+  nav.crumb { font-size:13px; color:#5C5C63; margin-bottom:16px; }
   nav.crumb a { color:#5C5C63; text-decoration:none; }
-  h1 { font-family:"Manrope"; font-size:30px; font-weight:800; letter-spacing:-.02em; color:#0B1F3A; margin-bottom:10px; line-height:1.2; }
-  .lede { font-size:15px; color:#2A3644; max-width:70ch; margin-bottom:10px; }
-  .facts { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 26px; }
-  .facts span { background:#fff; border:1px solid #ECE9E2; border-radius:100px; padding:6px 14px; font-size:12.5px; color:#2A3644; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:16px; }
-  .it { background:#fff; border:1px solid #ECE9E2; border-radius:16px; padding:14px; text-decoration:none; color:inherit; display:flex; flex-direction:column; }
-  .it .ph { aspect-ratio:4/3; background:#FAF9F5; border-radius:11px; display:flex; align-items:center; justify-content:center; overflow:hidden; margin-bottom:12px; }
-  .it .ph img { max-width:100%; max-height:100%; object-fit:contain; }
-  .it .nm { font-weight:600; font-size:14px; color:#0B1F3A; margin-bottom:5px; line-height:1.35; }
-  .it .pr { font-family:"Manrope"; font-weight:800; font-size:16px; color:#0B1F3A; margin-top:auto; }
-  .it .pr small { font-size:12px; font-weight:500; color:#5C5C63; }
-  .it .out { font-size:11.5px; color:#B23B00; font-weight:600; }
-  h2 { font-family:"Manrope"; font-size:19px; font-weight:800; color:#0B1F3A; margin:38px 0 12px; }
+  nav.crumb a:hover { color:#0B1F3A; text-decoration:underline; }
+  h1 { font-family:"Manrope"; font-weight:800; letter-spacing:-.02em; color:#0B1F3A; line-height:1.2; }
+  h2 { font-family:"Manrope"; font-size:19px; font-weight:800; color:#0B1F3A; margin:40px 0 14px; letter-spacing:-.01em; }
+  .ph { position:relative; background:#FAF9F5; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .ph img { max-width:100%; max-height:100%; object-fit:contain; }
+  .ph.noimg::after { content:""; position:absolute; inset:0; background:#5C5C63; opacity:.18; -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='black' stroke-width='1.4'%3E%3Crect x='3' y='4.5' width='18' height='15' rx='2.5'/%3E%3Ccircle cx='8.5' cy='9.5' r='1.6'/%3E%3Cpath d='m4 17 5-4.5 4 3.2L17 11l3 3.5'/%3E%3C/svg%3E") center/34px no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='black' stroke-width='1.4'%3E%3Crect x='3' y='4.5' width='18' height='15' rx='2.5'/%3E%3Ccircle cx='8.5' cy='9.5' r='1.6'/%3E%3Cpath d='m4 17 5-4.5 4 3.2L17 11l3 3.5'/%3E%3C/svg%3E") center/34px no-repeat; }
+  .chips { display:flex; flex-wrap:wrap; gap:7px; }
+  .chips span { background:#EAEEF3; color:#0B1F3A; border-radius:100px; padding:5px 12px; font-size:12px; font-weight:600; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:52px; padding:0 26px; border-radius:14px; font-family:"Manrope"; font-weight:700; font-size:14px; text-decoration:none; border:1.5px solid #DDD9CF; color:#17171B; background:#fff; }
+  .btn.primary { background:#E95400; border-color:#E95400; color:#fff; }
+  .btn.primary:hover { background:#CF4A00; border-color:#CF4A00; }
+  .btn svg { width:18px; height:18px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:22px 16px; }
+  .it { position:relative; display:flex; flex-direction:column; }
+  .it > a.lk { text-decoration:none; color:inherit; display:flex; flex-direction:column; flex:1; }
+  .it .ph { aspect-ratio:1/1; border:1px solid #ECE9E2; border-radius:16px; margin-bottom:10px; padding:10px; background:#fff; }
+  .it .nm { font-weight:600; font-size:14px; color:#17171B; line-height:1.35; margin-bottom:6px; padding-right:2px; }
+  .it .pr { font-family:"Manrope"; font-weight:800; font-size:17px; color:#0B1F3A; margin-top:auto; padding-right:50px; min-height:42px; }
+  .it .pr small { display:block; font-family:"Inter"; font-size:12px; font-weight:500; color:#5C5C63; }
+  .it .out { color:#A83B00; font-weight:600; }
+  .it .add { position:absolute; right:0; bottom:0; width:42px; height:42px; border-radius:12px; background:#E95400; color:#fff; display:flex; align-items:center; justify-content:center; text-decoration:none; box-shadow:0 6px 14px -6px rgba(233,84,0,.6); }
+  .it .add svg { width:20px; height:20px; }
+  .foot { background:#0B1F3A; color:#A9B7C7; text-align:center; padding:40px 20px; font-size:14px; }
+  .foot .fn { font-family:"Manrope"; font-size:19px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#fff; margin-bottom:6px; }
+  .foot .ft { font-size:13px; margin-bottom:18px; }
+  .foot .fc { display:flex; justify-content:center; gap:8px 24px; flex-wrap:wrap; }
+  .foot a { color:inherit; text-decoration:none; }
+  .foot .fr { height:1px; background:rgba(255,255,255,.10); max-width:360px; margin:22px auto 16px; }
+  .foot .fy { font-size:12px; }
+  @media (max-width:640px) {
+    .top-in { padding:10px 16px; }
+    .brand img { height:26px; }
+    .tbtn { padding:0 11px; }
+    .tbtn.cart .lbl { display:none; }
+    .wrap { padding:14px 16px 44px; }
+    .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px 14px; }
+  }
+  @media (max-width:360px) { .top-in { gap:4px; padding:10px 12px; } .brand img { height:22px; } .tbtn { padding:0 8px; font-size:13px; gap:6px; } }
+
+  h1 { font-size:30px; margin-bottom:10px; }
+  .lede { font-size:15px; color:#2A3644; max-width:70ch; margin-bottom:14px; }
+  .chips { margin-bottom:26px; }
   .prose { font-size:14.5px; color:#2A3644; max-width:70ch; }
-  .prose li { margin-left:18px; }
-  .others { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
-  .others a { background:#fff; border:1px solid #ECE9E2; border-radius:100px; padding:7px 15px; font-size:13px; color:#0B1F3A; text-decoration:none; }
-  .cta { display:inline-block; background:#E95400; color:#fff; padding:14px 30px; border-radius:12px; font-family:"Manrope"; font-weight:700; font-size:14px; text-decoration:none; margin-top:18px; }
-  footer { text-align:center; margin-top:44px; font-size:12.5px; color:#5C5C63; }
-  footer a { color:#5C5C63; }
-  @media (max-width:640px) { h1 { font-size:24px; } .grid { grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; } }
+  .prose li { margin-left:18px; margin-bottom:4px; }
+  .others { display:flex; flex-wrap:wrap; gap:8px; }
+  .others a { background:#fff; border:1px solid #DDD9CF; border-radius:100px; padding:8px 15px; font-size:13px; font-weight:600; color:#0B1F3A; text-decoration:none; }
+  .cta { margin-top:20px; }
+  @media (max-width:640px) { h1 { font-size:24px; } }
 </style>
 </head>
 <body>
+  <header class="top"><div class="top-in">
+    <a href="/" class="brand" aria-label="M-Event — нүүр хуудас"><img src="/logo.png" alt="M-Event" width="113" height="28"></a>
+    <a href="tel:+97677551010" class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 11.5a16 16 0 0 0 6 6l1-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2Z"/></svg><span>7755-1010</span></a>
+    <a href="/?cart=1" class="tbtn cart" aria-label="Сагс"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2.2l2.3 12.4a1.6 1.6 0 0 0 1.6 1.3h8.8a1.6 1.6 0 0 0 1.6-1.3L21 7H5.3"/></svg><span class="lbl">Сагс</span><span class="n" id="cart-n">0</span></a>
+  </div></header>
 <div class="wrap">
-  <header>
-    <a href="/" class="brand">M<span>·</span>Event</a>
-    <a href="tel:+97677551010" class="call"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 11.5a16 16 0 0 0 6 6l1-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2Z"/></svg>7755-1010</a>
-  </header>
   <nav class="crumb"><a href="/">Нүүр</a> › Хөгжөөнт тоглоом түрээс</nav>
 
   <h1>Хөгжөөнт тоглоом түрээс</h1>
   <p class="lede">Улаанбаатар хотод хөгжөөнт тоглоом түрээслэнэ. Одоогоор 16 төрөл
   бэлэн байна, үнэ 16,500₮-өөс 120,000₮ хүртэл (хоногийн түрээс).
   Онлайнаар огноогоо сонгож захиалахад боломжит үлдэгдлийг шууд шалгана.</p>
-  <div class="facts">
+  <div class="chips">
     <span>16 төрөл</span>
     <span>15 нь одоо бэлэн</span>
     <span>2+ хоногт −20%</span>
@@ -80,86 +113,134 @@
   </div>
 
   <div class="grid">
-    <a class="it" href="/products/m-962/">
-      <div class="ph"><img src="https://n8n.nomaadcamp.com/img/up-cc296750781195f26c3800d58bbecc4b.jpg" alt="«Хурдан гар» тоглоом  (10 саваа) түрээс" loading="lazy"></div>
-      <div class="nm">«Хурдан гар» тоглоом  (10 саваа)</div>
-      <div class="pr">120,000₮<small> /хоног</small></div>
-    </a>
-    <a class="it" href="/products/m-189/">
-      <div class="ph"><img src="https://n8n.nomaadcamp.com/img/f880f7d5-2626-458d-9c66-269b068ff9ce.jpg" alt="Гар барилдааны ширээ түрээс" loading="lazy"></div>
-      <div class="nm">Гар барилдааны ширээ</div>
-      <div class="pr">88,000₮<small> /хоног</small></div>
-    </a>
-    <a class="it" href="/products/m-191/">
-      <div class="ph"><img src="https://n8n.nomaadcamp.com/img/3cad8836-df0f-4ca0-9b07-24aab205074b.jpg" alt="Сэгсэр (тоглоом) түрээс" loading="lazy"></div>
-      <div class="nm">Сэгсэр (тоглоом)</div>
-      <div class="pr">33,000₮<small> /хоног</small></div>
-    </a>
-    <a class="it" href="/products/m-192/">
-      <div class="ph"><img src="https://n8n.nomaadcamp.com/img/68f31b41-7ef3-45dc-af9b-9ec49940170a.jpg" alt="Х-0 тоглоом түрээс" loading="lazy"></div>
-      <div class="nm">Х-0 тоглоом</div>
-      <div class="pr">66,000₮<small> /хоног</small></div>
-    </a>
-    <a class="it" href="/products/m-193/">
-      <div class="ph"><img src="https://n8n.nomaadcamp.com/img/61d23030-845e-420a-92ae-744427791ce8.jpg" alt="Холбоочин (тоглоом) түрээс" loading="lazy"></div>
-      <div class="nm">Холбоочин (тоглоом)</div>
-      <div class="pr">33,000₮<small> /хоног</small></div>
-    </a>
-    <a class="it" href="/products/m-194/">
-      <div class="ph"><img src="https://n8n.nomaadcamp.com/img/5ed93719-ff55-459b-8b75-a5c10e35759d.jpg" alt="Хүрд түрээс" loading="lazy"></div>
-      <div class="nm">Хүрд</div>
-      <div class="pr">88,000₮<small> /хоног</small></div>
-    </a>
-    <a class="it" href="/products/m-196/">
-      <div class="ph"><img src="https://n8n.nomaadcamp.com/img/4a1ce789-b3ec-4312-b237-07dce2d79e38.jpg" alt="Цамхаг түрээс" loading="lazy"></div>
-      <div class="nm">Цамхаг</div>
-      <div class="pr">33,000₮<small> /хоног</small></div>
-    </a>
-    <a class="it" href="/products/m-197/">
-      <div class="ph"><img src="https://n8n.nomaadcamp.com/img/bd225464-16d4-44e0-8d3a-448aa21b1efe.jpg" alt="Чарга түрээс" loading="lazy"></div>
-      <div class="nm">Чарга</div>
-      <div class="pr">16,500₮<small> /хоног</small></div>
-    </a>
-    <a class="it" href="/products/m-198/">
-      <div class="ph"><img src="https://n8n.nomaadcamp.com/img/fe515ea2-5491-4287-b3e3-f3a6fc5b56bd.jpg" alt="Ширээний хөл бөмбөг түрээс" loading="lazy"></div>
-      <div class="nm">Ширээний хөл бөмбөг</div>
-      <div class="pr">88,000₮<small> /хоног</small> <span class="out">· захиалгаар</span></div>
-    </a>
-    <a class="it" href="/products/m-047/">
-      <div class="ph"><img src="https://n8n.nomaadcamp.com/img/bc12d700-d2a6-46b4-ba4a-b79a507e8a50.jpg" alt="Шиша иж бүрдэл түрээс" loading="lazy"></div>
-      <div class="nm">Шиша иж бүрдэл</div>
-      <div class="pr">66,000₮<small> /хоног</small></div>
-    </a>
-    <a class="it" href="/products/m-199/">
-      <div class="ph"><img src="https://n8n.nomaadcamp.com/img/bc0e00a5-a959-4ca5-a2cc-475a039d8deb.jpg" alt="Эргүүлдэг лонх түрээс" loading="lazy"></div>
-      <div class="nm">Эргүүлдэг лонх</div>
-      <div class="pr">16,500₮<small> /хоног</small></div>
-    </a>
-    <a class="it" href="/products/m-188/">
-      <div class="ph"><img src="https://n8n.nomaadcamp.com/img/5f8c8b55-08f3-47bf-802f-314a65ad6cd7.jpg" alt="Beer table түрээс" loading="lazy"></div>
-      <div class="nm">Beer table</div>
-      <div class="pr">55,000₮<small> /хоног</small></div>
-    </a>
-    <a class="it" href="/products/m-184/">
-      <div class="ph"><img src="https://n8n.nomaadcamp.com/img/daa729a3-6e16-4179-86e0-8524c7a3294c.jpg" alt="Cornhole түрээс" loading="lazy"></div>
-      <div class="nm">Cornhole</div>
-      <div class="pr">33,000₮<small> /хоног</small></div>
-    </a>
-    <a class="it" href="/products/m-185/">
-      <div class="ph"><img src="https://n8n.nomaadcamp.com/img/65dcb2dd-175f-4839-9463-8b345521d954.jpg" alt="Jenga модон блокон тоглоом түрээс" loading="lazy"></div>
-      <div class="nm">Jenga модон блокон тоглоом</div>
-      <div class="pr">33,000₮<small> /хоног</small></div>
-    </a>
-    <a class="it" href="/products/m-186/">
-      <div class="ph"><img src="https://n8n.nomaadcamp.com/img/5c689bfb-ff67-4092-935b-90563653bba9.jpg" alt="Ring toss түрээс" loading="lazy"></div>
-      <div class="nm">Ring toss</div>
-      <div class="pr">16,500₮<small> /хоног</small></div>
-    </a>
-    <a class="it" href="/products/m-187/">
-      <div class="ph"><img src="https://n8n.nomaadcamp.com/img/75820228-9945-4137-b4ca-cd22d37f16ec.jpg" alt="Shut the Box түрээс" loading="lazy"></div>
-      <div class="nm">Shut the Box</div>
-      <div class="pr">22,000₮<small> /хоног</small></div>
-    </a>
+    <div class="it">
+      <a class="lk" href="/products/m-962/">
+        <div class="ph"><img src="https://n8n.nomaadcamp.com/img/up-cc296750781195f26c3800d58bbecc4b.jpg" alt="«Хурдан гар» тоглоом  (10 саваа) түрээс" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+        <div class="nm">«Хурдан гар» тоглоом  (10 саваа)</div>
+        <div class="pr">120,000₮<small>/хоног</small></div>
+      </a>
+      <a class="add" href="/?add=M-962" aria-label="«Хурдан гар» тоглоом  (10 саваа) — сагсанд нэмэх" rel="nofollow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
+    <div class="it">
+      <a class="lk" href="/products/m-189/">
+        <div class="ph"><img src="https://n8n.nomaadcamp.com/img/f880f7d5-2626-458d-9c66-269b068ff9ce.jpg" alt="Гар барилдааны ширээ түрээс" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+        <div class="nm">Гар барилдааны ширээ</div>
+        <div class="pr">88,000₮<small>/хоног</small></div>
+      </a>
+      <a class="add" href="/?add=M-189" aria-label="Гар барилдааны ширээ — сагсанд нэмэх" rel="nofollow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
+    <div class="it">
+      <a class="lk" href="/products/m-191/">
+        <div class="ph"><img src="https://n8n.nomaadcamp.com/img/3cad8836-df0f-4ca0-9b07-24aab205074b.jpg" alt="Сэгсэр (тоглоом) түрээс" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+        <div class="nm">Сэгсэр (тоглоом)</div>
+        <div class="pr">33,000₮<small>/хоног</small></div>
+      </a>
+      <a class="add" href="/?add=M-191" aria-label="Сэгсэр (тоглоом) — сагсанд нэмэх" rel="nofollow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
+    <div class="it">
+      <a class="lk" href="/products/m-192/">
+        <div class="ph"><img src="https://n8n.nomaadcamp.com/img/68f31b41-7ef3-45dc-af9b-9ec49940170a.jpg" alt="Х-0 тоглоом түрээс" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+        <div class="nm">Х-0 тоглоом</div>
+        <div class="pr">66,000₮<small>/хоног</small></div>
+      </a>
+      <a class="add" href="/?add=M-192" aria-label="Х-0 тоглоом — сагсанд нэмэх" rel="nofollow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
+    <div class="it">
+      <a class="lk" href="/products/m-193/">
+        <div class="ph"><img src="https://n8n.nomaadcamp.com/img/61d23030-845e-420a-92ae-744427791ce8.jpg" alt="Холбоочин (тоглоом) түрээс" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+        <div class="nm">Холбоочин (тоглоом)</div>
+        <div class="pr">33,000₮<small>/хоног</small></div>
+      </a>
+      <a class="add" href="/?add=M-193" aria-label="Холбоочин (тоглоом) — сагсанд нэмэх" rel="nofollow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
+    <div class="it">
+      <a class="lk" href="/products/m-194/">
+        <div class="ph"><img src="https://n8n.nomaadcamp.com/img/5ed93719-ff55-459b-8b75-a5c10e35759d.jpg" alt="Хүрд түрээс" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+        <div class="nm">Хүрд</div>
+        <div class="pr">88,000₮<small>/хоног</small></div>
+      </a>
+      <a class="add" href="/?add=M-194" aria-label="Хүрд — сагсанд нэмэх" rel="nofollow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
+    <div class="it">
+      <a class="lk" href="/products/m-196/">
+        <div class="ph"><img src="https://n8n.nomaadcamp.com/img/4a1ce789-b3ec-4312-b237-07dce2d79e38.jpg" alt="Цамхаг түрээс" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+        <div class="nm">Цамхаг</div>
+        <div class="pr">33,000₮<small>/хоног</small></div>
+      </a>
+      <a class="add" href="/?add=M-196" aria-label="Цамхаг — сагсанд нэмэх" rel="nofollow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
+    <div class="it">
+      <a class="lk" href="/products/m-197/">
+        <div class="ph"><img src="https://n8n.nomaadcamp.com/img/bd225464-16d4-44e0-8d3a-448aa21b1efe.jpg" alt="Чарга түрээс" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+        <div class="nm">Чарга</div>
+        <div class="pr">16,500₮<small>/хоног</small></div>
+      </a>
+      <a class="add" href="/?add=M-197" aria-label="Чарга — сагсанд нэмэх" rel="nofollow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
+    <div class="it">
+      <a class="lk" href="/products/m-198/">
+        <div class="ph"><img src="https://n8n.nomaadcamp.com/img/fe515ea2-5491-4287-b3e3-f3a6fc5b56bd.jpg" alt="Ширээний хөл бөмбөг түрээс" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+        <div class="nm">Ширээний хөл бөмбөг</div>
+        <div class="pr">88,000₮<small>/хоног <span class="out">· захиалгаар</span></small></div>
+      </a>
+      <a class="add" href="/?add=M-198" aria-label="Ширээний хөл бөмбөг — сагсанд нэмэх" rel="nofollow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
+    <div class="it">
+      <a class="lk" href="/products/m-047/">
+        <div class="ph"><img src="https://n8n.nomaadcamp.com/img/bc12d700-d2a6-46b4-ba4a-b79a507e8a50.jpg" alt="Шиша иж бүрдэл түрээс" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+        <div class="nm">Шиша иж бүрдэл</div>
+        <div class="pr">66,000₮<small>/хоног</small></div>
+      </a>
+      <a class="add" href="/?add=M-047" aria-label="Шиша иж бүрдэл — сагсанд нэмэх" rel="nofollow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
+    <div class="it">
+      <a class="lk" href="/products/m-199/">
+        <div class="ph"><img src="https://n8n.nomaadcamp.com/img/bc0e00a5-a959-4ca5-a2cc-475a039d8deb.jpg" alt="Эргүүлдэг лонх түрээс" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+        <div class="nm">Эргүүлдэг лонх</div>
+        <div class="pr">16,500₮<small>/хоног</small></div>
+      </a>
+      <a class="add" href="/?add=M-199" aria-label="Эргүүлдэг лонх — сагсанд нэмэх" rel="nofollow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
+    <div class="it">
+      <a class="lk" href="/products/m-188/">
+        <div class="ph"><img src="https://n8n.nomaadcamp.com/img/5f8c8b55-08f3-47bf-802f-314a65ad6cd7.jpg" alt="Beer table түрээс" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+        <div class="nm">Beer table</div>
+        <div class="pr">55,000₮<small>/хоног</small></div>
+      </a>
+      <a class="add" href="/?add=M-188" aria-label="Beer table — сагсанд нэмэх" rel="nofollow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
+    <div class="it">
+      <a class="lk" href="/products/m-184/">
+        <div class="ph"><img src="https://n8n.nomaadcamp.com/img/daa729a3-6e16-4179-86e0-8524c7a3294c.jpg" alt="Cornhole түрээс" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+        <div class="nm">Cornhole</div>
+        <div class="pr">33,000₮<small>/хоног</small></div>
+      </a>
+      <a class="add" href="/?add=M-184" aria-label="Cornhole — сагсанд нэмэх" rel="nofollow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
+    <div class="it">
+      <a class="lk" href="/products/m-185/">
+        <div class="ph"><img src="https://n8n.nomaadcamp.com/img/65dcb2dd-175f-4839-9463-8b345521d954.jpg" alt="Jenga модон блокон тоглоом түрээс" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+        <div class="nm">Jenga модон блокон тоглоом</div>
+        <div class="pr">33,000₮<small>/хоног</small></div>
+      </a>
+      <a class="add" href="/?add=M-185" aria-label="Jenga модон блокон тоглоом — сагсанд нэмэх" rel="nofollow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
+    <div class="it">
+      <a class="lk" href="/products/m-186/">
+        <div class="ph"><img src="https://n8n.nomaadcamp.com/img/5c689bfb-ff67-4092-935b-90563653bba9.jpg" alt="Ring toss түрээс" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+        <div class="nm">Ring toss</div>
+        <div class="pr">16,500₮<small>/хоног</small></div>
+      </a>
+      <a class="add" href="/?add=M-186" aria-label="Ring toss — сагсанд нэмэх" rel="nofollow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
+    <div class="it">
+      <a class="lk" href="/products/m-187/">
+        <div class="ph"><img src="https://n8n.nomaadcamp.com/img/75820228-9945-4137-b4ca-cd22d37f16ec.jpg" alt="Shut the Box түрээс" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+        <div class="nm">Shut the Box</div>
+        <div class="pr">22,000₮<small>/хоног</small></div>
+      </a>
+      <a class="add" href="/?add=M-187" aria-label="Shut the Box — сагсанд нэмэх" rel="nofollow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
   </div>
 
   <h2>Хөгжөөнт тоглоом түрээслэх нөхцөл</h2>
@@ -171,7 +252,7 @@
       <li>Огноогоо сонгоход тухайн өдрийн бодит үлдэгдэл харагдана — давхар захиалга гарахгүй.</li>
     </ul>
   </div>
-  <a class="cta" href="/?cat=%D0%A5%D3%A9%D0%B3%D0%B6%D3%A9%D3%A9%D0%BD%D1%82%20%D1%82%D0%BE%D0%B3%D0%BB%D0%BE%D0%BE%D0%BC">Хөгжөөнт тоглоом үзэх, захиалах →</a>
+  <a class="btn primary cta" href="/?cat=%D0%A5%D3%A9%D0%B3%D0%B6%D3%A9%D3%A9%D0%BD%D1%82%20%D1%82%D0%BE%D0%B3%D0%BB%D0%BE%D0%BE%D0%BC">Хөгжөөнт тоглоом үзэх, захиалах →</a>
 
   <h2>Бусад ангилал</h2>
   <div class="others">
@@ -192,9 +273,14 @@
     <a href="/turees/effekt/">Эффект</a>
   </div>
 
-  <footer>
-    © 2026 Эм Эвент Солюшн ХХК · <a href="tel:+97677551010">7755-1010</a> · <a href="mailto:info@mevent.mn">info@mevent.mn</a> · <a href="/">Бүх бараа →</a>
-  </footer>
 </div>
+  <footer class="foot">
+    <div class="fn">M·Event</div>
+    <div class="ft">Арга хэмжээний тоног төхөөрөмжийн түрээс</div>
+    <div class="fc"><a href="tel:+97677551010">+976 7755-1010</a><a href="mailto:info@mevent.mn">info@mevent.mn</a><a href="/">Бүх бараа →</a></div>
+    <div class="fr"></div>
+    <div class="fy">© 2026 Эм Эвент Солюшн ХХК · <a href="/privacy/">Нууцлалын бодлого</a></div>
+  </footer>
+<script>try{var c=JSON.parse(localStorage.getItem('cart')||'[]'),n=0;c.forEach(function(x){n+=Number(x.qty)||0});document.getElementById('cart-n').textContent=n}catch(e){}</script>
 </body>
 </html>

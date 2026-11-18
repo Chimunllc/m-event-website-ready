@@ -124,6 +124,17 @@ ok('SCAN: сагсны тууз цул тавцантай (бараа хагас
 ok('SCAN: alert нь сайтын өөрийн мэдэгдэл (браузерын цонх биш)', /\nfunction alert\(msg\) \{/.test(SRC) && !/window\.alert\(/.test(SRC));
 ok('SCAN: хоосон сагсанд дүн харуулахгүй', /\.drawer-foot\.cart-empty #totals \{ display: none; \}/.test(SRC) && /classList\.toggle\('cart-empty'/.test(SRC));
 
+// Барааны хуудаснаас «Сагсанд нэмэх» → ?add=<sku>. Параметр URL-д үлдвэл хуудас шинэчлэх бүрд дахин нэмэгдэнэ.
+{
+  const fn = (SRC.match(/function applyAddParam\(\) \{[\s\S]*?\n\}/) || [''])[0];
+  ok('SCAN: ?add= параметрийг URL-аас арилгана (дахин нэмэгдэхгүй)', /q\.delete\('add'\)/.test(fn) && /history\.replaceState/.test(fn));
+  ok('SCAN: ?add= сагсанд байгаа барааг давхар нэмэхгүй', /if \(!had\) addToCart\(p, 1, false\)/.test(fn));
+  ok('SCAN: сонголт шаардсан бараа (асар/хувилбар) шууд нэмэгдэхгүй, цонх нээнэ', /needsChoice[\s\S]*openProduct\(p\); return;/.test(fn));
+  const B = readFileSync(new URL('../build-seo.js', import.meta.url), 'utf8');
+  ok('SCAN: барааны хуудас ?add=-оор сагс руу заана', /const addHref = p => '\/\?add=' \+ encodeURIComponent\(p\.sku/.test(B));
+  ok('SCAN: барааны хуудас сагсыг өөрөө БИЧИХГҮЙ (ганц эзэн = index.html)', !/localStorage\.setItem/.test(B));
+}
+
 /* ── 8. SCAN: толгойд утасны дугаар ИЛ ────────────────────────────────────── */
 ok('SCAN: толгойн tel холбоос дугаараа бичвэрээр харуулна',
   /<a href="tel:\+97677551010"[\s\S]{0,900}?<span class="ib-num">7755-1010<\/span>/.test(SRC));
