@@ -539,8 +539,8 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
   .btn-block { width: 100%; }
 
   /* Үнийн саналын тайлбар — зочинд юу болохыг тодорхой хэлнэ */
-  .quote-note { margin:10px 0 16px; padding:11px 13px; border-radius:10px; font-size: var(--fs-sm); line-height:1.55;
-    background:rgba(234,88,12,.07); border:1px solid rgba(234,88,12,.28); color:var(--text,#1f2937); }
+  .quote-note { margin:10px 0 20px; padding:12px 14px; border-radius:14px; font-size: var(--fs-sm); line-height:1.55;
+    background:var(--accent-soft); color:var(--text); }
   /* CART DRAWER */
   .drawer-bg {
     position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 90;
@@ -609,7 +609,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
     padding: 12px 0; border-bottom: 1px solid var(--border);
   }
   .cart-item:last-child { border-bottom: none; }
-  .cart-item img { width: 60px; height: 60px; border-radius: 6px; object-fit: cover; background: var(--bg); }
+  .cart-item img { width: 60px; height: 60px; border-radius: 10px; object-fit: cover; background: var(--bg); }
   .cart-item-name { font-weight: 600; font-size: var(--fs-sm); line-height: 1.3; margin-bottom: 4px; }
   .cart-item-meta { font-size: var(--fs-xs); color: var(--muted); }
   /* Багцын «санал болгох нэмэлт» (2026-10-24): шууд нэмэгдэхгүй, товч дарахад л орно */
@@ -627,9 +627,9 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
   .cart-xs-x { position: absolute; top: 2px; right: 2px; width: 26px; height: 26px; border: none; border-radius: 50%; background: transparent; color: var(--muted); font-size: var(--fs-base); line-height: 1; cursor: pointer; }
   .cart-xs-x:hover { background: var(--bg); color: var(--danger); }
   .cart-item-qty { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; }
-  .cart-item-qty button { width: 30px; height: 30px; border: 1px solid var(--border-strong); border-radius: 7px; font-size: var(--fs-base); background: #fff; transition: background .12s; }
+  .cart-item-qty button { width: 36px; height: 36px; border: 1px solid var(--border-strong); border-radius: 10px; font-size: var(--fs-base); background: #fff; transition: background .12s; }
   .cart-item-qty button:hover { background: var(--bg); }
-  .cart-item-qty input { width: 40px; height: 30px; text-align: center; border: 1px solid var(--border); border-radius: 7px; font-size: var(--fs-sm); }
+  .cart-item-qty input { width: 44px; height: 36px; text-align: center; border: 1px solid var(--border); border-radius: 10px; font-size: var(--fs-sm); }
   .cart-item-price { font-weight: 700; font-size: var(--fs-md); text-align: right; }
   .cart-item-price small { font-weight: 400; font-size: var(--fs-xs); color: var(--muted); display: block; }
   .cart-remove { color: var(--danger); font-size: var(--fs-xs); cursor: pointer; margin-top: 4px; display: inline-block; }
@@ -637,31 +637,48 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
   .empty-cart .icon { font-size: 36px; margin-bottom: 8px; }
 
   .drawer-foot {
-    padding: 18px 20px; border-top: 1px solid var(--border); background: var(--panel);
+    padding: 14px 20px calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); background: var(--panel);
+    box-shadow: 0 -8px 24px -18px rgba(23,23,27,.25);
   }
+  .drawer-foot .btn { min-height: 52px; border-radius: 14px; font-size: var(--fs-sm); }
   .total-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: var(--fs-sm); color: var(--muted); }
-  .total-row.grand { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; color: var(--text); margin: 10px 0 16px; padding-top: 12px; border-top: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  .total-row.grand { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; color: var(--text); margin: 10px 0 14px; padding-top: 12px; border-top: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  /* Дэд дүн нуугдсан (= нийт дүн) үед зураас, зай илүүц */
+  #totals.solo .total-row.grand { border-top: none; padding-top: 0; margin-top: 0; }
 
   /* CHECKOUT */
   .checkout-step { display: none; }
   .checkout-step.active { display: block; }
-  .form-group { margin-bottom: 14px; }
-  .form-group label { display: block; font-size: var(--fs-xs); color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: var(--fs-sm); color: var(--text); margin-bottom: 6px; font-weight: 600; }
+  .form-group small { display: block; margin-top: 6px; }
   .form-group label .req { color: var(--danger); }
   .form-group input, .form-group textarea {
-    width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 6px; background: #fff;
+    width: 100%; min-height: 48px; padding: 12px 14px; border: 1.5px solid var(--border-strong); border-radius: 12px;
+    background: var(--panel); color: var(--text); -webkit-appearance: none; appearance: none;
+    transition: border-color .15s, box-shadow .15s;
   }
-  .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--primary); }
+  .form-group input::placeholder, .form-group textarea::placeholder { color: #A3A3AB; }
+  .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+  /* Хоёр сонголт = хоёр товч (үндсэн select нь утсанд хуучирсан харагддаг байв) */
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 14px; }
+  .seg-opt { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 10px; border-radius: 10px;
+    font-size: var(--fs-md); font-weight: 600; color: var(--muted); transition: background .15s, color .15s, box-shadow .15s; }
+  .seg-opt svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .seg-opt.on { background: var(--panel); color: var(--brand); box-shadow: 0 1px 3px rgba(23,23,27,.12), 0 0 0 1px var(--border); }
   /* Хүргэлтийн сонголт — үнэ нь ШУУД харагдах карт. Хамгийн үнэтэй шийдвэр тул
      хамгийн тод контрол байх ёстой (өмнө энгийн select байсан, үнэ нь dropdown
      дотор нуугдаж, бусад талбартай ялгарахгүй байв). */
   .dlv-opts { display: grid; gap: 8px; }
   .dlv-opt { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
-    border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--panel);
+    border: 1.5px solid var(--border-strong); border-radius: 14px; padding: 12px 14px; min-height: 64px; background: var(--panel);
     cursor: pointer; transition: border-color .15s, background .15s; }
   .dlv-opt:hover { border-color: var(--border-strong); }
-  .dlv-opt.on { border-color: var(--brand); background: var(--brand-soft); }
-  .dlv-ico { font-size: 18px; line-height: 1; flex-shrink: 0; }
+  .dlv-opt.on { border-color: var(--brand); background: var(--brand-soft); box-shadow: 0 0 0 1px var(--brand); }
+  .dlv-ico { width: 38px; height: 38px; flex-shrink: 0; border-radius: 10px; background: var(--bg); color: var(--muted);
+    display: inline-flex; align-items: center; justify-content: center; transition: background .15s, color .15s; }
+  .dlv-ico svg { width: 20px; height: 20px; }
+  .dlv-opt.on .dlv-ico { background: var(--brand); color: #fff; }
   .dlv-t { flex: 1; min-width: 0; font-weight: 700; font-size: var(--fs-md); color: var(--text); }
   .dlv-sub { display: block; font-weight: 400; font-size: var(--fs-xs); color: var(--muted); margin-top: 2px; }
   .dlv-price { flex-shrink: 0; font-weight: 800; font-size: var(--fs-md); color: var(--text); white-space: nowrap; }
@@ -681,7 +698,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
   .form-group textarea { min-height: 70px; resize: vertical; font-family: inherit; }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .checkout-summary {
-    background: var(--bg); padding: 14px; border-radius: 8px; margin-bottom: 18px;
+    background: var(--bg); padding: 14px 16px; border-radius: 14px; margin-bottom: 14px;
     font-size: var(--fs-sm);
   }
   .checkout-summary .row { display: flex; justify-content: space-between; padding: 3px 0; }
@@ -984,7 +1001,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
     .cat-sheet-close { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: none; background: var(--brand-soft); color: var(--brand); border-radius: 50%; font-size: var(--fs-input); cursor: pointer; }
     .date-bar { top: 66px; }
     .date-row { padding: 11px 16px; gap: 12px; }
-    .form-grid { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: 1fr; gap: 0; }
     .grid-head h1 { font-size: 20px; }
   }
   /* Бичвэр 12px хүртэл томорсноор 320px-д толгой 2px халив. Хамгийн нарийн
@@ -1235,7 +1252,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
   <div class="drawer-head">
     <button class="drawer-back" id="step-back" style="display:none;" aria-label="Буцах"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
-    <h2 id="drawer-title">🛒 Миний сагс</h2>
+    <h2 id="drawer-title">Миний сагс</h2>
     <button class="drawer-close" id="drawer-close">×</button>
   </div>
   <div class="drawer-body" id="drawer-body">
@@ -1260,9 +1277,13 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
       <div class="quote-note">Захиалгыг <b>ажлын 1 цагийн дотор</b> боловсруулж и-мэйлээр илгээнэ. Захиалга төлбөр төлөгдсөнөөр баталгаажна.</div>
 
       <div class="form-group"><label for="f-custtype">Захиалагч <span class="req">*</span></label>
-        <select id="f-custtype">
-          <option value="person">👤 Хувь хүн</option>
-          <option value="org">🏢 Байгууллага</option>
+        <div class="seg" id="f-custseg" role="radiogroup" aria-label="Захиалагч">
+          <button type="button" class="seg-opt on" role="radio" aria-checked="true" data-ct="person"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.8-3.6 3.8-5.5 7.5-5.5s6.7 1.9 7.5 5.5"/></svg>Хувь хүн</button>
+          <button type="button" class="seg-opt" role="radio" aria-checked="false" data-ct="org"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20.5V4.5h9v16"/><path d="M14 9.5h5v11"/><path d="M3 20.5h18"/><path d="M8.5 8.5h2M8.5 12h2M8.5 15.5h2"/></svg>Байгууллага</button>
+        </div>
+        <select id="f-custtype" hidden aria-hidden="true" tabindex="-1">
+          <option value="person">Хувь хүн</option>
+          <option value="org">Байгууллага</option>
         </select>
       </div>
       <div class="form-grid">
@@ -1274,22 +1295,22 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
         <label>Барааг хэрхэн авах вэ? <span class="req">*</span></label>
         <div class="dlv-opts" id="f-delivopts">
           <button type="button" class="dlv-opt" data-zone="pickup">
-            <span class="dlv-ico">🏬</span>
+            <span class="dlv-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5 5.5 4h13L20 9.5"/><path d="M4 9.5a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0"/><path d="M5.5 12.5V20h13v-7.5"/><path d="M10 20v-4.5h4V20"/></svg></span>
             <span class="dlv-t">Өөрөө авах<span class="dlv-sub">Манай агуулахаас</span></span>
             <span class="dlv-price free">Үнэгүй</span>
           </button>
           <button type="button" class="dlv-opt" data-zone="city1">
-            <span class="dlv-ico">🚚</span>
+            <span class="dlv-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.5h11v10h-11z"/><path d="M13.5 10h4l3 3.2v3.3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg></span>
             <span class="dlv-t">Хот дотор — нэг тал<span class="dlv-sub">Зөвхөн хүргэж өгнө (буцаахаа өөрөө авчирна)</span></span>
             <span class="dlv-price" data-dlvprice="city1">80,000₮</span>
           </button>
           <button type="button" class="dlv-opt" data-zone="city">
-            <span class="dlv-ico">🚚</span>
+            <span class="dlv-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13"/><path d="m14 5 3 3-3 3"/><path d="M20 16H7"/><path d="m10 13-3 3 3 3"/></svg></span>
             <span class="dlv-t">Хот дотор — очих+буцах<span class="dlv-sub">Хүргэж өгөөд буцааж авна</span></span>
             <span class="dlv-price" data-dlvprice="city">150,000₮</span>
           </button>
           <button type="button" class="dlv-opt" data-zone="out">
-            <span class="dlv-ico">🚚</span>
+            <span class="dlv-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg></span>
             <span class="dlv-t">Хотоос гадна<span class="dlv-sub">Зайнаас хамаарна</span></span>
             <span class="dlv-price">км-ээр</span>
           </button>
@@ -1305,18 +1326,18 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
       <div class="form-group" id="f-setup-wrap" style="display:none;">
         <button type="button" class="dlv-opt dlv-setup" id="f-setup" aria-pressed="false">
           <span class="dlv-chk" aria-hidden="true">✓</span>
-          <span class="dlv-t">🔧 Угсралт, суурилуулалт<span class="dlv-sub">Манай баг газар дээр нь угсарч, эвентийн дараа буулгана. Хөлс нь барааны тоо ширхгээр, доод хэмжээ 50,000₮</span></span>
+          <span class="dlv-t">Угсралт, суурилуулалт<span class="dlv-sub">Манай баг газар дээр нь угсарч, эвентийн дараа буулгана. Хөлс нь барааны тоо ширхгээр, доод хэмжээ 50,000₮</span></span>
           <span class="dlv-price" id="f-setup-price">+50,000₮-с</span>
         </button>
       </div>
       <div class="form-group" id="f-delivkm-wrap" style="display:none;"><label for="f-delivkm">Нэг талын зай (км)</label><input id="f-delivkm" type="number" inputmode="numeric" min="0" placeholder="Жишээ: 100"><small style="color:var(--muted);">Очих+буцах = км × 2 × 5,000₮</small></div>
       <div class="form-group" id="f-address-wrap" style="display:none;"><label for="f-address">Хүргэлтийн хаяг <span class="req">*</span></label><input id="f-address" autocomplete="street-address" placeholder="Дүүрэг, хороо, байр, давхар"></div>
-      <div class="form-group" id="f-maps-wrap" style="display:none;"><label for="f-maps">📍 Байршлын линк</label><input id="f-maps" inputmode="url" placeholder="Google Maps линк (заавал биш)"><small style="color:var(--muted);">Жолооч төөрөхгүй — линк тавьвал хүргэлт хурдан</small></div>
+      <div class="form-group" id="f-maps-wrap" style="display:none;"><label for="f-maps">Байршлын линк</label><input id="f-maps" inputmode="url" placeholder="Google Maps линк (заавал биш)"><small style="color:var(--muted);">Жолооч төөрөхгүй — линк тавьвал хүргэлт хурдан</small></div>
       <div class="form-group" id="f-pickup-wrap" style="display:none;">
         <div class="pickup-box">
-          <div class="pickup-h">🏬 Ирж авах хаяг</div>
+          <div class="pickup-h">Ирж авах хаяг</div>
           <div class="pickup-a" id="f-pickup-addr"></div>
-          <a class="pickup-map" id="f-pickup-map" target="_blank" rel="noopener">🗺 Газрын зураг дээр харах</a>
+          <a class="pickup-map" id="f-pickup-map" target="_blank" rel="noopener">Газрын зураг дээр харах →</a>
         </div>
       </div>
       <div class="form-grid" id="f-org-wrap" style="display:none;">
@@ -1339,11 +1360,11 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
   </div>
   <div class="drawer-foot" id="drawer-foot">
     <div id="totals">
-      <div class="total-row"><span>Дэд дүн</span><span id="t-subtotal">0₮</span></div>
+      <div class="total-row" id="t-subtotal-row"><span>Дэд дүн</span><span id="t-subtotal">0₮</span></div>
       <div class="total-row" id="t-discount-row" style="display:none;color:var(--success);"><span id="t-discount-label">Олон хоногийн хямдрал</span><span id="t-discount">0₮</span></div>
-      <div class="total-row" id="t-deliv-row" style="display:none;"><span>🚚 Хүргэлт</span><span id="t-deliv">0₮</span></div>
-      <div class="total-row" id="t-setup-row" style="display:none;"><span>🔧 Угсралт, суурилуулалт</span><span id="t-setup">0₮</span></div>
-      <div class="total-row" id="t-offhours-row" style="display:none;"><span>🌙 Ажлын бус цаг</span><span id="t-offhours">0₮</span></div>
+      <div class="total-row" id="t-deliv-row" style="display:none;"><span>Хүргэлт</span><span id="t-deliv">0₮</span></div>
+      <div class="total-row" id="t-setup-row" style="display:none;"><span>Угсралт, суурилуулалт</span><span id="t-setup">0₮</span></div>
+      <div class="total-row" id="t-offhours-row" style="display:none;"><span>Ажлын бус цаг</span><span id="t-offhours">0₮</span></div>
       <div class="total-row grand"><span>Нийт төлөх</span><span id="t-grand">0₮</span></div>
     </div>
     <button class="btn btn-primary btn-block" id="checkout-btn">Захиалгыг үргэлжлүүлэх →</button>
@@ -2866,6 +2887,8 @@ function renderCart() {
   renderCartAddons();
   const t = cartTotals();
   document.getElementById('t-subtotal').textContent = fmt(t.subtotal);
+  document.getElementById('t-subtotal-row').style.display = t.subtotal === t.grand ? 'none' : '';
+  document.getElementById('totals').classList.toggle('solo', t.subtotal === t.grand);
   const dr = document.getElementById('t-discount-row');
   if (t.multiDayDiscount) {
     dr.style.display = '';
@@ -3080,7 +3103,7 @@ function goStep(s) {
       goStep('dates');
     };
     foot.style.display = '';
-    document.getElementById('drawer-title').textContent = '🛒 Миний сагс';
+    document.getElementById('drawer-title').textContent = 'Миний сагс';
   } else if (s === 'dates') {
     const _dOnly = !!state.dateOnly;
     btn.textContent = _dOnly ? '✓ Хадгалаад бараа үзэх' : 'Үргэлжлүүлэх →';
@@ -3116,8 +3139,17 @@ function goStep(s) {
     const ctEl = document.getElementById('f-custtype');
     const syncCustType = () => {
       document.getElementById('f-org-wrap').style.display = ctEl.value === 'org' ? '' : 'none';
+      document.querySelectorAll('#f-custseg .seg-opt').forEach(b => {
+        const on = b.dataset.ct === ctEl.value;
+        b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false');
+      });
     };
-    if (ctEl) { ctEl.onchange = syncCustType; syncCustType(); }
+    if (ctEl) {
+      ctEl.onchange = syncCustType;
+      // Хоёр товч нуугдсан select-ийг жолоодно — бусад код .value-г хэвээр уншина
+      document.querySelectorAll('#f-custseg .seg-opt').forEach(b => { b.onclick = () => { ctEl.value = b.dataset.ct; syncCustType(); }; });
+      syncCustType();
+    }
     const zoneEl = document.getElementById('f-delivzone');
     // Хамаарах талбаруудыг сонголтын ДООР нэг хайрцагт цуглуулна — сонголттойгоо
     // холбоотой нь харагдана (өмнө тус тусдаа өлгөөтэй байв).
