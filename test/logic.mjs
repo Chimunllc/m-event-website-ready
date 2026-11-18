@@ -114,6 +114,11 @@ ok('SCAN: хөл inline style-гүй (класс ашиглана)', /<footer cl
 /* ── 7. SCAN: toast доод талын мөнгөн дүнг дардаггүй ──────────────────────── */
 const toastCss = (SRC.match(/\.toast \{[^}]*\}/) || [''])[0];
 ok('SCAN: toast дээд талд байрлана', /top:/.test(toastCss) && !/bottom:/.test(toastCss), toastCss.slice(0, 90));
+// Утсанд toast доор гарна (лого, сагсны товчийг дардаггүй), ГЭХДЭЭ drawer/модал
+// нээлттэй үед доор нь «Нийт төлөх» байдаг тул дээр үлдэх ёстой.
+ok('SCAN: утсанд toast доор — зөвхөн drawer хаалттай үед', /body:not\(\.modal-open\) \.toast \{[^}]*bottom:/.test(SRC));
+ok('SCAN: drawer нээлттэй үед toast доош буухгүй', !/body\.modal-open \.toast \{[^}]*bottom:/.test(SRC) && /body\.modal-open \.toast \{[^}]*top:/.test(SRC));
+ok('SCAN: сагсны тууз цул тавцантай (бараа хагас дарагдахгүй)', /body\.fab-on \.cart-dock/.test(SRC) && /<div class="cart-dock"/.test(SRC));
 
 /* ── 8. SCAN: толгойд утасны дугаар ИЛ ────────────────────────────────────── */
 ok('SCAN: толгойн tel холбоос дугаараа бичвэрээр харуулна',
