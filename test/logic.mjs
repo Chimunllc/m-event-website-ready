@@ -148,7 +148,7 @@ ok('SCAN: сагсанд нэмэхэд огнооны цонх руу шидд�
 // ⚠ Хаалт хассан ч ШААРДЛАГА хэвээр: сагс → огноо → мэдээлэл.
 ok('SCAN: сагснаас огноо руу заавал ордог', /if \(!state\.cart\.length\) \{ alert\('Сагс хоосон байна'\); return; \}\s*\n\s*goStep\('dates'\);/.test(SRC));
 ok('SCAN: огноо сонгоогүй бол цааш явуулахгүй',
-  /if \(!state\.dates\.start \|\| !state\.dates\.end\) \{ alert\('Гарах ба буцах огноог сонгоно уу\.'\); return; \}/.test(SRC));
+  /if \(!state\.dates\.start \|\| !state\.dates\.end\) \{ alert\('Авах ба буцаах огноог сонгоно уу\.'\); return; \}/.test(SRC));
 
 /* ── 11. 404 — хуучин Booqable хаягийн зөөлөн буулт ───────────────────────── */
 // Google-д /products/1500w · /products/13 · /products/<uuid> хэвээр байна.

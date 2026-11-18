@@ -1116,7 +1116,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
         <div class="step-num">01</div>
         <div class="step-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg></div>
         <h3>Огноо &amp; бараагаа сонго</h3>
-        <p>Гарах, буцах хугацаагаа тохируулаад хэрэгтэй тоног төхөөрөмжөө сагслана. Сул нөөц шууд харагдана.</p>
+        <p>Авах, буцаах хугацаагаа тохируулаад хэрэгтэй тоног төхөөрөмжөө сагслана. Сул нөөц шууд харагдана.</p>
       </div>
       <div class="step reveal">
         <div class="step-num">02</div>
@@ -1138,7 +1138,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
 <section class="trust">
   <div class="trust-inner">
     <div class="trust-item reveal"><div class="tv">150+</div><div class="tl">төрлийн бараа нэг дороос</div></div>
-    <div class="trust-item reveal"><div class="tv">Хот дотор</div><div class="tl">хүргэлт 80,000₮-с</div></div>
+    <div class="trust-item reveal"><div class="tv">Хот дотор</div><div class="tl">нэг талын хүргэлт 80,000₮-с</div></div>
     <div class="trust-item reveal"><div class="tv">−20%</div><div class="tl">2+ хоног түрээслэвэл</div></div>
     <div class="trust-item reveal"><div class="tv">1 цаг</div><div class="tl">дотор баталгаажуулна</div></div>
   </div>
@@ -1164,8 +1164,8 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
       <b>Барьцаа:</b> зарим үнэ бүхий тоног төхөөрөмжид барьцаа тооцогдож болно — дүнг захиалга баталгаажих үед менежер барааны төрлөөс хамааруулан хэлнэ.<br>
       <b>Төлбөр:</b> захиалга төлбөр төлөгдсөнөөр баталгаажна (данс/бэлэн/карт).<br>
       <b>Хямдрал:</b> 2+ хоног түрээслэвэл −20%, 7+ хоногт −40%, сараар −55%.<br>
-      <b>Хүргэлт:</b> хот дотор 150,000₮-с, хотоос гадна км-ээр (км × 2 × 5,000₮).<br>
-      <b>Ажлын цаг:</b> 09:00–18:00. Гадуур авах/буцаах бүрт +20,000₮.<br>
+      <b>Хүргэлт:</b> хот дотор нэг тал 80,000₮-с, очих+буцах 150,000₮-с; хотоос гадна км-ээр (км × 2 × 5,000₮).<br>
+      <b>Ажлын цаг:</b> 09:00–18:00. Үүнээс гадуур авах, буцаах цэг тус бүрт эхний цагт +20,000₮, цаашилбал цаг тутамд +10,000₮.<br>
       <b>Цуцлалт:</b> товлосон өдрөөс 48 цагийн өмнө цуцлах боломжтой.
     </div>
   </details>
@@ -1269,7 +1269,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
         <div class="form-group"><label for="f-name">Нэр <span class="req">*</span></label><input id="f-name" autocomplete="name" placeholder="Овог Нэр"></div>
         <div class="form-group"><label for="f-phone">Утас <span class="req">*</span></label><input id="f-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="9911____"></div>
       </div>
-      <div class="form-group"><label for="f-email">Email <span class="req">*</span></label><input id="f-email" type="email" inputmode="email" autocomplete="email" placeholder="example@gmail.com"><small style="color:var(--muted);">Үнийн санал, баталгаажуулалтыг энэ хаяг руу илгээнэ</small></div>
+      <div class="form-group"><label for="f-email">И-мэйл <span class="req">*</span></label><input id="f-email" type="email" inputmode="email" autocomplete="email" placeholder="example@gmail.com"><small style="color:var(--muted);">Үнийн санал, баталгаажуулалтыг энэ хаяг руу илгээнэ</small></div>
       <div class="form-group">
         <label>Барааг хэрхэн авах вэ? <span class="req">*</span></label>
         <div class="dlv-opts" id="f-delivopts">
@@ -1346,7 +1346,7 @@ src="https://www.facebook.com/tr?id=1546687400103761&ev=PageView&noscript=1"/></
       <div class="total-row" id="t-offhours-row" style="display:none;"><span>🌙 Ажлын бус цаг</span><span id="t-offhours">0₮</span></div>
       <div class="total-row grand"><span>Нийт төлөх</span><span id="t-grand">0₮</span></div>
     </div>
-    <button class="btn btn-primary btn-block" id="checkout-btn">Захиалга үргэлжлүүлэх →</button>
+    <button class="btn btn-primary btn-block" id="checkout-btn">Захиалгыг үргэлжлүүлэх →</button>
   </div>
 </aside>
 
@@ -3085,7 +3085,7 @@ function goStep(s) {
     const _dOnly = !!state.dateOnly;
     btn.textContent = _dOnly ? '✓ Хадгалаад бараа үзэх' : 'Үргэлжлүүлэх →';
     btn.onclick = () => {
-      if (!state.dates.start || !state.dates.end) { alert('Гарах ба буцах огноог сонгоно уу.'); return; }
+      if (!state.dates.start || !state.dates.end) { alert('Авах ба буцаах огноог сонгоно уу.'); return; }
       if (_dOnly) {   // зөвхөн огноо — каталог руу буцаана
         // Анхдагч огноог баталгаажуулсан ч «сонгосон» гэж тооцно, эс бөгөөс
         // хуудас шинэчлэх бүрд огнооны цонх дахин дахин нээгдэнэ.
@@ -3172,8 +3172,8 @@ async function submitOrder() {
   if (!name) { alert('Нэрээ оруулна уу'); return; }
   if (!phone || phone.replace(/\D/g, '').length < 8) { alert('Утасны дугаар буруу'); return; }
   const email = document.getElementById('f-email').value.trim();
-  if (!email) { alert('Email хаягаа оруулна уу — үнийн санал, баталгаажуулалтыг тэр хаяг руу илгээнэ'); document.getElementById('f-email').focus(); return; }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { alert('Email буруу байна'); document.getElementById('f-email').focus(); return; }
+  if (!email) { alert('И-мэйл хаягаа оруулна уу — үнийн санал, баталгаажуулалтыг тэр хаяг руу илгээнэ'); document.getElementById('f-email').focus(); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { alert('И-мэйл хаяг буруу байна'); document.getElementById('f-email').focus(); return; }
   if (isDeliv && !address) { alert('Хүргэлтийн хаяг шаардлагатай'); return; }
   // Байгууллага сонговол нэр + РД заавал (нэхэмжлэх гаргахад шаардлагатай)
   const custType = (document.getElementById('f-custtype') || {}).value || 'person';
