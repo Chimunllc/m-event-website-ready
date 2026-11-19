@@ -473,26 +473,55 @@ listed.forEach(p => {
 //   Зөвхөн sku хэлбэрийн (m-NNN) хавтсыг хөнднө: хуучин нэрний slug-ууд бол
 //   `build-redirects.js`-ийн шилжүүлэг тул тэдгээрийг орхино.
 const TOMBSTONE_MARK = 'data-tombstone="1"';
+const TOMB_STYLE = 'v2';   // загвар өөрчлөгдвөл нэмэгдүүл — хуучин хаалттай хуудсууд дахин бичигдэнэ
+const isCurrentTomb = h => h.includes(TOMBSTONE_MARK) && h.includes('name="tomb-style" content="' + TOMB_STYLE + '"');
 function tombstonePage(slug, msg) {
   const head = msg || 'Энэ бараа түрээслэгдэхээ больсон';
+  // ⚠ noindex + canonical + data-tombstone ЗААВАЛ хэвээр (test/logic.mjs шалгана). Загвар нь сайтын бүрхүүл.
   return `<!doctype html>
 <html lang="mn">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${esc(head)} — ${BRAND}</title>
 <meta name="robots" content="noindex,follow">
 <link rel="canonical" href="${SITE}/">
 <meta ${TOMBSTONE_MARK}>
-<style>body{font:16px/1.6 system-ui,sans-serif;margin:0;display:grid;place-items:center;min-height:100vh;padding:24px;text-align:center}a{color:#0b6}</style>
+<meta name="tomb-style" content="${TOMB_STYLE}">
+<meta name="theme-color" content="#0B1F3A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600&display=swap&subset=cyrillic,latin" rel="stylesheet">
+<style>${SHELL_CSS}
+  .gone { max-width:520px; margin:0 auto; text-align:center; padding:36px 0 8px; }
+  .gone .ic { width:72px; height:72px; margin:0 auto 18px; border-radius:50%; background:#EAEEF3; color:#0B1F3A; display:flex; align-items:center; justify-content:center; }
+  .gone .ic svg { width:30px; height:30px; }
+  .gone h1 { font-size:22px; margin-bottom:8px; }
+  .gone p { color:#5C5C63; font-size:15px; margin-bottom:22px; }
+  .gone .acts { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .others { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+  .others a { background:#fff; border:1px solid #DDD9CF; border-radius:100px; padding:8px 15px; font-size:13px; font-weight:600; color:#0B1F3A; text-decoration:none; }
+  h2 { text-align:center; }
+</style>
 </head>
 <body>
-<div>
-  <h1 style="font-size:20px;margin:0 0 8px">${esc(head)}</h1>
-  <p style="margin:0 0 16px;color:#555">Ойролцоо бараа каталогаас олдож магадгүй.</p>
-  <p><a href="${SITE}/">Бүх бараа үзэх →</a></p>
-  <p style="color:#555">Лавлах: <a href="tel:+97677551010">7755-1010</a></p>
+  ${SHELL_HEAD}
+<div class="wrap">
+  <div class="gone">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg></div>
+    <h1>${esc(head)}</h1>
+    <p>Төстэй бараа каталогт байж магадгүй. Доорх ангиллаас үзэх эсвэл бидэнтэй холбогдоорой.</p>
+    <div class="acts">
+      <a class="btn primary" href="/">Бүх бараа үзэх</a>
+      <a class="btn" href="tel:+97677551010">${IC_PHONE}7755-1010</a>
+    </div>
+  </div>
+  <h2>Ангилал</h2>
+  <div class="others">
+${cats.map(x => `    <a href="/turees/${x.slug}/">${esc(x.name)}</a>`).join('\n')}
+  </div>
 </div>
+  ${SHELL_FOOT}
 </body>
 </html>
 `;
@@ -504,7 +533,7 @@ for (const d of (fs.existsSync(prodDir) ? fs.readdirSync(prodDir) : [])) {
   if (liveSlugs.has(d)) continue;                   // амьд бараа
   const f = path.join(prodDir, d, 'index.html');
   if (!fs.existsSync(f)) continue;
-  if (fs.readFileSync(f, 'utf8').includes(TOMBSTONE_MARK)) { alreadyClosed++; continue; }
+  if (isCurrentTomb(fs.readFileSync(f, 'utf8'))) { alreadyClosed++; continue; }
   fs.writeFileSync(f, tombstonePage(d));
   closed++;
 }
@@ -650,7 +679,7 @@ for (const d of fs.readdirSync(catDir)) {
   if (liveCatSlugs.has(d)) continue;
   const f = path.join(catDir, d, 'index.html');
   if (!fs.existsSync(f)) continue;
-  if (fs.readFileSync(f, 'utf8').includes(TOMBSTONE_MARK)) continue;
+  if (isCurrentTomb(fs.readFileSync(f, 'utf8'))) continue;
   fs.writeFileSync(f, tombstonePage(d, 'Энэ ангилал одоогоор түрээслэгдэхгүй байна'));
   catClosed++;
 }

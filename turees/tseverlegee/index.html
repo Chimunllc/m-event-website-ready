@@ -2,19 +2,124 @@
 <html lang="mn">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Энэ ангилал одоогоор түрээслэгдэхгүй байна — M-Event</title>
 <meta name="robots" content="noindex,follow">
 <link rel="canonical" href="https://mevent.mn/">
 <meta data-tombstone="1">
-<style>body{font:16px/1.6 system-ui,sans-serif;margin:0;display:grid;place-items:center;min-height:100vh;padding:24px;text-align:center}a{color:#0b6}</style>
+<meta name="tomb-style" content="v2">
+<meta name="theme-color" content="#0B1F3A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600&display=swap&subset=cyrillic,latin" rel="stylesheet">
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Inter",-apple-system,BlinkMacSystemFont,sans-serif; background:#FBFAF7; color:#17171B; line-height:1.6; -webkit-font-smoothing:antialiased; }
+  a { color:inherit; }
+  .top { background:#FBFAF7; border-bottom:1px solid #ECE9E2; }
+  .top-in { max-width:1040px; margin:0 auto; padding:12px 20px; display:flex; align-items:center; gap:10px; }
+  .brand { margin-right:auto; display:block; }
+  .brand img { height:28px; width:auto; display:block; }
+  .tbtn { display:inline-flex; align-items:center; gap:8px; height:44px; padding:0 14px; border-radius:12px; font-family:"Manrope"; font-weight:700; font-size:14px; text-decoration:none; color:#17171B; white-space:nowrap; }
+  .tbtn svg { width:19px; height:19px; flex:0 0 auto; }
+  .tbtn.cart { background:#0B1F3A; color:#fff; }
+  .tbtn .n { background:#fff; color:#0B1F3A; border-radius:100px; min-width:22px; padding:1px 7px; font-size:12px; font-weight:800; text-align:center; }
+  .wrap { max-width:1040px; margin:0 auto; padding:18px 20px 56px; }
+  nav.crumb { font-size:13px; color:#5C5C63; margin-bottom:16px; }
+  nav.crumb a { color:#5C5C63; text-decoration:none; }
+  nav.crumb a:hover { color:#0B1F3A; text-decoration:underline; }
+  h1 { font-family:"Manrope"; font-weight:800; letter-spacing:-.02em; color:#0B1F3A; line-height:1.2; }
+  h2 { font-family:"Manrope"; font-size:19px; font-weight:800; color:#0B1F3A; margin:40px 0 14px; letter-spacing:-.01em; }
+  .ph { position:relative; background:#FAF9F5; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .ph img { max-width:100%; max-height:100%; object-fit:contain; }
+  .ph.noimg::after { content:""; position:absolute; inset:0; background:#5C5C63; opacity:.18; -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='black' stroke-width='1.4'%3E%3Crect x='3' y='4.5' width='18' height='15' rx='2.5'/%3E%3Ccircle cx='8.5' cy='9.5' r='1.6'/%3E%3Cpath d='m4 17 5-4.5 4 3.2L17 11l3 3.5'/%3E%3C/svg%3E") center/34px no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='black' stroke-width='1.4'%3E%3Crect x='3' y='4.5' width='18' height='15' rx='2.5'/%3E%3Ccircle cx='8.5' cy='9.5' r='1.6'/%3E%3Cpath d='m4 17 5-4.5 4 3.2L17 11l3 3.5'/%3E%3C/svg%3E") center/34px no-repeat; }
+  .chips { display:flex; flex-wrap:wrap; gap:7px; }
+  .chips span { background:#EAEEF3; color:#0B1F3A; border-radius:100px; padding:5px 12px; font-size:12px; font-weight:600; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:52px; padding:0 26px; border-radius:14px; font-family:"Manrope"; font-weight:700; font-size:14px; text-decoration:none; border:1.5px solid #DDD9CF; color:#17171B; background:#fff; }
+  .btn.primary { background:#E95400; border-color:#E95400; color:#fff; }
+  .btn.primary:hover { background:#CF4A00; border-color:#CF4A00; }
+  .btn svg { width:18px; height:18px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:22px 16px; }
+  .it { position:relative; display:flex; flex-direction:column; }
+  .it > a.lk { text-decoration:none; color:inherit; display:flex; flex-direction:column; flex:1; }
+  .it .ph { aspect-ratio:1/1; border:1px solid #ECE9E2; border-radius:16px; margin-bottom:10px; padding:10px; background:#fff; }
+  .it .nm { font-weight:600; font-size:14px; color:#17171B; line-height:1.35; margin-bottom:6px; padding-right:2px; }
+  .it .pr { font-family:"Manrope"; font-weight:800; font-size:17px; color:#0B1F3A; margin-top:auto; padding-right:50px; min-height:42px; }
+  .it .pr small { display:block; font-family:"Inter"; font-size:12px; font-weight:500; color:#5C5C63; }
+  .it .out { color:#A83B00; font-weight:600; }
+  .it .add { position:absolute; right:0; bottom:0; width:42px; height:42px; border-radius:12px; background:#E95400; color:#fff; display:flex; align-items:center; justify-content:center; text-decoration:none; box-shadow:0 6px 14px -6px rgba(233,84,0,.6); }
+  .it .add svg { width:20px; height:20px; }
+  .foot { background:#0B1F3A; color:#A9B7C7; text-align:center; padding:40px 20px; font-size:14px; }
+  .foot .fn { font-family:"Manrope"; font-size:19px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#fff; margin-bottom:6px; }
+  .foot .ft { font-size:13px; margin-bottom:18px; }
+  .foot .fc { display:flex; justify-content:center; gap:8px 24px; flex-wrap:wrap; }
+  .foot a { color:inherit; text-decoration:none; }
+  .foot .fr { height:1px; background:rgba(255,255,255,.10); max-width:360px; margin:22px auto 16px; }
+  .foot .fy { font-size:12px; }
+  @media (max-width:640px) {
+    .top-in { padding:10px 16px; }
+    .brand img { height:26px; }
+    .tbtn { padding:0 11px; }
+    .tbtn.cart .lbl { display:none; }
+    .wrap { padding:14px 16px 44px; }
+    .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px 14px; }
+  }
+  @media (max-width:360px) { .top-in { gap:4px; padding:10px 12px; } .brand img { height:22px; } .tbtn { padding:0 8px; font-size:13px; gap:6px; } }
+
+  .gone { max-width:520px; margin:0 auto; text-align:center; padding:36px 0 8px; }
+  .gone .ic { width:72px; height:72px; margin:0 auto 18px; border-radius:50%; background:#EAEEF3; color:#0B1F3A; display:flex; align-items:center; justify-content:center; }
+  .gone .ic svg { width:30px; height:30px; }
+  .gone h1 { font-size:22px; margin-bottom:8px; }
+  .gone p { color:#5C5C63; font-size:15px; margin-bottom:22px; }
+  .gone .acts { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .others { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+  .others a { background:#fff; border:1px solid #DDD9CF; border-radius:100px; padding:8px 15px; font-size:13px; font-weight:600; color:#0B1F3A; text-decoration:none; }
+  h2 { text-align:center; }
+</style>
 </head>
 <body>
-<div>
-  <h1 style="font-size:20px;margin:0 0 8px">Энэ ангилал одоогоор түрээслэгдэхгүй байна</h1>
-  <p style="margin:0 0 16px;color:#555">Ойролцоо бараа каталогаас олдож магадгүй.</p>
-  <p><a href="https://mevent.mn/">Бүх бараа үзэх →</a></p>
-  <p style="color:#555">Лавлах: <a href="tel:+97677551010">7755-1010</a></p>
+  <header class="top"><div class="top-in">
+    <a href="/" class="brand" aria-label="M-Event — нүүр хуудас"><img src="/logo.png" alt="M-Event" width="113" height="28"></a>
+    <a href="tel:+97677551010" class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 11.5a16 16 0 0 0 6 6l1-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2Z"/></svg><span>7755-1010</span></a>
+    <a href="/?cart=1" class="tbtn cart" aria-label="Сагс"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2.2l2.3 12.4a1.6 1.6 0 0 0 1.6 1.3h8.8a1.6 1.6 0 0 0 1.6-1.3L21 7H5.3"/></svg><span class="lbl">Сагс</span><span class="n" id="cart-n">0</span></a>
+  </div></header>
+<div class="wrap">
+  <div class="gone">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg></div>
+    <h1>Энэ ангилал одоогоор түрээслэгдэхгүй байна</h1>
+    <p>Төстэй бараа каталогт байж магадгүй. Доорх ангиллаас үзэх эсвэл бидэнтэй холбогдоорой.</p>
+    <div class="acts">
+      <a class="btn primary" href="/">Бүх бараа үзэх</a>
+      <a class="btn" href="tel:+97677551010"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 11.5a16 16 0 0 0 6 6l1-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2Z"/></svg>7755-1010</a>
+    </div>
+  </div>
+  <h2>Ангилал</h2>
+  <div class="others">
+    <a href="/turees/asar/">Асар</a>
+    <a href="/turees/ayany-heregsel/">Аяны хэрэгсэл</a>
+    <a href="/turees/zasal-tohijilt/">Засал, тохижилт</a>
+    <a href="/turees/maihan/">Майхан</a>
+    <a href="/turees/restoran-heregsel/">Ресторан хэрэгсэл</a>
+    <a href="/turees/suudrevch/">Сүүдрэвч</a>
+    <a href="/turees/taiz/">Тайз</a>
+    <a href="/turees/taizny-gereltuuleg/">Тайзны гэрэлтүүлэг</a>
+    <a href="/turees/halaalt-agaarjuulalt/">Халаалт, агааржуулалт</a>
+    <a href="/turees/hogjim/">Хөгжим</a>
+    <a href="/turees/hogjmiin-bagts/">Хөгжмийн багц</a>
+    <a href="/turees/hogjoont-togloom/">Хөгжөөнт тоглоом</a>
+    <a href="/turees/chimeglelin-gerel/">Чимэглэлийн гэрэл</a>
+    <a href="/turees/shiree-sandal/">Ширээ, сандал, бүтээлэг</a>
+    <a href="/turees/erchim-huch/">Эрчим хүч, цахилгаан</a>
+    <a href="/turees/effekt/">Эффект</a>
+  </div>
 </div>
+  <footer class="foot">
+    <div class="fn">M·Event</div>
+    <div class="ft">Арга хэмжээний тоног төхөөрөмжийн түрээс</div>
+    <div class="fc"><a href="tel:+97677551010">+976 7755-1010</a><a href="mailto:info@mevent.mn">info@mevent.mn</a><a href="/">Бүх бараа →</a></div>
+    <div class="fr"></div>
+    <div class="fy">© 2026 Эм Эвент Солюшн ХХК · <a href="/privacy/">Нууцлалын бодлого</a></div>
+  </footer>
+<script>try{var c=JSON.parse(localStorage.getItem('cart')||'[]'),n=0;c.forEach(function(x){n+=Number(x.qty)||0});document.getElementById('cart-n').textContent=n}catch(e){}</script>
 </body>
 </html>
