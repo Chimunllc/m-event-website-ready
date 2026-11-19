@@ -1166,6 +1166,29 @@ eq('хөлс: 1 цаг = 20,000', ff(1), 20000);
 eq('хөлс: 3 цаг = 40,000', ff(3), 40000);
 eq('хөлс: 5 цаг = 60,000', ff(5), 60000);
 
+/* ── «Үнэ, нөхцөл»: тоонууд тарифаас зурагдана (хатуу бичээс зөрдөг байсан) ─────────── */
+{
+  const els = {};
+  const doc = { getElementById: (id) => (els[id] = els[id] || { id, innerHTML: '' }) };
+  const ctxT = createContext({ document: doc, fmt: (n) => new Intl.NumberFormat('mn-MN').format(Math.round(n)) + '₮',
+    DELIVERY_CITY_ONE_FEE: 90000, DELIVERY_CITY_FEE: 170000, DELIVERY_PER_KM: 6000, OFFHOURS_FIRST_FEE: 25000, OFFHOURS_FEE: 12000,
+    WORK_START: 8, WORK_END: 19,
+    RENTAL_TIERS: [{ min: 30, pct: 0.5 }, { min: 7, pct: 0.3 }, { min: 2, pct: 0.1 }] });
+  runInContext(extractFn('paintTerms'), ctxT);
+  runInContext('paintTerms()', ctxT);
+  ok('нөхцөл: хүргэлт тарифын дүнгээр (нэг тал 90,000, очих+буцах 170,000, км 6,000)', /90,000₮<\/b>-с/.test(els['tc-deliv'].innerHTML) && /170,000₮<\/b>-с/.test(els['tc-deliv'].innerHTML) && /6,000₮\)/.test(els['tc-deliv'].innerHTML), els['tc-deliv'].innerHTML);
+  eq('нөхцөл: хямдрал өсөхөөр, 30+ хоног = «сараар»', els['tc-disc'].innerHTML, '2+ хоног <b>−10%</b> · 7+ хоног <b>−30%</b> · сараар <b>−50%</b>');
+  ok('нөхцөл: ажлын цаг + эхний цаг/цаг тутмын хөлс тарифаас', /08:00–19:00/.test(els['tc-hours'].innerHTML) && /\+25,000₮/.test(els['tc-hours'].innerHTML) && /\+12,000₮/.test(els['tc-hours'].innerHTML), els['tc-hours'].innerHTML);
+  // Тарифгүй (хоосон tiers) бол хямдралын мөрийг ХӨНДӨХГҮЙ (HTML-ийн анхны утга хэвээр)
+  const els2 = {}; const doc2 = { getElementById: (id) => (els2[id] = els2[id] || { id, innerHTML: 'ANHNII' }) };
+  const ctx2 = createContext({ document: doc2, fmt: (n) => n + '₮', DELIVERY_CITY_ONE_FEE: 1, DELIVERY_CITY_FEE: 2, DELIVERY_PER_KM: 3, OFFHOURS_FIRST_FEE: 4, OFFHOURS_FEE: 5, WORK_START: 9, WORK_END: 18, RENTAL_TIERS: [] });
+  runInContext(extractFn('paintTerms'), ctx2); runInContext('paintTerms()', ctx2);
+  eq('нөхцөл: хямдралын тариф хоосон бол анхны мөр хэвээр', doc2.getElementById('tc-disc').innerHTML, 'ANHNII');
+  ok('scan: paintDlvPrices (тариф ачаалсны дараа) paintTerms-ийг дуудна', /function paintDlvPrices\(\) \{[\s\S]{0,400}paintTerms\(\);/.test(SRC));
+  for (const id of ['tc-deliv', 'tc-disc', 'tc-hours']) ok('scan: HTML-д #' + id + ' бий (JS-гүй үед ч анхны утгатай)', new RegExp('id="' + id + '">[^<]*<b>').test(SRC));
+  ok('scan: хуучин хатуу «Гадуур авах/буцаах бүрт» бичвэр байхгүй', !/Гадуур авах\/буцаах бүрт/.test(SRC));
+}
+
 /* ── Дүн ──────────────────────────────────────────────────────────────────── */
 if (fails.length) {
   console.log(`❌ LOGIC FAIL — ${pass} тэнцсэн, ${fails.length} унасан`);
